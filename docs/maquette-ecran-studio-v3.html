@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette prompteur radio v3</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+:root{--font-sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+body{margin:0;padding:16px;background:#e9e8e3;font-family:var(--font-sans)}
+.wrap{max-width:1100px;margin:0 auto}
+.demo{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.demo button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:1px solid #888;background:#fff;cursor:pointer}
+.scr{background:#111214;border-radius:12px;padding:12px;color:#ECECEC}
+.top{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:10px}
+.card{background:#1c1d20;border:1px solid #2f3034;border-radius:8px;padding:8px 10px;min-width:0;transition:background .3s,border-color .3s}
+.lbl{font-size:11px;color:#888780;display:flex;align-items:center;gap:5px}
+.ttl{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.sub{font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font-family:var(--font-mono)}
+.side{width:150px;flex-shrink:0;border-right:1px solid #2a2b2e;padding-right:8px;transition:width .2s}
+.side.mini{width:34px}.side.mini .tx{display:none}
+.it{display:flex;align-items:center;gap:7px;padding:6px 7px;border-radius:6px;font-size:13px;cursor:pointer;color:#ddd;white-space:nowrap;overflow:hidden}
+.it:hover{background:#232427}.it.on{background:#0C447C;color:#E6F1FB}.sb{padding-left:18px}
+.row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:5px;font-size:13px;cursor:pointer}
+.nav{display:inline-flex;align-items:center;gap:6px;background:#1c1d20;border:1px solid #2f3034;border-radius:8px;padding:5px 10px;font-size:12px;color:#ddd;cursor:pointer}
+.prog{height:4px;background:#2f3034;border-radius:2px;margin-top:6px;overflow:hidden}
+.oa{display:flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;padding:4px 8px;font-weight:500;font-size:13px;letter-spacing:1px;background:#2C2C2A;color:#5F5E5A;border:1px solid #444441;margin-bottom:6px;transition:all .2s}
+.oa.live{background:#A32D2D;color:#fff;border-color:#E24B4A}
+.warn{background:#412402!important;border-color:#EF9F27!important}
+.crit{animation:pulse 1s ease-in-out infinite;border-color:#E24B4A!important}
+@keyframes pulse{0%,100%{background:#501313}50%{background:#A32D2D}}
+@media (prefers-reduced-motion:reduce){.crit{animation:none;background:#791F1F!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="demo">
+<button id="sim">Simuler fin de titre (35 s)</button>
+<button id="oab">Basculer On Air</button>
+</div>
+<div class="scr">
+<div class="top">
+<div class="card" style="display:flex;flex-direction:column;justify-content:center">
+<div class="oa" id="oa"><i class="ti ti-microphone"></i>ON AIR</div>
+<div class="mono" id="clk" style="font-size:28px;font-weight:500;color:#fff;line-height:1.1">00:00:00</div>
+<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#B5D4F4;margin-top:4px"><i class="ti ti-cloud" style="font-size:16px"></i><span>Vichy · 12°C</span></div>
+</div>
+<div class="card" id="cur" style="border-color:#5DCAA5">
+<div class="lbl" id="curl" style="color:#5DCAA5"><i class="ti ti-broadcast"></i><span id="curt">Titre en cours</span></div>
+<div class="ttl">Get lucky</div><div class="sub">Daft Punk · 4:08 · outro 0:12</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:2px"><span style="font-size:11px;color:#888780">reste</span><span class="mono" id="rem" style="font-size:22px;color:#FAC775">02:47</span></div>
+<div class="prog"><div id="bar" style="height:100%;width:33%;background:#5DCAA5"></div></div>
+</div>
+<div class="card">
+<div class="lbl"><i class="ti ti-player-skip-forward"></i>Titre à venir</div>
+<div class="ttl">Bohemian rhapsody</div><div class="sub">Queen · 5:55 · intro 0:18</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:2px"><span style="font-size:11px;color:#888780">démarre à</span><span class="mono" id="nxt" style="font-size:16px;color:#ddd">--:--:--</span></div>
+</div>
+</div>
+<div style="display:flex;gap:10px;min-height:290px">
+<div class="side" id="side">
+<div class="it" id="tog"><i class="ti ti-layout-sidebar-left-collapse"></i><span class="tx" style="font-size:11px;color:#888780">Réduire</span></div>
+<div class="it on" data-go="cond"><i class="ti ti-calendar-event"></i><span class="tx">Aujourd'hui</span></div>
+<div class="it"><i class="ti ti-folder-open" style="color:#85B7EB"></i><span class="tx">Animateur A</span></div>
+<div class="sb"><div class="it" data-go="cond"><i class="ti ti-list-details"></i><span class="tx">Conducteurs</span></div><div class="it" data-go="read"><i class="ti ti-file-text"></i><span class="tx">Scripts</span></div></div>
+<div class="it"><i class="ti ti-folder" style="color:#85B7EB"></i><span class="tx">Animateur B</span></div>
+<div class="it"><i class="ti ti-folder" style="color:#85B7EB"></i><span class="tx">Animateur C</span></div>
+<div class="it"><i class="ti ti-folder" style="color:#888780"></i><span class="tx">Commun</span></div>
+</div>
+<div style="flex:1;min-width:0">
+<div id="v-cond">
+<div style="font-weight:500;font-size:14px;margin-bottom:8px">La matinale · Animateur A</div>
+<div class="row" style="background:#2C2C2A;color:#D3D1C7"><span class="mono" style="width:60px">07:00:00</span><span style="flex:1">Jingle ouverture</span><span>0:10</span></div>
+<div class="row" style="background:#085041;color:#E1F5EE;outline:2px solid #5DCAA5" data-go="read"><span class="mono" style="width:60px">07:00:10</span><span style="flex:1">Lancement émission <i class="ti ti-file-text"></i></span><span>1:30</span></div>
+<div class="row" style="background:#0C447C;color:#E6F1FB"><span class="mono" style="width:60px">07:01:40</span><span style="flex:1">Titre · Daft Punk</span><span>4:08</span></div>
+<div class="row" style="background:#3C3489;color:#EEEDFE" data-go="read"><span class="mono" style="width:60px">07:05:48</span><span style="flex:1">Chronique météo <i class="ti ti-file-text"></i></span><span>2:00</span></div>
+<div class="row" style="background:#633806;color:#FAEEDA"><span class="mono" style="width:60px">07:07:48</span><span style="flex:1">Pub · écran 1</span><span>3:00</span></div>
+<div class="row" style="background:#712B13;color:#FAECE7" data-go="read"><span class="mono" style="width:60px">07:10:48</span><span style="flex:1">Interview invité <i class="ti ti-file-text"></i></span><span>8:00</span></div>
+</div>
+<div id="v-read" style="display:none">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+<span class="nav" data-go="cond"><i class="ti ti-list"></i>Conducteur</span>
+<span style="flex:1;font-size:12px;color:#999">Lancement émission · auto 120 mots/min</span>
+<span class="nav" id="play"><i class="ti ti-player-play"></i>Auto</span>
+</div>
+<div id="box" style="position:relative;height:260px;overflow:hidden;border-radius:8px;background:#0b0b0c">
+<div style="position:absolute;left:0;right:0;top:96px;height:46px;border-top:1px solid #EF9F27;border-bottom:1px solid #EF9F27;background:rgba(239,159,39,0.08);pointer-events:none"></div>
+<div id="txt" style="padding:18px 20px;font-size:26px;line-height:1.75">
+<span style="color:#888780">[JINGLE]</span><br>
+Bonjour à toutes et à tous, il est <b style="color:#FAC775">7 heures</b>, bienvenue dans La matinale !<br>
+Au programme : la météo du week-end, <span style="background:#3C3489;padding:0 6px;border-radius:4px">notre invité</span> qui nous parle du festival, et vos titres préférés.<br>
+<span style="color:#F09595">[PAUSE]</span> On commence avec Daft Punk…<br>
+<span style="color:#888780">[LANCER TITRE]</span>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:#999">
+<span class="nav" data-go="cond"><i class="ti ti-chevron-left"></i>Précédent</span>
+<span>Suivant : Titre · Daft Punk</span>
+<span class="nav"><i class="ti ti-chevron-right"></i>Suivant</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const V={cond:$('v-cond'),read:$('v-read')},side=$('side');
+function go(n){for(const k in V)V[k].style.display=k===n?'block':'none';side.classList.toggle('mini',n==='read');}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+$('tog').onclick=()=>side.classList.toggle('mini');
+const p=n=>String(n).padStart(2,'0'),f=d=>p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+const D=248,WARN=30,CRIT=10;let r=167;
+function tick(){const d=new Date();$('clk').textContent=f(d);$('rem').textContent=p(Math.floor(r/60))+':'+p(r%60);$('bar').style.width=Math.round((D-r)/D*100)+'%';$('nxt').textContent=f(new Date(d.getTime()+r*1000));
+const c=$('cur');c.classList.toggle('warn',r<=WARN&&r>CRIT);c.classList.toggle('crit',r<=CRIT);
+$('curl').style.color=r<=CRIT?'#F7C1C1':r<=WARN?'#FAC775':'#5DCAA5';$('bar').style.background=r<=CRIT?'#E24B4A':r<=WARN?'#EF9F27':'#5DCAA5';
+$('rem').style.color=r<=CRIT?'#fff':'#FAC775';$('curt').textContent=r<=CRIT?'À vous dans '+r+' s':r<=WARN?'Bientôt à vous':'Titre en cours';
+r=r>0?r-1:D;}
+tick();setInterval(tick,1000);
+$('sim').onclick=()=>{r=35;tick();};
+$('oab').onclick=()=>$('oa').classList.toggle('live');
+let y=0,auto=null;const t=$('txt');const mv=()=>t.style.transform='translateY('+(-y)+'px)';
+$('box').addEventListener('wheel',e=>{e.preventDefault();y=Math.max(0,Math.min(300,y+e.deltaY*0.4));mv();},{passive:false});
+$('play').onclick=function(){if(auto){clearInterval(auto);auto=null;this.innerHTML='<i class="ti ti-player-play"></i>Auto';}else{auto=setInterval(()=>{y=y>=300?0:y+1;mv();},50);this.innerHTML='<i class="ti ti-player-pause"></i>Pause';}};
+</script>
+</body>
+</html>
