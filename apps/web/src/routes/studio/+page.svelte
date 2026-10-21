@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { formatClock } from '@onair-desk/shared';
   import { api } from '$lib/api.js';
+  import ScriptView from '$lib/content/ScriptView.svelte';
   import { i18n, t } from '$lib/i18n/index.svelte.js';
   import { LiveLink } from '$lib/live.svelte.js';
 
@@ -52,15 +53,39 @@
 </svelte:head>
 
 <div class="studio">
-  <div class="top">
-    <div class="station">{link.settings?.stationName ?? ''}</div>
-    <div class="link {link.state}" title={link.state}>
-      <span class="dot"></span>
-      {#if link.state === 'offline'}{t('studio.offline')}{/if}
+  {#if link.prompter?.script}
+    {@const script = link.prompter.script}
+    <div class="bar">
+      <div class="station">{link.settings?.stationName ?? ''}</div>
+      <div class="script-title">
+        {script.title}
+        {#if link.prompter.deleted}<span class="deleted">{t('studio.deleted')}</span>{/if}
+      </div>
+      <div class="small-clock mono">{clock}</div>
+      <div class="link {link.state}" title={link.state}><span class="dot"></span></div>
     </div>
-  </div>
+    {#if link.state === 'offline'}<div class="offline-line">{t('studio.offline')}</div>{/if}
+    <!-- Nouveau script : on repart du haut ; même script modifié : la position est gardée. -->
+    {#key script.id}
+      <div class="reader">
+        <ScriptView
+          doc={script.content}
+          cues={link.settings?.cues ?? []}
+          fontSize={link.settings?.prompterFontSize ?? 48}
+        />
+      </div>
+    {/key}
+  {:else}
+    <div class="top">
+      <div class="station">{link.settings?.stationName ?? ''}</div>
+      <div class="link {link.state}" title={link.state}>
+        <span class="dot"></span>
+        {#if link.state === 'offline'}{t('studio.offline')}{/if}
+      </div>
+    </div>
 
-  <div class="clock mono" aria-live="off">{clock}</div>
+    <div class="clock mono" aria-live="off">{clock}</div>
+  {/if}
 
   {#if link.state === 'unauthorized'}
     <div class="message">
@@ -128,6 +153,47 @@
     color: #fff;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .script-title {
+    color: var(--muted);
+    font-size: 1.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .deleted {
+    margin-left: 0.5rem;
+    font-size: 0.85rem;
+    color: #f7c1c1;
+    border: 1px solid var(--danger);
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+  }
+  .small-clock {
+    font-size: 2.2rem;
+    font-weight: 500;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  .offline-line {
+    color: #fac775;
+    font-size: 0.95rem;
+    padding-top: 4px;
+  }
+  .reader {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0.5rem 50vh;
+    scrollbar-width: thin;
+    scrollbar-color: #2f3034 transparent;
   }
   .message {
     display: flex;
