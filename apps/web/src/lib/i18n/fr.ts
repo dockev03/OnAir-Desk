@@ -224,6 +224,21 @@ export const fr = {
   'error.user_has_content':
     'Ce compte possède des scripts : désactivez-le plutôt que de le supprimer.',
   'error.not_found': 'Élément introuvable (peut-être supprimé).',
+  'studio.folders': 'Dossiers',
+  'studio.collapse': 'Réduire',
+  'studio.up': 'Dossier parent',
+  'studio.auto': 'Auto',
+  'studio.pause': 'Pause',
+  'studio.slower': 'Plus lent',
+  'studio.faster': 'Plus rapide',
+  'studio.textSize': 'Taille du texte',
+  'studio.smaller': 'Texte plus petit',
+  'studio.larger': 'Texte plus grand',
+  'studio.remaining': 'Temps de lecture restant',
+  'studio.previous': 'Précédent',
+  'studio.next': 'Suivant',
+  'studio.exit': 'Sortir',
+  'studio.holdToExit': 'maintenir 1 seconde',
 } as const;
 
 export type MessageKey = keyof typeof fr;
