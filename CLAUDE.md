@@ -5,10 +5,10 @@
 
 Documents liés :
 - `docs/maquette-ecran-studio-v3.html` : maquette cliquable de l'écran studio, **validée visuellement**.
-- `docs/plan-etape-1.md` : plan détaillé de l'étape 1 (socle), **questions tranchées, en attente du feu vert**.
+- `docs/plan-etape-1.md` : plan détaillé et **bilan** de l'étape 1 (socle), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : cadrage terminé, aucun code écrit. Ne rien développer sans validation explicite de l'étape.**
+**Statut : étape 1 (socle) réalisée. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -60,6 +60,14 @@ Questions **encore ouvertes** :
 | HTTPS | Servi **directement par Fastify** (pas de reverse proxy), autorité de certification interne générée au premier démarrage | Le certificat racine est à installer sur le Pi et les postes |
 
 Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan-etape-1.md`.
+
+### Conventions de code (établies à l'étape 1)
+- Monorepo **npm workspaces** : `apps/server` (Fastify), `apps/web` (SvelteKit statique, Svelte 5 runes), `packages/shared` (schémas zod + types communs, importés en TypeScript source).
+- Utiliser **npm 11.21.1** (`npx npm@11.21.1 install`) : le champ `allowScripts` du `package.json` liste les seuls paquets autorisés à exécuter un script d'installation.
+- Base : SQL direct avec `better-sqlite3` ; **nouvelle migration = nouvelle entrée** dans `apps/server/src/db/migrations.ts`, ne jamais modifier une migration livrée.
+- Toute entrée est validée par un schéma zod de `packages/shared` ; erreurs renvoyées sous forme de code stable (`{ error: 'code' }`), traduit côté interface (`error.<code>`).
+- Textes de l'interface : clés dans `apps/web/src/lib/i18n/fr.ts` **et** `en.ts` (le typage impose les deux).
+- Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
 ## 4. Architecture
 
@@ -133,7 +141,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 
 ## 8. Plan de réalisation
 
-1. **Socle** : projet, Docker, SQLite, auth (comptes + jeton kiosk lecture seule), paramétrage minimal, assistant de premier lancement. → détail dans `docs/plan-etape-1.md`.
+1. ✅ **Socle** : projet, Docker, SQLite, auth (comptes + jeton kiosk lecture seule), paramétrage minimal, assistant de premier lancement. → détail et bilan dans `docs/plan-etape-1.md`.
 2. **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur ».
 3. **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, alertes.
 4. **RadioDJ** : titre en cours / à venir, compte à rebours, intro/outro.

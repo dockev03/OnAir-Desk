@@ -1,6 +1,6 @@
 # Étape 1 — Socle : plan détaillé
 
-> **Statut : questions tranchées, en attente du feu vert pour démarrer.** Aucun code n'est écrit avant l'accord explicite.
+> **Statut : réalisée** (voir le bilan en fin de document). Aucun code n'est écrit avant l'accord explicite.
 > Référence : `CLAUDE.md` §8, étape 1.
 
 ## Objectif de l'étape
@@ -166,3 +166,34 @@ Il n'y a pas de reverse proxy : **Fastify sert lui-même le HTTPS**.
 1. **HTTPS** : pas de reverse proxy → HTTPS servi par Fastify, autorité interne générée au premier démarrage.
 2. **Node.js** : 24 LTS (`node:24-trixie-slim`), migration vers 26 LTS plus tard.
 3. **Déploiement** : stack Portainer en mode « Repository » qui construit l'image.
+
+## Bilan de l'étape 1
+
+### Réalisé
+- Assistant de premier lancement protégé par un code à usage unique (affiché en clair dans les logs).
+- Comptes admin / animateur : création, rôle, désactivation, réinitialisation et changement de mot de passe, protection du dernier admin.
+- Écrans kiosk : jeton montré une seule fois, stocké haché ; appairage par `#token` ; lecture seule imposée côté serveur ; révocation et régénération avec déconnexion immédiate.
+- Paramètres de la station (nom, langue, fuseau, format de l'heure), poussés en direct aux écrans.
+- HTTPS par autorité interne (ECDSA P-256), renouvellement automatique sans redémarrage, téléchargement du certificat racine.
+- Page studio minimale : horloge calée sur l'heure serveur (mesure de l'aller-retour), reconnexion automatique, écran conservé pendant une coupure.
+- Interface FR / EN, image Docker durcie, stack Portainer, CI GitHub Actions.
+
+### Vérifications faites
+- 51 tests automatisés (serveur, sécurité, WebSocket, certificats, migrations).
+- Parcours complet dans Chromium : installation → création d'un écran → appairage → horloge → changement de paramètres en direct → révocation ; aucune erreur console, CSP comprise.
+- Coupure du serveur pendant l'affichage : l'horloge continue, « Liaison perdue » s'affiche, reconnexion seule au retour.
+- Image Docker construite et lancée avec le durcissement de la stack (lecture seule, sans capacités, non-root) : santé « healthy », données et autorité conservées après redémarrage.
+
+### Écarts par rapport au plan
+
+| Plan | Réalisé | Raison |
+|---|---|---|
+| Drizzle ORM | Requêtes SQL directes (`better-sqlite3`) et migrations SQL numérotées | Moins de dépendances, SQL lisible et maîtrisé ; les migrations restent versionnées et sauvegardées avant application. |
+| Paraglide JS | Dictionnaires typés FR / EN (`apps/web/src/lib/i18n`) | La langue est un paramètre de la station, pas une partie de l'URL ; un dictionnaire typé suffit et garantit à la compilation que chaque texte existe dans les deux langues. |
+| Génération des certificats (non précisée) | `@peculiar/x509` (WebCrypto) | `node-forge` présente une faille connue sans correctif. |
+| Outils de compilation dans l'image | Retirés | `better-sqlite3` télécharge un binaire précompilé pour Node 24 : construction plus rapide, image sans compilateur. |
+| Icônes Tabler intégrées | Reporté à l'étape 3 | La page studio minimale n'en utilise pas encore. |
+
+### Points connus
+- `npm audit` signale 3 alertes de faible gravité (`cookie`, via SvelteKit 2). Elles ne concernent que l'outil de construction : le serveur de SvelteKit n'est pas embarqué dans l'image. À revoir lors du passage à SvelteKit 3.
+- La sauvegarde du volume se fait stack arrêtée (README) ; une sauvegarde à chaud planifiée pourra être ajoutée plus tard.
