@@ -1,6 +1,6 @@
 # Étape 3 — Écran studio : plan
 
-> **Statut : validé (« Let's go » du 21/10/2026, décisions ci-dessous).**
+> **Statut : réalisée** (voir le bilan en fin de document).
 > Référence : `CLAUDE.md` §5 (écran studio, maquette v3), §8 étape 3. Branche : `feature/etape-3-studio`.
 
 ## Objectif
@@ -70,3 +70,44 @@ L'écran kiosk était en lecture seule stricte. Il obtient **une seule** autoris
   - un clic court sur « Sortir » ne fait rien, un appui long fait sortir ;
   - la barre latérale se réduit en lecture ;
   - une coupure n'efface pas l'écran.
+
+## Bilan de l'étape 3
+
+### Réalisé
+- **Écran studio** : bandeau (station, horloge), barre latérale des dossiers, navigation à grandes zones cliquables, sans clavier.
+- **Mode lecture** :
+  - bande de lecture au tiers supérieur ;
+  - défilement à la molette et défilement automatique calé sur la vitesse du script ;
+  - vitesse réglable à la volée (−/+) ;
+  - temps de lecture restant affiché ;
+  - A− / A+ mémorisés sur le Pi ;
+  - Précédent / Suivant dans le dossier ;
+  - sortie par appui long d'1 s.
+- **Barre latérale** réduite en icônes pendant la lecture, avec un bouton « Réduire ».
+- **Le Pi choisit le script affiché** : c'est sa seule écriture autorisée. L'auteur (écran) est indiqué et journalisé ; la dernière action l'emporte entre Pi et postes.
+- **Robustesse** :
+  - au rechargement ou à la reconnexion, l'écran reprend le script affiché ;
+  - un script modifié en direct garde sa position de lecture ;
+  - pendant une coupure, le texte et l'horloge restent affichés, et le bandeau « Liaison perdue » ne décale pas le texte.
+
+### Vérifications faites
+- 88 tests automatisés. Nouveau : le Pi peut choisir ou vider le script affiché, mais reste refusé (`read_only_device`) sur toutes les autres écritures, et son action est journalisée.
+- **Parcours complet dans Chromium, à la souris seule** :
+  1. navigation Jean → Matinale, puis ouverture d'un script ;
+  2. barre latérale réduite ;
+  3. molette et défilement automatique (la position avance) ;
+  4. vitesse +10 ;
+  5. A+ conservé après rechargement ;
+  6. Suivant / Précédent, désactivés aux extrémités ;
+  7. un clic court sur « Sortir » sans effet, un appui long qui fait sortir ;
+  8. un envoi depuis un poste fait basculer l'écran ;
+  9. une modification en direct conserve la position ;
+  10. une coupure du serveur laisse le texte affiché, puis reconnexion automatique.
+
+  Aucune erreur dans la console.
+- **Poids sur le Pi** : 182 Ko de JavaScript, sans l'éditeur.
+
+### Hors périmètre (étapes suivantes)
+- Section « Aujourd'hui » et ordre du conducteur pour Précédent / Suivant : **étape 5**.
+- Blocs On Air, météo, titre en cours et titre à venir dans le bandeau : **étapes 4 et 6**.
+

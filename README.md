@@ -2,15 +2,16 @@
 
 Écran studio pour radios, affiché sur un Raspberry Pi en mode kiosk : prompteur, conducteurs d'émission colorés, horloge à la seconde, titre en cours et à venir (depuis l'automation, RadioDJ en premier), météo et voyant On Air.
 
-**Statut : étapes 1 (socle) et 2 (scripts) réalisées.**
+**Statut : étapes 1 (socle), 2 (scripts) et 3 (écran studio) réalisées.**
 
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
+- Écran studio : navigation dans les dossiers à la souris, mode lecture avec bande de lecture, défilement molette ou automatique, Précédent / Suivant.
 
-Le mode lecture complet du prompteur, les conducteurs et les intégrations arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+Les conducteurs et les intégrations (RadioDJ, On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md) : plans et bilans des étapes.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---
@@ -89,7 +90,9 @@ Pour utiliser un certificat existant de la station, voir les lignes `TLS_CERT_FI
 2. Copier l'adresse affichée (`https://<adresse>/studio#token=…`). **Elle n'est montrée qu'une fois.**
 3. Sur le Pi, lancer Chromium en kiosk sur cette adresse. Le jeton, placé après le `#`, n'est jamais envoyé au serveur dans l'URL : la page l'échange contre un cookie sécurisé, puis le retire de la barre d'adresse.
 
-L'écran est en **lecture seule**. Il peut être **révoqué** (déconnexion immédiate) ou recevoir un **nouveau jeton** depuis la même page.
+Sur l'écran, tout se fait à la souris : choisir un dossier puis un script ouvre le **mode lecture** (molette, bouton **Auto**, vitesse −/+, taille A−/A+, Précédent / Suivant). Pour sortir, **maintenir** le bouton « Sortir » une seconde.
+
+L'écran est en **lecture seule**, à une exception près : il peut choisir le script affiché. Il peut être **révoqué** (déconnexion immédiate) ou recevoir un **nouveau jeton** depuis la même page.
 
 ### Mise à jour
 
