@@ -6,7 +6,7 @@
 Documents liés :
 - `docs/maquette-ecran-studio-v3.html` : maquette cliquable de l'écran studio, **validée visuellement**.
 - `docs/plan-etape-1.md` : plan détaillé et **bilan** de l'étape 1 (socle), réalisée.
-- `docs/plan-etape-2.md` : plan détaillé de l'étape 2 (scripts), **en attente de validation**.
+- `docs/plan-etape-2.md` : plan détaillé de l'étape 2 (scripts), **questions tranchées, en attente du feu vert**.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étape 1 (socle) réalisée. Ne rien développer d'une nouvelle étape sans validation explicite.**
