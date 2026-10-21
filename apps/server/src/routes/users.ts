@@ -76,6 +76,8 @@ export function registerUserRoutes(app: FastifyInstance, ctx: RouteContext) {
     if (target.role === 'admin' && target.isActive && repos.users.countActiveAdmins() <= 1) {
       throw conflict('last_admin');
     }
+    // Ses scripts et dossiers seraient perdus : il faut désactiver le compte à la place.
+    if (repos.users.hasContent(id)) throw conflict('user_has_content');
     hub.disconnectUser(id);
     repos.users.delete(id);
     repos.audit.write({ type: 'user', id: admin.id }, 'user.deleted', {

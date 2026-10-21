@@ -2,10 +2,15 @@
 
 Écran studio pour radios, affiché sur un Raspberry Pi en mode kiosk : prompteur, conducteurs d'émission colorés, horloge à la seconde, titre en cours et à venir (depuis l'automation, RadioDJ en premier), météo et voyant On Air.
 
-**Statut : étape 1 (socle) réalisée.** Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur. Les scripts, conducteurs et intégrations arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+**Statut : étapes 1 (socle) et 2 (scripts) réalisées.**
+
+- Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
+- Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
+
+Le mode lecture complet du prompteur, les conducteurs et les intégrations arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md) : plan et bilan de l'étape 1.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---

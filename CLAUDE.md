@@ -6,9 +6,10 @@
 Documents liés :
 - `docs/maquette-ecran-studio-v3.html` : maquette cliquable de l'écran studio, **validée visuellement**.
 - `docs/plan-etape-1.md` : plan détaillé et **bilan** de l'étape 1 (socle), réalisée.
+- `docs/plan-etape-2.md` : plan détaillé et **bilan** de l'étape 2 (scripts), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étape 1 (socle) réalisée. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle) et 2 (scripts) réalisées. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -67,6 +68,8 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - Base : SQL direct avec `better-sqlite3` ; **nouvelle migration = nouvelle entrée** dans `apps/server/src/db/migrations.ts`, ne jamais modifier une migration livrée.
 - Toute entrée est validée par un schéma zod de `packages/shared` ; erreurs renvoyées sous forme de code stable (`{ error: 'code' }`), traduit côté interface (`error.<code>`).
 - Textes de l'interface : clés dans `apps/web/src/lib/i18n/fr.ts` **et** `en.ts` (le typage impose les deux).
+- Contenu des scripts : liste blanche dans `packages/shared/src/content.ts` (validation serveur, nettoyage éditeur). L'affichage passe par `apps/web/src/lib/content/` : **jamais de `{@html}`**.
+- La page `/studio` (Pi) ne doit pas importer l'éditeur TipTap : vérifier son poids après toute modification.
 - Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 
 ## 4. Architecture
@@ -80,6 +83,7 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 ### Accès
 - Rôles : **admin** (gère les comptes) et **animateur** (gère ses scripts/conducteurs).
 - **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin.
+- **Bibliothèque** (décidé à l'étape 2) : un animateur modifie **son dossier et Commun** ; il voit les dossiers des collègues **en lecture seule** (pour dupliquer chez lui) ; l'admin modifie tout. Suppression = **corbeille 30 jours** ; **historique** des 20 dernières versions.
 
 ## 5. Écran studio (validé visuellement — voir maquette v3)
 
@@ -142,7 +146,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 ## 8. Plan de réalisation
 
 1. ✅ **Socle** : projet, Docker, SQLite, auth (comptes + jeton kiosk lecture seule), paramétrage minimal, assistant de premier lancement. → détail et bilan dans `docs/plan-etape-1.md`.
-2. **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur ».
+2. ✅ **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur », corbeille, historique. → détail et bilan dans `docs/plan-etape-2.md`.
 3. **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, alertes.
 4. **RadioDJ** : titre en cours / à venir, compte à rebours, intro/outro.
 5. **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication.

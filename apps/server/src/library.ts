@@ -1,0 +1,238 @@
+import {
+  countWords,
+  docToText,
+  emptyDoc,
+  type LibraryOwner,
+  type PrompterScript,
+  type PrompterState,
+  type Script,
+  type ScriptDoc,
+} from '@onair-desk/shared';
+import type { Identity } from './auth/identity.js';
+import type { Repos, ScriptRecord, User } from './db/index.js';
+import { badRequest, conflict, forbidden, notFound } from './lib/errors.js';
+import type { Hub } from './ws/hub.js';
+
+/** Profondeur maximale des dossiers (dossier racine = 1). */
+export const MAX_FOLDER_DEPTH = 6;
+/** Durée au-delà de laquelle un enregistrement conserve une nouvelle version. */
+export const REVISION_INTERVAL_MS = 10 * 60_000;
+
+/**
+ * Règles de la bibliothèque (validées avec l'utilisateur) :
+ * - tout le monde lit tout (comptes et écran studio) ;
+ * - un animateur modifie son dossier et Commun (ownerId null) ;
+ * - un admin modifie tout.
+ */
+export function canWrite(user: User, ownerId: number | null): boolean {
+  return user.role === 'admin' || ownerId === null || ownerId === user.id;
+}
+
+export class Library {
+  constructor(
+    private readonly repos: Repos,
+    private readonly hub: Hub,
+  ) {}
+
+  owners(identity: Identity): LibraryOwner[] {
+    const me = identity.kind === 'user' ? identity.user : null;
+    const others = this.repos.users
+      .list()
+      .filter((u) => u.isActive && u.id !== me?.id)
+      .map((u) => ({
+        id: u.id,
+        name: u.displayName,
+        isMe: false,
+        canWrite: me ? canWrite(me, u.id) : false,
+      }));
+    return [
+      ...(me ? [{ id: me.id, name: me.displayName, isMe: true, canWrite: true }] : []),
+      { id: null, name: '', isMe: false, canWrite: me !== null },
+      ...others,
+    ];
+  }
+
+  assertWrite(user: User, ownerId: number | null): void {
+    if (ownerId !== null && !this.repos.users.findById(ownerId)) throw badRequest('unknown_owner');
+    if (!canWrite(user, ownerId)) throw forbidden('read_only_folder');
+  }
+
+  /** Vérifie qu'un dossier existe et appartient au propriétaire donné. */
+  assertFolder(folderId: number | null | undefined, ownerId: number | null): void {
+    if (folderId === null || folderId === undefined) return;
+    const folder = this.repos.folders.findById(folderId);
+    if (!folder || folder.ownerId !== ownerId) throw badRequest('bad_folder');
+  }
+
+  /** Script hors corbeille, ou 404. */
+  getLive(id: number): ScriptRecord {
+    const s = this.repos.scripts.findById(id);
+    if (!s || s.deletedAt) throw notFound();
+    return s;
+  }
+
+  toScript(record: ScriptRecord, identity: Identity): Script {
+    const { contentText: _t, createdAt: _c, updatedBy: _u, deletedAt: _d, ...rest } = record;
+    return {
+      ...rest,
+      canWrite: identity.kind === 'user' && canWrite(identity.user, record.ownerId),
+    };
+  }
+
+  contentFields(content: ScriptDoc) {
+    const contentText = docToText(content);
+    return { content, contentText, wordCount: countWords(contentText) };
+  }
+
+  createScript(
+    user: User,
+    input: {
+      ownerId: number | null;
+      folderId?: number | null;
+      title: string;
+      content?: ScriptDoc;
+      speedWpm?: number;
+    },
+  ): ScriptRecord {
+    this.assertWrite(user, input.ownerId);
+    this.assertFolder(input.folderId, input.ownerId);
+    return this.repos.scripts.create({
+      ownerId: input.ownerId,
+      folderId: input.folderId ?? null,
+      title: input.title,
+      ...this.contentFields(input.content ?? emptyDoc()),
+      speedWpm: input.speedWpm ?? this.repos.settings.get().defaultSpeedWpm,
+      userId: user.id,
+    });
+  }
+
+  /**
+   * Enregistrement d'un script. L'état précédent est conservé comme version quand une autre
+   * personne reprend le script, ou si la dernière version date de plus de 10 minutes.
+   */
+  saveScript(
+    user: User,
+    id: number,
+    input: {
+      version: number;
+      title?: string;
+      content?: ScriptDoc;
+      speedWpm?: number;
+      folderId?: number | null;
+    },
+  ): ScriptRecord {
+    return this.repos.db.transaction(() => {
+      const current = this.getLive(id);
+      this.assertWrite(user, current.ownerId);
+      if (input.version !== current.version) throw conflict('version_conflict');
+      if (input.folderId !== undefined) this.assertFolder(input.folderId, current.ownerId);
+
+      const changesText = input.title !== undefined || input.content !== undefined;
+      if (changesText && this.shouldSnapshot(current, user.id)) {
+        this.repos.scripts.snapshot(current, current.updatedBy);
+      }
+      const updated = this.repos.scripts.update(id, user.id, {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.content !== undefined ? this.contentFields(input.content) : {}),
+        ...(input.speedWpm !== undefined ? { speedWpm: input.speedWpm } : {}),
+        ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
+      });
+      this.prompterRefresh(updated);
+      return updated;
+    })();
+  }
+
+  private shouldSnapshot(current: ScriptRecord, userId: number): boolean {
+    // Script jamais rempli : rien qui mérite d'être conservé.
+    if (current.wordCount === 0 && current.version === 1) return false;
+    if (current.updatedBy !== userId) return true;
+    const last = this.repos.scripts.lastRevisionAt(current.id) ?? current.createdAt;
+    return Date.now() - Date.parse(last) >= REVISION_INTERVAL_MS;
+  }
+
+  restoreRevision(user: User, id: number, revisionId: number, version: number): ScriptRecord {
+    return this.repos.db.transaction(() => {
+      const current = this.getLive(id);
+      this.assertWrite(user, current.ownerId);
+      if (version !== current.version) throw conflict('version_conflict');
+      const revision = this.repos.scripts.findRevision(id, revisionId);
+      if (!revision) throw notFound();
+      // L'état actuel est toujours conservé : une restauration ne fait rien perdre.
+      this.repos.scripts.snapshot(current, current.updatedBy);
+      const updated = this.repos.scripts.update(id, user.id, {
+        title: revision.title,
+        ...this.contentFields(revision.content),
+      });
+      this.prompterRefresh(updated);
+      return updated;
+    })();
+  }
+
+  trashScript(user: User, id: number): void {
+    this.repos.db.transaction(() => {
+      const current = this.getLive(id);
+      this.assertWrite(user, current.ownerId);
+      this.repos.scripts.snapshot(current, current.updatedBy);
+      this.repos.scripts.trash(id, user.id);
+    })();
+    if (this.repos.prompter.get().scriptId === id) {
+      this.repos.prompter.markDeleted();
+      this.broadcastPrompter();
+    }
+  }
+
+  restoreFromTrash(user: User, id: number): ScriptRecord {
+    const s = this.repos.scripts.findById(id);
+    if (!s?.deletedAt) throw notFound();
+    this.assertWrite(user, s.ownerId);
+    this.repos.scripts.restore(id);
+    const restored = this.repos.scripts.findById(id)!;
+    this.prompterRefresh(restored);
+    return restored;
+  }
+
+  deleteForever(user: User, id: number): void {
+    const s = this.repos.scripts.findById(id);
+    if (!s?.deletedAt) throw notFound();
+    this.assertWrite(user, s.ownerId);
+    this.repos.scripts.delete(id);
+  }
+
+  // ---- Prompteur ------------------------------------------------------------------
+
+  prompterState(): PrompterState {
+    const { scriptId: _, ...state } = this.repos.prompter.get();
+    return state;
+  }
+
+  sendToPrompter(user: User, scriptId: number | null): PrompterState {
+    const script = scriptId === null ? null : toPrompterScript(this.getLive(scriptId));
+    this.repos.prompter.send(script, user.id);
+    this.broadcastPrompter();
+    return this.prompterState();
+  }
+
+  /** Si le script est affiché, l'écran reçoit sa nouvelle version. */
+  private prompterRefresh(record: ScriptRecord): void {
+    if (this.repos.prompter.get().scriptId !== record.id) return;
+    this.repos.prompter.refresh(toPrompterScript(record), record.deletedAt !== null);
+    this.broadcastPrompter();
+  }
+
+  broadcastPrompter(): void {
+    this.hub.broadcast({ type: 'prompter', prompter: this.prompterState() });
+  }
+
+  /** Purge quotidienne de la corbeille. */
+  purgeTrash(): number {
+    return this.repos.scripts.purgeTrash().length;
+  }
+}
+
+const toPrompterScript = (r: ScriptRecord): PrompterScript => ({
+  id: r.id,
+  title: r.title,
+  content: r.content,
+  speedWpm: r.speedWpm,
+  version: r.version,
+});

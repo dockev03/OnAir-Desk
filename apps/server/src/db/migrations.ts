@@ -52,4 +52,79 @@ export const migrations: string[] = [
   );
   CREATE INDEX audit_log_at ON audit_log (at);
   `,
+
+  /* 2 — scripts : dossiers, scripts, historique, recherche plein texte, prompteur */ `
+  CREATE TABLE folders (
+    id         INTEGER PRIMARY KEY,
+    owner_id   INTEGER REFERENCES users (id) ON DELETE RESTRICT,
+    parent_id  INTEGER REFERENCES folders (id) ON DELETE RESTRICT,
+    name       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL DEFAULT ${NOW},
+    updated_at TEXT    NOT NULL DEFAULT ${NOW}
+  );
+  CREATE INDEX folders_owner_parent ON folders (owner_id, parent_id);
+
+  CREATE TABLE scripts (
+    id           INTEGER PRIMARY KEY,
+    owner_id     INTEGER REFERENCES users (id) ON DELETE RESTRICT,
+    folder_id    INTEGER REFERENCES folders (id) ON DELETE SET NULL,
+    title        TEXT    NOT NULL,
+    content      TEXT    NOT NULL,
+    content_text TEXT    NOT NULL DEFAULT '',
+    word_count   INTEGER NOT NULL DEFAULT 0,
+    speed_wpm    INTEGER NOT NULL,
+    version      INTEGER NOT NULL DEFAULT 1,
+    created_by   INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    updated_by   INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    created_at   TEXT    NOT NULL DEFAULT ${NOW},
+    updated_at   TEXT    NOT NULL DEFAULT ${NOW},
+    deleted_at   TEXT,
+    deleted_by   INTEGER REFERENCES users (id) ON DELETE SET NULL
+  );
+  CREATE INDEX scripts_owner_folder ON scripts (owner_id, folder_id);
+  CREATE INDEX scripts_deleted_at ON scripts (deleted_at);
+
+  CREATE TABLE script_revisions (
+    id         INTEGER PRIMARY KEY,
+    script_id  INTEGER NOT NULL REFERENCES scripts (id) ON DELETE CASCADE,
+    version    INTEGER NOT NULL,
+    title      TEXT    NOT NULL,
+    content    TEXT    NOT NULL,
+    word_count INTEGER NOT NULL,
+    saved_by   INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    saved_at   TEXT    NOT NULL DEFAULT ${NOW}
+  );
+  CREATE INDEX script_revisions_script ON script_revisions (script_id, id);
+
+  -- Recherche plein texte, insensible à la casse et aux accents.
+  CREATE VIRTUAL TABLE scripts_fts USING fts5 (
+    title, content_text,
+    content = 'scripts', content_rowid = 'id',
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+  CREATE TRIGGER scripts_fts_insert AFTER INSERT ON scripts BEGIN
+    INSERT INTO scripts_fts (rowid, title, content_text) VALUES (new.id, new.title, new.content_text);
+  END;
+  CREATE TRIGGER scripts_fts_delete AFTER DELETE ON scripts BEGIN
+    INSERT INTO scripts_fts (scripts_fts, rowid, title, content_text)
+      VALUES ('delete', old.id, old.title, old.content_text);
+  END;
+  CREATE TRIGGER scripts_fts_update AFTER UPDATE OF title, content_text ON scripts BEGIN
+    INSERT INTO scripts_fts (scripts_fts, rowid, title, content_text)
+      VALUES ('delete', old.id, old.title, old.content_text);
+    INSERT INTO scripts_fts (rowid, title, content_text) VALUES (new.id, new.title, new.content_text);
+  END;
+
+  -- Script affiché sur l'écran studio (une seule ligne). La copie (snapshot) permet de
+  -- continuer à l'afficher même s'il est supprimé.
+  CREATE TABLE prompter_state (
+    id        INTEGER PRIMARY KEY CHECK (id = 1),
+    script_id INTEGER REFERENCES scripts (id) ON DELETE SET NULL,
+    snapshot  TEXT,
+    deleted   INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+    sent_by   INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    sent_at   TEXT
+  );
+  INSERT INTO prompter_state (id) VALUES (1);
+  `,
 ];

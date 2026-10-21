@@ -2,6 +2,7 @@ import {
   WS_CLOSE,
   clockOffset,
   type ClientMessage,
+  type PrompterState,
   type ServerMessage,
   type Settings,
 } from '@onair-desk/shared';
@@ -20,6 +21,8 @@ const SAMPLES = 5;
 export class LiveLink {
   state = $state<LinkState>('connecting');
   settings = $state<Settings | null>(null);
+  /** Script affiché sur le prompteur (conservé pendant une coupure). */
+  prompter = $state<PrompterState | null>(null);
   /** Décalage (ms) à ajouter à Date.now() pour obtenir l'heure serveur. */
   offset = $state(0);
 
@@ -79,9 +82,12 @@ export class LiveLink {
       if (msg.type === 'hello') {
         this.state = 'online';
         this.settings = msg.settings;
+        this.prompter = msg.prompter;
         if (this.samples.length === 0) this.offset = msg.serverTime - Date.now();
       } else if (msg.type === 'settings') {
         this.settings = msg.settings;
+      } else if (msg.type === 'prompter') {
+        this.prompter = msg.prompter;
       } else if (msg.type === 'pong') {
         const t1 = Date.now();
         const sample = { rtt: t1 - msg.t0, offset: clockOffset(msg.t0, msg.serverTime, t1) };

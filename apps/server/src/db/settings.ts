@@ -1,4 +1,4 @@
-import { settingsSchema, type Settings } from '@onair-desk/shared';
+import { DEFAULT_CUES, DEFAULT_SPEED_WPM, settingsSchema, type Settings } from '@onair-desk/shared';
 import type { Db } from './database.js';
 
 export function defaultSettings(): Settings {
@@ -8,6 +8,9 @@ export function defaultSettings(): Settings {
     locale: 'fr',
     timezone: tz && settingsSchema.shape.timezone.safeParse(tz).success ? tz : 'Europe/Paris',
     timeFormat: '24h',
+    defaultSpeedWpm: DEFAULT_SPEED_WPM,
+    prompterFontSize: 48,
+    cues: DEFAULT_CUES,
   };
 }
 
@@ -28,9 +31,13 @@ export class SettingsRepo {
         // Valeur illisible : on retombe sur la valeur par défaut.
       }
     }
-    const merged = { ...defaultSettings(), ...stored };
-    const parsed = settingsSchema.safeParse(merged);
-    return parsed.success ? parsed.data : defaultSettings();
+    // Chaque valeur est vérifiée séparément : une valeur illisible ne fait perdre qu'elle-même.
+    const result: Record<string, unknown> = { ...defaultSettings() };
+    for (const [key, value] of Object.entries(stored)) {
+      const field = settingsSchema.shape[key as keyof Settings];
+      if (field?.safeParse(value).success) result[key] = value;
+    }
+    return result as Settings;
   }
 
   set(values: Partial<Settings>): Settings {
