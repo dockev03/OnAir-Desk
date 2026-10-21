@@ -83,4 +83,21 @@ describe('WebSocket', () => {
     await client(built.app, admin)('POST', `/api/devices/${device.id}/revoke`);
     expect(await c.closed).toBe(4403);
   });
+
+  it('pousse le script envoyé au prompteur', async () => {
+    const admin = await setupAdmin(built);
+    const device = await deviceCookie(admin);
+    const c = connect(device.cookie);
+    const hello = await c.next('hello');
+    expect(hello).toMatchObject({ prompter: { script: null } });
+
+    const script = (
+      await client(built.app, admin)('POST', '/api/scripts', { ownerId: null, title: 'Flash' })
+    ).json();
+    await client(built.app, admin)('POST', '/api/prompter', { scriptId: script.id });
+    expect(await c.next('prompter')).toMatchObject({
+      prompter: { script: { id: script.id, title: 'Flash' }, deleted: false },
+    });
+    c.ws.close();
+  });
 });

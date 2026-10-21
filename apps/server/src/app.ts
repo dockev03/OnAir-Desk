@@ -8,6 +8,7 @@ import { createRepos, type Db } from './db/index.js';
 import { registerIdentity, type Identity } from './auth/identity.js';
 import { LoginThrottle } from './auth/throttle.js';
 import { HttpError } from './lib/errors.js';
+import { Library } from './library.js';
 import { SetupState } from './setup.js';
 import { inlineScriptHashes, readIndexHtml, registerStatic } from './static.js';
 import { Hub } from './ws/hub.js';
@@ -15,6 +16,7 @@ import { registerWsRoutes } from './ws/routes.js';
 import type { RouteContext } from './routes/context.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerDeviceRoutes } from './routes/devices.js';
+import { registerLibraryRoutes } from './routes/library.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
@@ -49,10 +51,12 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   }) as unknown as FastifyInstance;
 
   const repos = createRepos(db);
+  const hub = new Hub();
   const ctx: RouteContext = {
     config,
     repos,
-    hub: new Hub(),
+    hub,
+    library: new Library(repos, hub),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
     rootCaPem: opts.rootCaPem ?? (() => null),
@@ -102,7 +106,8 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerUserRoutes(app, ctx);
   registerDeviceRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);
-  registerWsRoutes(app, repos, ctx.hub, config.allowedOrigins);
+  registerLibraryRoutes(app, ctx);
+  registerWsRoutes(app, repos, ctx.hub, ctx.library, config.allowedOrigins);
   await registerStatic(app, config.webDir, indexHtml);
 
   // Ménage périodique : sessions expirées, compteurs d'échecs, connexions devenues invalides.
@@ -116,8 +121,17 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     );
   }, 60_000).unref();
 
+  // Purge quotidienne de la corbeille (scripts supprimés depuis plus de 30 jours).
+  const purge = () => {
+    const n = ctx.library.purgeTrash();
+    if (n > 0) app.log.info(`Corbeille : ${n} script(s) supprimé(s) définitivement.`);
+  };
+  purge();
+  const purgeTimer = setInterval(purge, 24 * 60 * 60_000).unref();
+
   app.addHook('onClose', async () => {
     clearInterval(sweep);
+    clearInterval(purgeTimer);
     ctx.hub.close();
   });
 

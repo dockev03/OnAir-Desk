@@ -33,8 +33,12 @@ export class Hub {
     if (client.socket.readyState === client.socket.OPEN) client.socket.send(JSON.stringify(msg));
   }
 
+  broadcast(msg: ServerMessage): void {
+    for (const c of this.clients) this.send(c, msg);
+  }
+
   broadcastSettings(settings: Settings): void {
-    for (const c of this.clients) this.send(c, { type: 'settings', settings });
+    this.broadcast({ type: 'settings', settings });
   }
 
   /** Ferme les connexions qui correspondent au filtre (révocation, déconnexion…). */

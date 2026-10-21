@@ -29,7 +29,7 @@ describe('openDatabase', () => {
 
     const backups = fs.readdirSync(path.join(dir, 'backups'));
     expect(backups).toHaveLength(1);
-    expect(backups[0]).toMatch(/^onair-desk-v1-.*\.db$/);
+    expect(backups[0]).toMatch(new RegExp(`^onair-desk-v${migrations.length}-.*\\.db$`));
   });
 
   it("refuse une base plus récente que l'application", () => {
