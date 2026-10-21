@@ -1,0 +1,39 @@
+{
+  "name": "onair-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Écran studio pour radios : prompteur, conducteurs, horloge, titres, météo, On Air.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:server": "npm run dev -w @onair-desk/server",
+    "dev:web": "npm run dev -w @onair-desk/web",
+    "build": "npm run build -w @onair-desk/web && npm run build -w @onair-desk/server",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-svelte": "^3.23.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-svelte": "^4.1.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^4.1.12"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.2": true
+  },
+  "packageManager": "npm@11.21.1"
+}

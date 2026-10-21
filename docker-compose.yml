@@ -1,0 +1,41 @@
+# Stack Portainer (mode « Repository ») : Portainer clone le dépôt, construit l'image et la lance.
+# Les variables se renseignent dans Portainer (section « Environment variables ») : voir .env.example.
+name: onair-desk
+
+services:
+  onair-desk:
+    build:
+      context: .
+    image: onair-desk:local
+    container_name: onair-desk
+    restart: unless-stopped
+    init: true
+    ports:
+      - '${HOST_PORT:-443}:8443'
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN est obligatoire, ex. https://onair-desk.lan}
+      TLS_HOSTNAMES: ${TLS_HOSTNAMES:-}
+      TZ: ${TZ:-Europe/Paris}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Certificat fourni par la station (facultatif) : décommenter aussi le volume plus bas.
+      # TLS_CERT_FILE: /certs/onair-desk.crt
+      # TLS_KEY_FILE: /certs/onair-desk.key
+    volumes:
+      - onair-desk-data:/data
+      # - /etc/onair-desk/certs:/certs:ro
+    # Durcissement : système de fichiers en lecture seule (sauf /data et /tmp), aucun privilège.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+volumes:
+  onair-desk-data:
