@@ -192,11 +192,18 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
     return library.prompterState();
   });
 
-  app.post('/api/prompter', async (req) => {
-    const user = requireUser(req);
+  // Seule écriture permise à un écran kiosk : choisir le script affiché (ou vider l'écran).
+  app.post('/api/prompter', { config: { deviceMayWrite: true } }, async (req) => {
+    const identity = requireIdentity(req);
     const { scriptId } = parse(prompterSendSchema, req.body);
-    const state = library.sendToPrompter(user, scriptId);
-    repos.audit.write({ type: 'user', id: user.id }, 'prompter.sent', { scriptId });
+    const state = library.sendToPrompter(identity, scriptId);
+    repos.audit.write(
+      identity.kind === 'user'
+        ? { type: 'user', id: identity.user.id }
+        : { type: 'device', id: identity.device.id },
+      'prompter.sent',
+      { scriptId },
+    );
     return state;
   });
 }

@@ -1,0 +1,262 @@
+<script lang="ts">
+  import { untrack } from 'svelte';
+  import {
+    SPEED_WPM_MAX,
+    SPEED_WPM_MIN,
+    countWords,
+    docToText,
+    formatDuration,
+    type Cue,
+    type PrompterScript,
+  } from '@onair-desk/shared';
+  import ScriptView from '$lib/content/ScriptView.svelte';
+  import { t } from '$lib/i18n/index.svelte.js';
+  import HoldButton from './HoldButton.svelte';
+
+  let {
+    script,
+    cues,
+    fontSize,
+    deleted,
+    canPrev,
+    canNext,
+    onfont,
+    onprev,
+    onnext,
+    onexit,
+  }: {
+    script: PrompterScript;
+    cues: Cue[];
+    fontSize: number;
+    deleted: boolean;
+    canPrev: boolean;
+    canNext: boolean;
+    onfont: (delta: number) => void;
+    onprev: () => void;
+    onnext: () => void;
+    onexit: () => void;
+  } = $props();
+
+  /** Position de la bande de lecture, en proportion de la hauteur de la zone. */
+  const BAND_AT = 0.3;
+
+  let viewHeight = $state(0);
+  let contentHeight = $state(0);
+  /** Distance défilée (px) : 0 = première ligne sur la bande de lecture. */
+  let y = $state(0);
+  let auto = $state(false);
+  /** Correction de vitesse à la volée (mots/min), sans modifier le script. */
+  let speedDelta = $state(0);
+
+  const lineHeight = $derived(fontSize * 1.6);
+  const bandTop = $derived(Math.round(viewHeight * BAND_AT));
+  const maxY = $derived(Math.max(0, contentHeight - lineHeight));
+  const words = $derived(countWords(docToText(script.content)));
+  const wpm = $derived(
+    Math.min(SPEED_WPM_MAX, Math.max(SPEED_WPM_MIN, script.speedWpm + speedDelta)),
+  );
+  /** Vitesse (px/s) : toute la hauteur du texte est parcourue en « mots ÷ vitesse ». */
+  const pxPerSecond = $derived(words > 0 ? contentHeight / ((words / wpm) * 60) : 0);
+  const remaining = $derived(pxPerSecond > 0 ? (maxY - y) / pxPerSecond : 0);
+
+  // Nouveau script : retour au début, défilement arrêté. Même script modifié : position gardée.
+  let shownId = 0;
+  $effect(() => {
+    const id = script.id;
+    if (id !== untrack(() => shownId)) {
+      shownId = id;
+      y = 0;
+      auto = false;
+      speedDelta = 0;
+    }
+  });
+
+  // Défilement automatique (requestAnimationFrame + transform : pris en charge par le GPU).
+  $effect(() => {
+    if (!auto) return;
+    let frame = 0;
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const next = y + pxPerSecond * dt;
+      if (next >= maxY) {
+        y = maxY;
+        auto = false;
+        return;
+      }
+      y = next;
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  });
+
+  // Molette : défilement manuel, toujours actif (même pendant le défilement automatique).
+  function wheel(e: WheelEvent) {
+    e.preventDefault();
+    const delta = e.deltaMode === 1 ? e.deltaY * lineHeight : e.deltaY;
+    y = Math.min(maxY, Math.max(0, y + delta));
+  }
+
+  function toggleAuto() {
+    if (!auto && y >= maxY) y = 0;
+    auto = !auto;
+  }
+
+  const changeSpeed = (d: number) => (speedDelta += d);
+</script>
+
+<div class="reader">
+  <div class="tools">
+    <button class="big" class:on={auto} onclick={toggleAuto}>
+      {auto ? `❚❚ ${t('studio.pause')}` : `▶ ${t('studio.auto')}`}
+    </button>
+    <div class="group" aria-label={t('editor.speed')}>
+      <button
+        onclick={() => changeSpeed(-10)}
+        aria-label={t('studio.slower')}
+        disabled={wpm <= SPEED_WPM_MIN}>−</button
+      >
+      <span class="val mono">{wpm} <small>{t('editor.wpm')}</small></span>
+      <button
+        onclick={() => changeSpeed(10)}
+        aria-label={t('studio.faster')}
+        disabled={wpm >= SPEED_WPM_MAX}>+</button
+      >
+    </div>
+    <div class="group" aria-label={t('studio.textSize')}>
+      <button onclick={() => onfont(-4)} aria-label={t('studio.smaller')}>A−</button>
+      <button onclick={() => onfont(4)} aria-label={t('studio.larger')}>A+</button>
+    </div>
+    <span class="title">
+      {script.title}
+      {#if deleted}<span class="deleted">{t('studio.deleted')}</span>{/if}
+    </span>
+    <span class="remain mono" title={t('studio.remaining')}>{formatDuration(remaining)}</span>
+  </div>
+
+  <!-- Un clic dans le texte lance ou met en pause le défilement automatique. -->
+  <div
+    class="view"
+    bind:clientHeight={viewHeight}
+    onwheel={wheel}
+    onclick={toggleAuto}
+    role="presentation"
+  >
+    <div class="band" style:top="{bandTop}px" style:height="{lineHeight}px"></div>
+    <div
+      class="text"
+      bind:clientHeight={contentHeight}
+      style:transform="translate3d(0, {bandTop - y}px, 0)"
+    >
+      <ScriptView doc={script.content} {cues} {fontSize} />
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="big" onclick={onprev} disabled={!canPrev}>‹ {t('studio.previous')}</button>
+    <HoldButton label={t('studio.exit')} hint={t('studio.holdToExit')} onhold={onexit} />
+    <button class="big" onclick={onnext} disabled={!canNext}>{t('studio.next')} ›</button>
+  </div>
+</div>
+
+<style>
+  .reader {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tools,
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .nav {
+    justify-content: space-between;
+  }
+  .tools :global(button),
+  .nav :global(button) {
+    min-height: 46px;
+    min-width: 46px;
+    font-size: 1.05rem;
+    border-radius: 8px;
+    background: #1c1d20;
+    border: 1px solid #2f3034;
+    color: #ddd;
+  }
+  .big {
+    padding: 0 1.1rem;
+  }
+  .big.on {
+    background: var(--accent) !important;
+    color: var(--accent-text) !important;
+  }
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .val {
+    min-width: 5.5rem;
+    text-align: center;
+    color: #fff;
+  }
+  .val small {
+    color: var(--muted);
+  }
+  .title {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .deleted {
+    margin-left: 0.5rem;
+    font-size: 0.85rem;
+    color: #f7c1c1;
+    border: 1px solid var(--danger);
+    border-radius: 999px;
+    padding: 0.05rem 0.5rem;
+  }
+  .remain {
+    color: #fac775;
+    font-size: 1.2rem;
+  }
+  .view {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #0b0b0c;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 2px solid #ef9f27;
+    border-bottom: 2px solid #ef9f27;
+    background: rgba(239, 159, 39, 0.08);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .text {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    padding: 0 24px;
+    will-change: transform;
+  }
+  /* Pas d'espace au-dessus de la première ligne : elle doit tomber pile sur la bande. */
+  .text :global(.script > :first-child) {
+    margin-top: 0;
+  }
+</style>

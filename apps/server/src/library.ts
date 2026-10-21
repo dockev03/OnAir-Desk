@@ -205,9 +205,13 @@ export class Library {
     return state;
   }
 
-  sendToPrompter(user: User, scriptId: number | null): PrompterState {
+  /** Affiche un script (ou vide l'écran) ; possible depuis un compte ou un écran kiosk. */
+  sendToPrompter(identity: Identity, scriptId: number | null): PrompterState {
     const script = scriptId === null ? null : toPrompterScript(this.getLive(scriptId));
-    this.repos.prompter.send(script, user.id);
+    this.repos.prompter.send(
+      script,
+      identity.kind === 'user' ? { userId: identity.user.id } : { deviceId: identity.device.id },
+    );
     this.broadcastPrompter();
     return this.prompterState();
   }
@@ -235,4 +239,6 @@ const toPrompterScript = (r: ScriptRecord): PrompterScript => ({
   content: r.content,
   speedWpm: r.speedWpm,
   version: r.version,
+  ownerId: r.ownerId,
+  folderId: r.folderId,
 });

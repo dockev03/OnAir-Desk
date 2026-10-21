@@ -115,6 +115,9 @@ export interface PrompterScript {
   content: ScriptDoc;
   speedWpm: number;
   version: number;
+  /** Dossier du script (pour Précédent / Suivant) ; absent des copies antérieures à l'étape 3. */
+  ownerId?: number | null;
+  folderId?: number | null;
 }
 
 export interface PrompterState {

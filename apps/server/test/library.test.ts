@@ -97,13 +97,42 @@ describe('droits', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it("l'écran studio lit tout mais n'écrit rien", async () => {
+  it("l'écran studio lit tout ; sa seule écriture est le choix du script affiché", async () => {
     const s = await newScript(jean.cookie, jean.id);
     const device = client(built.app, await deviceCookie());
     expect((await device('GET', '/api/library')).statusCode).toBe(200);
     expect((await device('GET', `/api/scripts/${s.id}`)).json().canWrite).toBe(false);
-    expect((await device('POST', '/api/prompter', { scriptId: s.id })).statusCode).toBe(403);
     expect((await device('GET', '/api/trash')).statusCode).toBe(401);
+
+    const sent = await device('POST', '/api/prompter', { scriptId: s.id });
+    expect(sent.statusCode).toBe(200);
+    expect(sent.json()).toMatchObject({
+      script: { id: s.id, ownerId: jean.id, folderId: null },
+      sentByName: 'Pi',
+    });
+    expect((await device('POST', '/api/prompter', { scriptId: null })).json().script).toBeNull();
+
+    for (const [method, url, body] of [
+      ['POST', '/api/scripts', { ownerId: null, title: 'x' }],
+      ['PATCH', `/api/scripts/${s.id}`, { version: 1, title: 'x' }],
+      ['DELETE', `/api/scripts/${s.id}`, undefined],
+      ['POST', `/api/scripts/${s.id}/duplicate`, { ownerId: null }],
+      ['POST', '/api/folders', { ownerId: null, name: 'x' }],
+      ['PUT', '/api/settings', { stationName: 'x' }],
+    ] as const) {
+      const res = await device(method, url, body);
+      expect(res.statusCode, `${method} ${url}`).toBe(403);
+      expect(res.json().error).toBe('read_only_device');
+    }
+  });
+
+  it("le choix fait par l'écran est tracé dans le journal", async () => {
+    const s = await newScript(jean.cookie, jean.id);
+    await client(built.app, await deviceCookie())('POST', '/api/prompter', { scriptId: s.id });
+    const row = built.ctx.repos.db
+      .prepare("SELECT actor_type FROM audit_log WHERE action = 'prompter.sent'")
+      .get() as { actor_type: string };
+    expect(row.actor_type).toBe('device');
   });
 
   it('la bibliothèque présente « moi », Commun, puis les collègues', async () => {
