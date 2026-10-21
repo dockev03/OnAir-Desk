@@ -1,6 +1,6 @@
 # Étape 1 — Socle : plan détaillé
 
-> **Statut : proposition, en attente de validation.** Aucun code n'est écrit avant l'accord explicite.
+> **Statut : questions tranchées, en attente du feu vert pour démarrer.** Aucun code n'est écrit avant l'accord explicite.
 > Référence : `CLAUDE.md` §8, étape 1.
 
 ## Objectif de l'étape
@@ -54,7 +54,7 @@ OnAir-Desk/
 
 | Besoin | Choix | Remarque |
 |---|---|---|
-| Runtime | Node.js **24 LTS** | Image Docker officielle `node:24-*-slim` |
+| Runtime | Node.js **24 LTS** | Image officielle `node:24-trixie-slim` (même base que le serveur Debian 13). Node 26 ne passe LTS que fin octobre 2026 : on y migrera quand les modules natifs (`better-sqlite3`, `@node-rs/argon2`) auront leurs binaires précompilés pour lui. Node 24 reste maintenu jusqu'en avril 2028 |
 | Serveur HTTP | `fastify` + `@fastify/websocket`, `@fastify/cookie`, `@fastify/static`, `@fastify/rate-limit`, `@fastify/helmet` | |
 | Validation | `zod` (+ `fastify-type-provider-zod`) | Mêmes schémas côté front et serveur (`packages/shared`) |
 | SQLite | `better-sqlite3` + **Drizzle ORM** | Migrations versionnées dans le dépôt, appliquées au démarrage |
@@ -111,24 +111,38 @@ Le fichier SQLite est dans un **volume Docker** (`/data`), en mode WAL. La sauve
 
 | Variable | Rôle | Exemple |
 |---|---|---|
-| `PORT` | Port d'écoute dans le conteneur | `3000` |
+| `HOST_PORT` | Port publié sur la Debian (lu par le `docker-compose.yml`) | `443` |
 | `PUBLIC_ORIGIN` | URL d'accès, pour la vérification `Origin` et les cookies | `https://onair-desk.lan` |
-| `DATA_DIR` | Dossier de la base | `/data` |
-| `TRUST_PROXY` | `true` si un reverse proxy est devant | `true` |
+| `TLS_HOSTNAMES` | Noms et IP inscrits dans le certificat généré | `onair-desk.lan,192.168.1.20` |
+| `TLS_CERT_FILE` / `TLS_KEY_FILE` | Facultatif : certificat fourni par la station | *(vide)* |
+| `DATA_DIR` | Dossier de la base, des certificats et des sauvegardes | `/data` |
 | `TZ` | Fuseau horaire par défaut du conteneur | `Europe/Paris` |
 | `LOG_LEVEL` | Niveau de logs | `info` |
 
-Aucun secret n'est nécessaire à l'étape 1 : identifiants de session et jetons sont générés et stockés hachés en base. Le jeton `POST /api/onair` arrivera à l'étape 6.
+Aucun secret n'est à fournir à l'étape 1 : identifiants de session et jetons sont générés et stockés hachés en base, et la clé de l'autorité interne est générée dans le volume. Le jeton `POST /api/onair` arrivera à l'étape 6.
 
-## ⚠️ HTTPS : décision à prendre
+## HTTPS sans reverse proxy (décidé)
 
-Les cookies `Secure` exigent le HTTPS. Trois options :
+Il n'y a pas de reverse proxy : **Fastify sert lui-même le HTTPS**.
 
-| Option | Description | Avis |
-|---|---|---|
-| **A. Reverse proxy existant** | Si un Traefik / Nginx / Caddy tourne déjà sur la Debian ou dans le réseau, OnAir-Desk se met derrière | **Recommandé s'il existe** |
-| **B. Caddy fourni dans le `docker-compose.yml`** | Caddy génère un certificat avec sa propre autorité interne ; il faut installer ce certificat racine sur le Pi et les postes | Recommandé sinon |
-| C. HTTP simple sur le réseau interne | Plus simple, mais sessions moins protégées | Déconseillé, au mieux pour un test |
+- **Au premier démarrage**, le serveur crée dans `/data/tls/` :
+  - une **autorité de certification interne** propre à l'installation (clé privée qui ne quitte jamais le volume) ;
+  - un **certificat serveur** signé par cette autorité, pour le nom et l'adresse IP indiqués dans `TLS_HOSTNAMES`.
+- **Certificat fourni par la station** : si `TLS_CERT_FILE` et `TLS_KEY_FILE` sont renseignés, ils remplacent la génération automatique.
+- Le **certificat racine** (public) est téléchargeable depuis l'assistant de premier lancement et la page admin. Il faut l'installer **une fois** sur le Pi et sur chaque poste animateur, sinon le navigateur affiche une alerte. La procédure pour le Pi est dans le guide de l'étape 7 ; celle des postes sera dans le README.
+- Le certificat serveur est **renouvelé automatiquement** avant expiration, sans toucher à l'autorité.
+- **Le mode HTTP simple n'existe pas en production.** Il n'est accepté qu'avec `NODE_ENV=development`.
+
+⚠️ **Point à surveiller pour l'étape 4 :** le plugin *Now Playing Info* de RadioDJ peut ne pas accepter un certificat interne, voire ne pas savoir appeler une adresse en HTTPS. Si c'est le cas, on ajoutera un **port HTTP dédié aux connecteurs**, désactivé par défaut. Il n'accepterait que les routes d'entrée des connecteurs, protégées par jeton, et jamais l'interface ni les sessions. Ce sera vérifié sur ton installation RadioDJ avant d'écrire le connecteur.
+
+## Déploiement : stack Portainer qui construit tout (décidé)
+
+- La stack est créée dans Portainer en mode **« Repository »** : Portainer clone le dépôt, **construit l'image** à partir du `Dockerfile` (`build:` dans le `docker-compose.yml`) et lance le conteneur. Aucun registre, aucune image préconstruite.
+- **Le dépôt est privé** : Portainer a besoin d'un accès en lecture. Je recommande un **jeton GitHub à grain fin** limité à ce seul dépôt, en lecture seule (*Contents: Read*), avec une date d'expiration. Il est saisi dans Portainer uniquement, jamais dans le dépôt.
+- **Mise à jour** : bouton « Pull and redeploy » dans Portainer (ou mise à jour automatique en option). La base reste dans le volume `onair-desk-data`, elle n'est pas touchée par une reconstruction.
+- **Migrations** : appliquées automatiquement au démarrage, après une **copie de sauvegarde** du fichier SQLite dans `/data/backups/` (les 5 dernières sont conservées).
+- **Port** : le conteneur écoute sur 8443 (utilisateur non-root) ; le `docker-compose.yml` le publie sur le **port 443** de la Debian. Le port est modifiable par variable.
+- Le conteneur est construit sur la Debian elle-même : prévoir environ **1 Go de disque libre** pour la construction (étapes intermédiaires nettoyées automatiquement).
 
 ## Qualité et CI
 
@@ -144,10 +158,11 @@ Les cookies `Secure` exigent le HTTPS. Trois options :
 4. Appareils kiosk : jetons, garde-fou lecture seule.
 5. Front : setup, login, admin (comptes, appareils, paramètres), FR/EN.
 6. Page studio minimale + WebSocket heure serveur + reconnexion.
-7. Dockerfile, `docker-compose.yml`, `.env.example`, README d'installation.
+7. HTTPS : génération de l'autorité interne et du certificat, renouvellement, téléchargement du certificat racine.
+8. Dockerfile, `docker-compose.yml` (stack Portainer), `.env.example`, README d'installation (Portainer + certificat racine sur les postes).
 
-## Questions avant de démarrer
+## Décisions prises
 
-1. **HTTPS** : option A, B ou C ? Un reverse proxy tourne-t-il déjà sur la Debian ?
-2. **Node.js 24 LTS** dans l'image : ça te va ? (rien à installer sur la Debian à part Docker)
-3. **Déploiement via Portainer** : on fournit un `docker-compose.yml` utilisable comme *stack* Portainer, et l'image est construite sur la Debian. Ou faut-il prévoir une publication dans un registre (GHCR, registre interne) ?
+1. **HTTPS** : pas de reverse proxy → HTTPS servi par Fastify, autorité interne générée au premier démarrage.
+2. **Node.js** : 24 LTS (`node:24-trixie-slim`), migration vers 26 LTS plus tard.
+3. **Déploiement** : stack Portainer en mode « Repository » qui construit l'image.

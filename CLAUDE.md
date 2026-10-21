@@ -5,7 +5,7 @@
 
 Documents liés :
 - `docs/maquette-ecran-studio-v3.html` : maquette cliquable de l'écran studio, **validée visuellement**.
-- `docs/plan-etape-1.md` : plan détaillé de l'étape 1 (socle), **en attente de validation**.
+- `docs/plan-etape-1.md` : plan détaillé de l'étape 1 (socle), **questions tranchées, en attente du feu vert**.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : cadrage terminé, aucun code écrit. Ne rien développer sans validation explicite de l'étape.**
@@ -42,8 +42,7 @@ Outil web, hébergé en interne, destiné aux animateurs et journalistes d'une r
 
 Questions **encore ouvertes** :
 1. Déclenchement du **On Air** : **à définir plus tard** (voir §6). La route HTTP et le bouton manuel sont prévus d'office.
-2. Mise en place du **HTTPS** (reverse proxy existant ? certificat interne ?) : voir `docs/plan-etape-1.md`.
-3. **Licence** (MIT / AGPL) : voir §11.
+2. **Licence** (MIT / AGPL) : voir §11.
 
 ## 3. Choix techniques
 
@@ -51,13 +50,14 @@ Questions **encore ouvertes** :
 
 | Brique | Choix | Raison |
 |---|---|---|
-| Serveur | Node.js (LTS) + **Fastify** | Léger, bon support WebSocket, même langage que le front |
+| Serveur | Node.js **24 LTS** + **Fastify** | Léger, bon support WebSocket, même langage que le front |
 | Temps réel | **WebSocket** | Titre en cours, scripts, On Air, commandes et heure de référence poussés instantanément |
 | Front | **Svelte / SvelteKit** | Compilé en JS natif, très léger : adapté au Pi 3 (1 Go RAM). React/Angular jugés trop lourds |
 | Éditeur riche | **TipTap** (ProseMirror) | Maintenu, très utilisé ; contenu stocké en **JSON structuré** (pas de HTML brut → pas d'injection sur le prompteur) |
 | Base | **SQLite** | Un fichier, zéro administration |
 | Auth | Sessions cookie httpOnly + mots de passe **Argon2** | Simple et solide ; SSO possible plus tard |
-| Déploiement | **Docker** (une image) sur Debian 13 | Hébergement interne |
+| Déploiement | **Docker** (une image) sur Debian 13, via une **stack Portainer qui construit l'image** depuis le dépôt | Hébergement interne, pas de registre |
+| HTTPS | Servi **directement par Fastify** (pas de reverse proxy), autorité de certification interne générée au premier démarrage | Le certificat racine est à installer sur le Pi et les postes |
 
 Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan-etape-1.md`.
 
