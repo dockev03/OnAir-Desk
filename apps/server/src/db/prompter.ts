@@ -10,6 +10,9 @@ interface Row {
   sent_by_name: string | null;
 }
 
+/** Auteur d'un affichage : un compte ou un écran kiosk. */
+export type PrompterSender = { userId: number } | { deviceId: number };
+
 /** Script affiché sur l'écran studio, conservé en base pour survivre à un redémarrage. */
 export class PrompterRepo {
   constructor(private readonly db: Db) {}
@@ -17,8 +20,11 @@ export class PrompterRepo {
   get(): PrompterState & { scriptId: number | null } {
     const r = this.db
       .prepare(
-        `SELECT p.*, u.display_name AS sent_by_name
-           FROM prompter_state p LEFT JOIN users u ON u.id = p.sent_by WHERE p.id = 1`,
+        `SELECT p.*, COALESCE(u.display_name, d.name) AS sent_by_name
+           FROM prompter_state p
+           LEFT JOIN users u ON u.id = p.sent_by
+           LEFT JOIN devices d ON d.id = p.sent_by_device
+          WHERE p.id = 1`,
       )
       .get() as Row;
     return {
@@ -31,13 +37,20 @@ export class PrompterRepo {
   }
 
   /** Affiche un script (ou vide l'écran avec null). */
-  send(script: PrompterScript | null, userId: number): void {
+  send(script: PrompterScript | null, by: PrompterSender): void {
     this.db
       .prepare(
-        `UPDATE prompter_state SET script_id = ?, snapshot = ?, deleted = 0, sent_by = ?, sent_at = ?
+        `UPDATE prompter_state
+            SET script_id = ?, snapshot = ?, deleted = 0, sent_by = ?, sent_by_device = ?, sent_at = ?
           WHERE id = 1`,
       )
-      .run(script?.id ?? null, script ? JSON.stringify(script) : null, userId, nowIso());
+      .run(
+        script?.id ?? null,
+        script ? JSON.stringify(script) : null,
+        'userId' in by ? by.userId : null,
+        'deviceId' in by ? by.deviceId : null,
+        nowIso(),
+      );
   }
 
   /** Met à jour la copie affichée (modification du script, restauration…). */

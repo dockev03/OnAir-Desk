@@ -127,4 +127,7 @@ export const migrations: string[] = [
   );
   INSERT INTO prompter_state (id) VALUES (1);
   `,
+  /* 3 — écran studio : un écran kiosk peut choisir le script affiché */ `
+  ALTER TABLE prompter_state ADD COLUMN sent_by_device INTEGER REFERENCES devices (id) ON DELETE SET NULL;
+  `,
 ];
