@@ -1,6 +1,6 @@
 # Étape 2 — Scripts : plan détaillé
 
-> **Statut : questions tranchées, en attente du feu vert pour démarrer.** Aucun code n'est écrit avant l'accord explicite.
+> **Statut : réalisée** (voir le bilan en fin de document).
 > Référence : `CLAUDE.md` §5 (écran studio), §8 étape 2. Branche : `feature/etape-2-scripts`.
 
 ## Objectif de l'étape
@@ -148,3 +148,53 @@ Hors périmètre : conducteurs (étape 5), RadioDJ (étape 4).
 2. **Suppression** : corbeille restaurable 30 jours.
 3. **Historique** : 20 dernières versions par script, avec restauration.
 4. **Vitesse par défaut** : 150 mots/minute, modifiable dans les paramètres et sur chaque script.
+
+## Bilan de l'étape 2
+
+### Réalisé
+- **Bibliothèque** : mon dossier, Commun, puis les collègues en lecture seule ; sous-dossiers (6 niveaux au plus) ; recherche plein texte insensible aux accents, avec extraits ; duplication chez soi ; déplacement ; envoi au prompteur.
+- **Éditeur TipTap** :
+  - gras, italique, souligné, titres, listes ;
+  - palette de 6 couleurs de texte et 5 couleurs de surlignage ;
+  - repères paramétrables ;
+  - annuler / rétablir.
+- **Enregistrement automatique** : indicateur d'état, nouvelle tentative hors ligne, conflit signalé avec le choix « recharger » ou « garder ma version ».
+- **Durée de lecture estimée** en direct (mots ÷ vitesse) ; vitesse réglable par script, 150 mots/min par défaut.
+- **Corbeille** restaurable 30 jours, avec purge quotidienne. **Historique** des 20 dernières versions, avec aperçu et restauration sans perte.
+- **Écran studio** :
+  - le script envoyé s'affiche en grand (taille réglable dans les paramètres) et défile à la molette ;
+  - ses modifications arrivent en direct ;
+  - s'il est supprimé, le texte reste affiché avec la mention « Script supprimé ».
+- **Sécurité** :
+  - contenu validé par liste blanche côté serveur, nettoyé côté éditeur avant envoi ;
+  - affichage construit élément par élément, sans aucun HTML interprété ;
+  - l'écran studio reste en lecture seule.
+
+### Vérifications faites
+- 87 tests automatisés, dont 25 pour l'étape 2 : droits, contenu, conflits, dossiers, recherche, corbeille, historique, prompteur, WebSocket.
+- **Parcours complet dans Chromium**, à trois utilisateurs et un écran kiosk :
+  1. rédaction avec gras, couleur et repère, puis enregistrement automatique ;
+  2. envoi au prompteur et affichage sur le kiosk ;
+  3. modification reçue en direct ;
+  4. conflit avec l'admin, résolu par « garder ma version » ;
+  5. historique (2 versions) ;
+  6. recherche « meteo » qui trouve « météo » ;
+  7. lecture seule et duplication par un collègue ;
+  8. mise à la corbeille : le kiosk garde le texte avec « Script supprimé », puis restauration ;
+  9. repère renommé dans les paramètres et appliqué en direct sur le kiosk.
+
+  Aucune erreur dans la console, en dehors du 409 attendu du scénario de conflit.
+- **Poids sur le Pi** : la page studio charge 170 Ko de JavaScript, sans TipTap. L'éditeur (environ 400 Ko) n'est téléchargé que sur les postes de rédaction.
+
+### Corrigé grâce aux tests navigateur
+- La barre d'outils prenait le focus : quelques caractères tapés juste après un clic pouvaient être perdus. Les boutons ne prennent plus le focus, et la sélection est conservée.
+- Les boutons de la barre d'outils n'avaient pas de nom accessible (lecteurs d'écran). Ils ont maintenant un `aria-label`, et la barre se nomme « Mise en forme ».
+
+### Écarts par rapport au plan
+
+| Plan | Réalisé | Raison |
+|---|---|---|
+| Route `/api/settings/cues` | Repères inclus dans les paramètres (`PUT /api/settings` accepte maintenant une modification partielle) | Une seule source de paramètres, déjà poussée aux écrans par WebSocket. |
+| — | Un compte qui possède des scripts ne peut plus être supprimé : il faut le désactiver | Éviter la perte de ses scripts (les clés étrangères l'empêchent aussi). |
+| Taille du texte « réglable » sur l'écran | Réglée dans les paramètres de la station | Le réglage depuis l'écran lui-même (souris) arrive avec le mode lecture de l'étape 3. |
+
