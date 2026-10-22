@@ -151,7 +151,7 @@
     return o ? ownerName(o) : '';
   };
   const meta = (s: ScriptSummary) =>
-    `${t('library.words', { n: s.wordCount })} · ${formatDuration(readingSeconds(s.wordCount, s.speedWpm))}`;
+    `${t('library.words', { n: s.wordCount })} · ${formatDuration(readingSeconds(s.wordCount, s.speedWpm) + s.cueSeconds)}`;
 
   /** Extrait de recherche : termes trouvés encadrés par \u0002 … \u0003. */
   const snippetParts = (snippet: string) =>

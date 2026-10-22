@@ -2,6 +2,7 @@ import type { Config } from '../config.js';
 import type { Repos } from '../db/index.js';
 import type { LoginThrottle } from '../auth/throttle.js';
 import type { Library } from '../library.js';
+import type { Rundowns } from '../rundowns.js';
 import type { SetupState } from '../setup.js';
 import type { Hub } from '../ws/hub.js';
 
@@ -11,6 +12,7 @@ export interface RouteContext {
   repos: Repos;
   hub: Hub;
   library: Library;
+  rundowns: Rundowns;
   throttle: LoginThrottle;
   setup: SetupState;
   /** Certificat racine de l'autorité interne (PEM), s'il y en a une. */

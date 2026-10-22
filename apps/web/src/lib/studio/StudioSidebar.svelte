@@ -2,20 +2,27 @@
   import type { Library } from '@onair-desk/shared';
   import { t } from '$lib/i18n/index.svelte.js';
   import { folderTree, ownerKey, ownerName } from '$lib/library.js';
+  import type { StudioView } from '$lib/rundowns.js';
 
   let {
     lib,
+    view,
     ownerId,
     folderId,
     collapsed,
     onselect,
+    ontoday,
+    onrundowns,
     ontoggle,
   }: {
     lib: Library | null;
+    view: StudioView;
     ownerId: number | null | undefined;
     folderId: number | null;
     collapsed: boolean;
     onselect: (owner: number | null, folder: number | null) => void;
+    ontoday: () => void;
+    onrundowns: (owner: number | null) => void;
     ontoggle: () => void;
   } = $props();
 
@@ -27,11 +34,15 @@
     <span class="ic">{collapsed ? '»' : '«'}</span>
     <span class="tx">{t('studio.collapse')}</span>
   </button>
+  <button class="it today" class:on={view === 'today'} title={t('studio.today')} onclick={ontoday}>
+    <span class="ic">◷</span>
+    <span class="tx">{t('studio.today')}</span>
+  </button>
   {#if lib}
     {#each lib.owners as o (ownerKey(o.id))}
       <button
         class="it"
-        class:on={o.id === ownerId && folderId === null}
+        class:on={o.id === ownerId && view === 'scripts' && folderId === null}
         title={ownerName(o)}
         onclick={() => onselect(o.id, null)}
       >
@@ -39,10 +50,17 @@
         <span class="tx">{ownerName(o)}</span>
       </button>
       {#if !collapsed && o.id === ownerId}
+        <button
+          class="it sub"
+          class:on={view === 'rundowns' || view === 'rundown'}
+          onclick={() => onrundowns(o.id)}
+        >
+          <span class="ic">☰</span><span class="tx">{t('studio.ownerRundowns')}</span>
+        </button>
         {#each folderTree(lib, o.id) as f (f.id)}
           <button
             class="it sub"
-            class:on={f.id === folderId}
+            class:on={view === 'scripts' && f.id === folderId}
             style:padding-left="{1.2 + f.depth * 0.8}rem"
             onclick={() => onselect(o.id, f.id)}
           >
@@ -102,6 +120,9 @@
   .toggle {
     color: var(--muted);
     font-size: 0.9rem;
+  }
+  .today .ic {
+    color: #fac775;
   }
   .ic {
     width: 1.6rem;

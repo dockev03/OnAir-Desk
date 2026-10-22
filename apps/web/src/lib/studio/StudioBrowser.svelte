@@ -55,7 +55,9 @@
       <button class="row script" onclick={() => onscript(s.id)}>
         <span class="ic">≡</span>
         <span class="name">{s.title}</span>
-        <span class="dur mono">{formatDuration(readingSeconds(s.wordCount, s.speedWpm))}</span>
+        <span class="dur mono"
+          >{formatDuration(readingSeconds(s.wordCount, s.speedWpm) + s.cueSeconds)}</span
+        >
       </button>
     {/each}
   </div>

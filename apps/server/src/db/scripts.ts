@@ -20,6 +20,7 @@ interface ScriptRow {
   content: string;
   content_text: string;
   word_count: number;
+  cue_seconds: number;
   speed_wpm: number;
   version: number;
   created_by: number | null;
@@ -48,6 +49,7 @@ const toSummary = (r: ScriptRow): ScriptSummary => ({
   folderId: r.folder_id,
   title: r.title,
   wordCount: r.word_count,
+  cueSeconds: r.cue_seconds,
   speedWpm: r.speed_wpm,
   updatedAt: r.updated_at,
   updatedByName: r.updated_by_name,
@@ -78,6 +80,7 @@ export interface ScriptContentFields {
   content: ScriptDoc;
   contentText: string;
   wordCount: number;
+  cueSeconds: number;
 }
 
 export class ScriptRepo {
@@ -127,9 +130,9 @@ export class ScriptRepo {
     const info = this.db
       .prepare(
         `INSERT INTO scripts (owner_id, folder_id, title, content, content_text, word_count,
-                              speed_wpm, created_by, updated_by)
+                              cue_seconds, speed_wpm, created_by, updated_by)
          VALUES (@ownerId, @folderId, @title, @content, @contentText, @wordCount,
-                 @speedWpm, @userId, @userId)`,
+                 @cueSeconds, @speedWpm, @userId, @userId)`,
       )
       .run({ ...s, content: JSON.stringify(s.content) });
     return this.findById(Number(info.lastInsertRowid))!;
@@ -149,6 +152,7 @@ export class ScriptRepo {
       content: JSON.stringify(patch.content ?? current.content),
       contentText: patch.contentText ?? current.contentText,
       wordCount: patch.wordCount ?? current.wordCount,
+      cueSeconds: patch.cueSeconds ?? current.cueSeconds,
       speedWpm: patch.speedWpm ?? current.speedWpm,
       folderId: patch.folderId !== undefined ? patch.folderId : current.folderId,
       now: nowIso(),
@@ -156,7 +160,7 @@ export class ScriptRepo {
     this.db
       .prepare(
         `UPDATE scripts SET title = @title, content = @content, content_text = @contentText,
-                word_count = @wordCount, speed_wpm = @speedWpm, folder_id = @folderId,
+                word_count = @wordCount, cue_seconds = @cueSeconds, speed_wpm = @speedWpm, folder_id = @folderId,
                 version = version + 1, updated_by = @userId, updated_at = @now
           WHERE id = @id`,
       )
@@ -199,6 +203,7 @@ export class ScriptRepo {
       deleted_by_name: string | null;
     }[];
     return rows.map((r) => ({
+      kind: 'script' as const,
       id: r.id,
       ownerId: r.owner_id,
       ownerName: r.owner_name,

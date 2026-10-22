@@ -1,15 +1,18 @@
 import {
   countWords,
+  cueSeconds,
   docToText,
   emptyDoc,
   type LibraryOwner,
+  type PrompterRundown,
   type PrompterScript,
+  type PrompterSendInput,
   type PrompterState,
   type Script,
   type ScriptDoc,
 } from '@onair-desk/shared';
 import type { Identity } from './auth/identity.js';
-import type { Repos, ScriptRecord, User } from './db/index.js';
+import type { Repos, RundownRecord, ScriptRecord, User } from './db/index.js';
 import { badRequest, conflict, forbidden, notFound } from './lib/errors.js';
 import type { Hub } from './ws/hub.js';
 
@@ -81,7 +84,12 @@ export class Library {
 
   contentFields(content: ScriptDoc) {
     const contentText = docToText(content);
-    return { content, contentText, wordCount: countWords(contentText) };
+    return {
+      content,
+      contentText,
+      wordCount: countWords(contentText),
+      cueSeconds: cueSeconds(content),
+    };
   }
 
   createScript(
@@ -175,10 +183,8 @@ export class Library {
       this.repos.scripts.snapshot(current, current.updatedBy);
       this.repos.scripts.trash(id, user.id);
     })();
-    if (this.repos.prompter.get().scriptId === id) {
-      this.repos.prompter.markDeleted();
-      this.broadcastPrompter();
-    }
+    // Le texte reste affiché (jamais d'écran blanc), signalé comme supprimé.
+    this.prompterRefresh(this.repos.scripts.findById(id)!);
   }
 
   restoreFromTrash(user: User, id: number): ScriptRecord {
@@ -195,41 +201,83 @@ export class Library {
     const s = this.repos.scripts.findById(id);
     if (!s?.deletedAt) throw notFound();
     this.assertWrite(user, s.ownerId);
+    const rundownId = this.repos.prompter.get().rundownId;
     this.repos.scripts.delete(id);
+    // Les éléments qui l'utilisaient perdent leur script : copie du conducteur à jour.
+    if (rundownId !== null) this.rundownRefresh(rundownId);
   }
 
   // ---- Prompteur ------------------------------------------------------------------
 
   prompterState(): PrompterState {
-    const { scriptId: _, ...state } = this.repos.prompter.get();
+    const { scriptId: _s, rundownId: _r, ...state } = this.repos.prompter.get();
     return state;
   }
 
-  /** Affiche un script (ou vide l'écran) ; possible depuis un compte ou un écran kiosk. */
-  sendToPrompter(identity: Identity, scriptId: number | null): PrompterState {
-    const script = scriptId === null ? null : toPrompterScript(this.getLive(scriptId));
-    this.repos.prompter.send(
-      script,
-      identity.kind === 'user' ? { userId: identity.user.id } : { deviceId: identity.device.id },
-    );
+  /**
+   * Affiche un script, un élément de conducteur, ou vide l'écran ; possible depuis un compte
+   * ou un écran kiosk.
+   */
+  sendToPrompter(identity: Identity, input: PrompterSendInput): PrompterState {
+    const by =
+      identity.kind === 'user' ? { userId: identity.user.id } : { deviceId: identity.device.id };
+    if ('rundownId' in input) {
+      const rundown = this.repos.rundowns.findById(input.rundownId);
+      if (!rundown || rundown.deletedAt) throw notFound();
+      const item = rundown.items.find((i) => i.uid === input.itemUid);
+      if (!item) throw badRequest('unknown_item');
+      // Élément sans script (titre, pub…) ou script mis à la corbeille : carte seule.
+      const record =
+        item.scriptId === null ? undefined : this.repos.scripts.findById(item.scriptId);
+      const script = record && !record.deletedAt ? toPrompterScript(record) : null;
+      this.repos.prompter.send(script, by, {
+        rundown: toPrompterRundown(rundown),
+        itemUid: item.uid,
+      });
+    } else {
+      const script =
+        input.scriptId === null ? null : toPrompterScript(this.getLive(input.scriptId));
+      this.repos.prompter.send(script, by);
+    }
     this.broadcastPrompter();
     return this.prompterState();
   }
 
-  /** Si le script est affiché, l'écran reçoit sa nouvelle version. */
+  /** Si le script est affiché ou dans le conducteur suivi, l'écran reçoit la nouvelle version. */
   private prompterRefresh(record: ScriptRecord): void {
-    if (this.repos.prompter.get().scriptId !== record.id) return;
-    this.repos.prompter.refresh(toPrompterScript(record), record.deletedAt !== null);
-    this.broadcastPrompter();
+    const state = this.repos.prompter.get();
+    let changed = false;
+    if (state.scriptId === record.id) {
+      this.repos.prompter.refresh(toPrompterScript(record), record.deletedAt !== null);
+      changed = true;
+    }
+    // Les durées du conducteur dépendent du script (nombre de mots, repères, vitesse).
+    if (state.rundown?.items.some((i) => i.scriptId === record.id)) {
+      changed = this.refreshRundownSnapshot(state.rundownId) || changed;
+    }
+    if (changed) this.broadcastPrompter();
+  }
+
+  /** Si le conducteur est suivi sur l'écran studio, l'écran reçoit sa nouvelle version. */
+  rundownRefresh(rundownId: number): void {
+    if (this.refreshRundownSnapshot(rundownId)) this.broadcastPrompter();
+  }
+
+  private refreshRundownSnapshot(rundownId: number | null): boolean {
+    if (rundownId === null || this.repos.prompter.get().rundownId !== rundownId) return false;
+    const rundown = this.repos.rundowns.findById(rundownId);
+    if (!rundown) return false;
+    this.repos.prompter.refreshRundown(toPrompterRundown(rundown));
+    return true;
   }
 
   broadcastPrompter(): void {
     this.hub.broadcast({ type: 'prompter', prompter: this.prompterState() });
   }
 
-  /** Purge quotidienne de la corbeille. */
+  /** Purge quotidienne de la corbeille (scripts et conducteurs). */
   purgeTrash(): number {
-    return this.repos.scripts.purgeTrash().length;
+    return this.repos.scripts.purgeTrash().length + this.repos.rundowns.purgeTrash().length;
   }
 }
 
@@ -241,4 +289,13 @@ const toPrompterScript = (r: ScriptRecord): PrompterScript => ({
   version: r.version,
   ownerId: r.ownerId,
   folderId: r.folderId,
+});
+
+const toPrompterRundown = (r: RundownRecord): PrompterRundown => ({
+  id: r.id,
+  ownerId: r.ownerId,
+  title: r.title,
+  airDate: r.airDate,
+  startTime: r.startTime,
+  items: r.items,
 });

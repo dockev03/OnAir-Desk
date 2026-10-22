@@ -4,12 +4,21 @@
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     formatClock,
+    rundownSchedule,
+    secondsToTime,
     type Library,
+    type PrompterRundown,
+    type RundownList,
   } from '@onair-desk/shared';
   import { api } from '$lib/api.js';
   import { i18n, t } from '$lib/i18n/index.svelte.js';
+  import { ownerName } from '$lib/library.js';
   import { LiveLink } from '$lib/live.svelte.js';
+  import { groupByDate, type StudioView } from '$lib/rundowns.js';
+  import ItemCard from '$lib/studio/ItemCard.svelte';
   import Reader from '$lib/studio/Reader.svelte';
+  import RundownPicker from '$lib/studio/RundownPicker.svelte';
+  import RundownView from '$lib/studio/RundownView.svelte';
   import StudioBrowser from '$lib/studio/StudioBrowser.svelte';
   import StudioSidebar from '$lib/studio/StudioSidebar.svelte';
 
@@ -29,6 +38,12 @@
   );
 
   let lib = $state<Library | null>(null);
+  let rundownList = $state<RundownList | null>(null);
+  /** Zone principale : Aujourd'hui (au démarrage), scripts, conducteurs d'un dossier, conducteur. */
+  let view = $state<StudioView>('today');
+  /** Conducteur ouvert dans la navigation, et sa copie quand il n'est pas sur le prompteur. */
+  let rundownId = $state<number | null>(null);
+  let browsed = $state<PrompterRundown | null>(null);
   /** Dossier affiché dans la navigation (undefined : premier dossier de la liste). */
   let ownerId = $state<number | null | undefined>(undefined);
   let folderId = $state<number | null>(null);
@@ -40,7 +55,32 @@
   let localFont = $state<number | null>(readFont());
 
   const script = $derived(link.prompter?.script ?? null);
-  const reading = $derived(script !== null && !leftReading);
+  /** Conducteur suivi sur le prompteur et position de l'élément en cours. */
+  const live = $derived(
+    link.prompter?.rundown && link.prompter.itemUid ? link.prompter.rundown : null,
+  );
+  const itemIndex = $derived(
+    live ? live.items.findIndex((i) => i.uid === link.prompter?.itemUid) : -1,
+  );
+  const item = $derived(live?.items[itemIndex] ?? null);
+  const reading = $derived((script !== null || item !== null) && !leftReading);
+  const types = $derived(link.settings?.itemTypes ?? []);
+  /** Conducteur affiché dans la vue : la version en direct s'il est sur le prompteur. */
+  const shownRundown = $derived(
+    link.prompter?.rundown?.id === rundownId ? link.prompter!.rundown : browsed,
+  );
+  const todayRundowns = $derived(
+    rundownList ? groupByDate(rundownList.rundowns, rundownList.today).today : [],
+  );
+  const ownerRundowns = $derived.by(() => {
+    if (!rundownList) return [];
+    const g = groupByDate(
+      rundownList.rundowns.filter((r) => r.ownerId === currentOwner),
+      rundownList.today,
+    );
+    // Sur l'écran studio : le jour et la suite d'abord, quelques passés seulement.
+    return [...g.today, ...g.upcoming, ...g.past.slice(0, 10)];
+  });
   const collapsed = $derived(manualCollapse ?? reading);
   const currentOwner = $derived(ownerId === undefined ? (lib?.owners[0]?.id ?? null) : ownerId);
   const fontSize = $derived(localFont ?? link.settings?.prompterFontSize ?? 48);
@@ -75,11 +115,47 @@
 
   async function loadLibrary() {
     try {
-      lib = await api<Library>('GET', '/api/library');
+      [lib, rundownList] = await Promise.all([
+        api<Library>('GET', '/api/library'),
+        api<RundownList>('GET', '/api/rundowns'),
+      ]);
     } catch {
       // Hors ligne ou écran non appairé : on garde la dernière liste connue.
     }
   }
+
+  async function openRundown(id: number) {
+    view = 'rundown';
+    if (rundownId !== id) browsed = null;
+    rundownId = id;
+    // La barre latérale suit le dossier du conducteur (ouvert depuis « Aujourd'hui »).
+    const summary = rundownList?.rundowns.find((r) => r.id === id);
+    if (summary) select(summary.ownerId, null);
+    try {
+      browsed = await api<PrompterRundown>('GET', `/api/rundowns/${id}`);
+    } catch {
+      // Hors ligne : la dernière copie connue reste affichée.
+    }
+  }
+
+  async function openItem(uid: string) {
+    if (rundownId === null) return;
+    leftReading = false;
+    await api('POST', '/api/prompter', { rundownId, itemUid: uid }).catch(() => {});
+  }
+
+  function stepItem(delta: number) {
+    const next = live?.items[itemIndex + delta];
+    if (live && next) {
+      rundownId = live.id;
+      void openItem(next.uid);
+    }
+  }
+
+  const ownerLabel = (id: number | null) => {
+    const o = lib?.owners.find((x) => x.id === id);
+    return o ? ownerName(o) : '';
+  };
 
   /** Appairage : le jeton est lu après le # (jamais envoyé dans l'URL), puis retiré de l'adresse. */
   async function pairFromHash() {
@@ -94,7 +170,13 @@
     await api('POST', '/api/prompter', { scriptId: id }).catch(() => {});
   }
 
+  /** Sortie de lecture ; depuis un conducteur, retour à sa liste. */
   async function exit() {
+    if (live && !leftReading) {
+      view = 'rundown';
+      rundownId = live.id;
+      browsed = live;
+    }
     leftReading = true;
     void loadLibrary();
     await api('POST', '/api/prompter', { scriptId: null }).catch(() => {});
@@ -103,6 +185,13 @@
   function select(owner: number | null, folder: number | null) {
     ownerId = owner;
     folderId = folder;
+  }
+
+  /** Navigation latérale pendant la lecture : on sort, la vue choisie l'emporte. */
+  function navigate(next: StudioView, apply: () => void) {
+    if (reading) void exit();
+    view = next;
+    apply();
   }
 
   // Démarrage unique : rien de réactif n'est lu ici (untrack), sinon chaque nouveau
@@ -128,16 +217,28 @@
   });
 
   // Chaque nouvel état du prompteur (envoi depuis un poste ou cet écran) l'emporte.
-  let lastScriptId: number | null = null;
+  let lastShown = '';
   $effect(() => {
-    const s = link.prompter?.script ?? null;
+    const p = link.prompter;
+    const s = p?.script ?? null;
+    const r = p?.rundown ?? null;
     untrack(() => {
       leftReading = false;
-      if ((s?.id ?? null) === lastScriptId) return; // même script, simplement modifié
-      lastScriptId = s?.id ?? null;
+      // Même script ou même élément, simplement modifié : rien ne bouge.
+      const key = `${r?.id ?? ''}/${p?.itemUid ?? ''}/${s?.id ?? ''}`;
+      if (key === lastShown) return;
+      lastShown = key;
       manualCollapse = null;
-      // La navigation suit le dossier du script affiché : « Sortir » y ramène.
-      if (s && s.ownerId !== undefined) select(s.ownerId, s.folderId ?? null);
+      if (r && p?.itemUid) {
+        // La navigation suit le conducteur : « Conducteur » y ramène.
+        view = 'rundown';
+        rundownId = r.id;
+        ownerId = r.ownerId;
+      } else if (s && s.ownerId !== undefined) {
+        // La navigation suit le dossier du script affiché : « Sortir » y ramène.
+        view = 'scripts';
+        select(s.ownerId, s.folderId ?? null);
+      }
     });
   });
 
@@ -172,18 +273,50 @@
     {#if lib}
       <StudioSidebar
         {lib}
+        {view}
         ownerId={currentOwner}
         {folderId}
         {collapsed}
-        onselect={(o, f) => {
-          select(o, f);
-          if (reading) void exit();
-        }}
+        onselect={(o, f) => navigate('scripts', () => select(o, f))}
+        ontoday={() => navigate('today', () => {})}
+        onrundowns={(o) => navigate('rundowns', () => select(o, null))}
         ontoggle={() => (manualCollapse = !collapsed)}
       />
     {/if}
 
-    {#if reading && script}
+    {#if reading && live && item}
+      {@const position = t('studio.itemOf', { n: itemIndex + 1, total: live.items.length })}
+      {#if script}
+        <Reader
+          {script}
+          cues={link.settings?.cues ?? []}
+          {fontSize}
+          deleted={link.prompter?.deleted ?? false}
+          canPrev={itemIndex > 0}
+          canNext={itemIndex < live.items.length - 1}
+          onfont={changeFont}
+          onprev={() => stepItem(-1)}
+          onnext={() => stepItem(1)}
+          onexit={() => void exit()}
+          label="{position} · {item.title}"
+          exitLabel={t('studio.backToRundown')}
+        />
+      {:else}
+        <ItemCard
+          {item}
+          {types}
+          {position}
+          startsAt={secondsToTime(
+            rundownSchedule(live.startTime, live.items).starts[itemIndex] ?? 0,
+          )}
+          canPrev={itemIndex > 0}
+          canNext={itemIndex < live.items.length - 1}
+          onprev={() => stepItem(-1)}
+          onnext={() => stepItem(1)}
+          onexit={() => void exit()}
+        />
+      {/if}
+    {:else if reading && script}
       <Reader
         {script}
         cues={link.settings?.cues ?? []}
@@ -195,6 +328,30 @@
         onprev={() => void open(siblings[index - 1]!.id)}
         onnext={() => void open(siblings[index + 1]!.id)}
         onexit={() => void exit()}
+      />
+    {:else if view === 'today' && rundownList}
+      <RundownPicker
+        title={t('studio.today')}
+        rundowns={todayRundowns}
+        today={rundownList.today}
+        {ownerLabel}
+        empty={t('studio.noRundown')}
+        onopen={(id) => void openRundown(id)}
+      />
+    {:else if view === 'rundowns' && rundownList}
+      <RundownPicker
+        title="{ownerLabel(currentOwner)} · {t('studio.rundowns')}"
+        rundowns={ownerRundowns}
+        today={rundownList.today}
+        empty={t('rundowns.empty')}
+        onopen={(id) => void openRundown(id)}
+      />
+    {:else if view === 'rundown' && shownRundown}
+      <RundownView
+        rundown={shownRundown}
+        {types}
+        currentUid={link.prompter?.rundown?.id === shownRundown.id ? link.prompter.itemUid : null}
+        onitem={(uid) => void openItem(uid)}
       />
     {:else if lib}
       <StudioBrowser

@@ -130,4 +130,50 @@ export const migrations: string[] = [
   /* 3 — écran studio : un écran kiosk peut choisir le script affiché */ `
   ALTER TABLE prompter_state ADD COLUMN sent_by_device INTEGER REFERENCES devices (id) ON DELETE SET NULL;
   `,
+  /* 4 — conducteurs ; durée des repères des scripts */ `
+  -- Durée cumulée des repères (jingles, sons…). Seuls les repères portent une clé
+  -- « seconds » dans le contenu : les scripts existants sont remplis directement.
+  ALTER TABLE scripts ADD COLUMN cue_seconds INTEGER NOT NULL DEFAULT 0;
+  UPDATE scripts SET cue_seconds = COALESCE(
+    (SELECT SUM(j.value) FROM json_tree(scripts.content) j
+      WHERE j.key = 'seconds' AND j.type = 'integer'), 0);
+
+  CREATE TABLE rundowns (
+    id         INTEGER PRIMARY KEY,
+    owner_id   INTEGER REFERENCES users (id) ON DELETE RESTRICT,
+    title      TEXT    NOT NULL,
+    air_date   TEXT    NOT NULL,
+    start_time TEXT    NOT NULL,
+    version    INTEGER NOT NULL DEFAULT 1,
+    created_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    updated_by INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    created_at TEXT    NOT NULL DEFAULT ${NOW},
+    updated_at TEXT    NOT NULL DEFAULT ${NOW},
+    deleted_at TEXT,
+    deleted_by INTEGER REFERENCES users (id) ON DELETE SET NULL
+  );
+  CREATE INDEX rundowns_air_date ON rundowns (air_date);
+  CREATE INDEX rundowns_deleted_at ON rundowns (deleted_at);
+
+  -- Éléments d'un conducteur, dans l'ordre de « position ». L'uid est stable : il survit
+  -- aux réordonnancements et sert à désigner l'élément affiché sur l'écran studio.
+  CREATE TABLE rundown_items (
+    rundown_id       INTEGER NOT NULL REFERENCES rundowns (id) ON DELETE CASCADE,
+    uid              TEXT    NOT NULL,
+    position         INTEGER NOT NULL,
+    type_id          TEXT    NOT NULL,
+    title            TEXT    NOT NULL,
+    duration_seconds INTEGER,
+    notes            TEXT    NOT NULL DEFAULT '',
+    script_id        INTEGER REFERENCES scripts (id) ON DELETE SET NULL,
+    PRIMARY KEY (rundown_id, uid)
+  );
+  CREATE INDEX rundown_items_script ON rundown_items (script_id);
+
+  -- Écran studio : conducteur suivi et élément en cours (copie du conducteur, sans le
+  -- contenu des scripts, pour ne jamais afficher d'écran blanc).
+  ALTER TABLE prompter_state ADD COLUMN rundown_id INTEGER REFERENCES rundowns (id) ON DELETE SET NULL;
+  ALTER TABLE prompter_state ADD COLUMN item_uid TEXT;
+  ALTER TABLE prompter_state ADD COLUMN rundown_snapshot TEXT;
+  `,
 ];

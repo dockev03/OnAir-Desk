@@ -1,7 +1,9 @@
 <script lang="ts">
   import {
+    ITEM_COLORS,
     LOCALES,
     MAX_CUES,
+    MAX_ITEM_TYPES,
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     SPEED_WPM_MAX,
@@ -58,11 +60,27 @@
   }
 
   function moveCue(i: number, delta: number) {
-    if (!settings) return;
-    const j = i + delta;
-    if (j < 0 || j >= settings.cues.length) return;
-    const cues = settings.cues;
-    [cues[i], cues[j]] = [cues[j]!, cues[i]!];
+    if (settings) swap(settings.cues, i, i + delta);
+  }
+
+  function swap<T>(list: T[], i: number, j: number) {
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j]!, list[i]!];
+  }
+
+  const itemColorList = Object.keys(ITEM_COLORS) as (keyof typeof ITEM_COLORS)[];
+
+  function addItemType() {
+    if (!settings || settings.itemTypes.length >= MAX_ITEM_TYPES) return;
+    // Identifiant interne neutre et stable : le libellé reste modifiable.
+    settings.itemTypes.push({
+      id: cueId(
+        'type',
+        settings.itemTypes.map((x) => x.id),
+      ),
+      label: t('rundowns.newItemTitle'),
+      color: itemColorList[0]!,
+    });
   }
 
   async function save(e: SubmitEvent) {
@@ -182,6 +200,67 @@
       >
     </div>
 
+    <h2>{t('settings.itemTypes')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.itemTypesIntro')}</p>
+    <div class="cues">
+      {#each settings.itemTypes as type, i (type.id)}
+        <div class="cue-row">
+          <span
+            class="preview type-preview"
+            style:background-color={type.color}
+            style:color={ITEM_COLORS[type.color]}>{type.label}</span
+          >
+          <input
+            aria-label={t('settings.typeLabel')}
+            bind:value={type.label}
+            required
+            maxlength="40"
+          />
+          <div class="row colors" role="radiogroup" aria-label={t('settings.cueColor')}>
+            {#each itemColorList as c (c)}
+              <button
+                type="button"
+                class="swatch"
+                class:on={type.color === c}
+                style:background-color={c}
+                role="radio"
+                aria-checked={type.color === c}
+                aria-label={c}
+                onclick={() => (type.color = c)}
+              ></button>
+            {/each}
+          </div>
+          <div class="row">
+            <button
+              type="button"
+              aria-label={t('settings.moveUp')}
+              disabled={i === 0}
+              onclick={() => swap(settings!.itemTypes, i, i - 1)}>↑</button
+            >
+            <button
+              type="button"
+              aria-label={t('settings.moveDown')}
+              disabled={i === settings.itemTypes.length - 1}
+              onclick={() => swap(settings!.itemTypes, i, i + 1)}>↓</button
+            >
+            <button
+              type="button"
+              class="danger"
+              disabled={settings.itemTypes.length <= 1}
+              onclick={() => settings!.itemTypes.splice(i, 1)}>{t('settings.removeCue')}</button
+            >
+          </div>
+        </div>
+      {/each}
+    </div>
+    <div>
+      <button
+        type="button"
+        onclick={addItemType}
+        disabled={settings.itemTypes.length >= MAX_ITEM_TYPES}>{t('settings.addItemType')}</button
+      >
+    </div>
+
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if saved}<p class="success">{t('common.saved')}</p>{/if}
     <div><button class="primary">{t('common.save')}</button></div>
@@ -227,6 +306,10 @@
     height: 1.5rem;
     padding: 0;
     border-radius: 50%;
+  }
+  .type-preview {
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
   }
   .swatch.on {
     outline: 2px solid #fff;

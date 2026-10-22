@@ -1,4 +1,4 @@
-import type { PrompterScript, PrompterState } from '@onair-desk/shared';
+import type { PrompterRundown, PrompterScript, PrompterState } from '@onair-desk/shared';
 import type { Db } from './database.js';
 import { nowIso } from '../lib/time.js';
 
@@ -8,16 +8,28 @@ interface Row {
   deleted: 0 | 1;
   sent_at: string | null;
   sent_by_name: string | null;
+  rundown_id: number | null;
+  item_uid: string | null;
+  rundown_snapshot: string | null;
 }
 
 /** Auteur d'un affichage : un compte ou un écran kiosk. */
 export type PrompterSender = { userId: number } | { deviceId: number };
 
-/** Script affiché sur l'écran studio, conservé en base pour survivre à un redémarrage. */
+/** Élément de conducteur affiché : copie du conducteur et uid de l'élément. */
+export interface PrompterRundownChoice {
+  rundown: PrompterRundown;
+  itemUid: string;
+}
+
+/**
+ * Script (et éventuellement conducteur) affiché sur l'écran studio, conservé en base pour
+ * survivre à un redémarrage.
+ */
 export class PrompterRepo {
   constructor(private readonly db: Db) {}
 
-  get(): PrompterState & { scriptId: number | null } {
+  get(): PrompterState & { scriptId: number | null; rundownId: number | null } {
     const r = this.db
       .prepare(
         `SELECT p.*, COALESCE(u.display_name, d.name) AS sent_by_name
@@ -29,19 +41,30 @@ export class PrompterRepo {
       .get() as Row;
     return {
       scriptId: r.script_id,
+      rundownId: r.rundown_id,
       script: r.snapshot ? (JSON.parse(r.snapshot) as PrompterScript) : null,
+      rundown: r.rundown_snapshot ? (JSON.parse(r.rundown_snapshot) as PrompterRundown) : null,
+      itemUid: r.item_uid,
       deleted: r.deleted === 1,
       sentAt: r.sent_at,
       sentByName: r.sent_by_name,
     };
   }
 
-  /** Affiche un script (ou vide l'écran avec null). */
-  send(script: PrompterScript | null, by: PrompterSender): void {
+  /**
+   * Affiche un script (ou vide l'écran avec null). Avec un conducteur : l'élément choisi,
+   * dont le script peut être absent (titre, pub…).
+   */
+  send(
+    script: PrompterScript | null,
+    by: PrompterSender,
+    choice: PrompterRundownChoice | null = null,
+  ): void {
     this.db
       .prepare(
         `UPDATE prompter_state
-            SET script_id = ?, snapshot = ?, deleted = 0, sent_by = ?, sent_by_device = ?, sent_at = ?
+            SET script_id = ?, snapshot = ?, deleted = 0, sent_by = ?, sent_by_device = ?,
+                sent_at = ?, rundown_id = ?, item_uid = ?, rundown_snapshot = ?
           WHERE id = 1`,
       )
       .run(
@@ -50,7 +73,17 @@ export class PrompterRepo {
         'userId' in by ? by.userId : null,
         'deviceId' in by ? by.deviceId : null,
         nowIso(),
+        choice?.rundown.id ?? null,
+        choice?.itemUid ?? null,
+        choice ? JSON.stringify(choice.rundown) : null,
       );
+  }
+
+  /** Met à jour la copie du conducteur suivi (élément ajouté, durée modifiée…). */
+  refreshRundown(rundown: PrompterRundown): void {
+    this.db
+      .prepare('UPDATE prompter_state SET rundown_snapshot = ? WHERE id = 1')
+      .run(JSON.stringify(rundown));
   }
 
   /** Met à jour la copie affichée (modification du script, restauration…). */
