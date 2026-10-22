@@ -1,6 +1,6 @@
 # Étape 4 — Conducteurs : plan
 
-> **Statut : plan validé, développement à venir.**
+> **Statut : réalisée** (voir le bilan en fin de document).
 > Référence : `CLAUDE.md` §5 (zone principale, mode Conducteur), §8 étape 4, §10 (types et couleurs paramétrables). Branche : `feature/etape-4-conducteurs`.
 > Étape passée avant RadioDJ (devenue étape 5) à la demande de l'utilisateur.
 
@@ -96,3 +96,34 @@ L'écran kiosk peut aujourd'hui **uniquement** choisir le script affiché (`POST
 ## Vérifications avant de pousser
 
 `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, et contrôle du poids de `/studio`.
+
+## Bilan de l'étape 4
+
+### Réalisé
+
+- **Commun** (`packages/shared/src/rundown.ts`) : types d'éléments et palette de couleurs (fond + texte lisible), validation des éléments (200 max, uid stable, notes 500 caractères, durée 4 h max), date et heure de début, calcul des durées et des heures de passage, saisie d'une durée (`45`, `2:30`, `1:05:00`).
+- **Migration 4** : tables `rundowns` et `rundown_items`, conducteur et élément suivis dans `prompter_state`, colonne `scripts.cue_seconds` remplie pour les scripts existants (fonctions JSON de SQLite).
+- **Serveur** : routes `/api/rundowns` (liste avec la date du jour de la station, lecture, création, enregistrement complet avec contrôle de version, duplication, corbeille), corbeille commune scripts + conducteurs, purge à 30 jours. Un type retiré des paramètres ou un script mis à la corbeille depuis restent acceptés dans un conducteur existant.
+- **Écran studio et prompteur** : `POST /api/prompter` accepte `{ rundownId, itemUid }` (seule écriture du Pi, toujours). La copie du conducteur suivi est mise à jour en direct (édition du conducteur, modification ou suppression d'un script attaché).
+- **Interface postes** :
+  - menu **Conducteurs** : un dossier par propriétaire, sections Aujourd'hui / À venir / Passés, création en ligne (titre, date, heure), duplication à une date choisie (une semaine plus tard par défaut ; chez soi pour le conducteur d'un collègue), corbeille ;
+  - **éditeur** : lignes à la couleur du type, heure de passage, durée saisie ou calculée (affichée en grisé), script attaché choisi dans la bibliothèque ou créé depuis l'élément, notes, **glisser-déposer** par poignée (souris et tactile) et boutons ↑ / ↓, « Afficher » sur l'écran studio, enregistrement automatique avec gestion de conflit ;
+  - **paramètres** : types d'éléments (libellé, couleur, ordre) ;
+  - listes de scripts : la durée inclut désormais les repères (limite laissée après le test levée).
+- **Écran studio** :
+  - barre latérale : **Aujourd'hui** en tête, puis par propriétaire **Conducteurs** et les dossiers de scripts ; écran d'accueil sur « Aujourd'hui » ;
+  - vue conducteur colorée (heure, titre, ≡ si un script est attaché, durée), élément en cours encadré ;
+  - lecture d'un élément : « 2/3 · titre » dans la barre d'outils, Précédent / Suivant dans l'ordre du conducteur, retour au conducteur par appui long ;
+  - élément sans texte : **grande carte** (type, titre, heure de passage, durée, notes).
+
+### Tests
+
+- 117 tests au total (35 en commun, 82 serveur), dont la migration 4 (remplissage de `cue_seconds`), les droits, l'ordre, les conflits, la duplication, la corbeille, la date du jour selon le fuseau et le pilotage depuis le Pi.
+- **Navigateur (Chromium)** : création d'un conducteur, trois éléments, heures recalculées (07:00:00 / 07:00:10 / 07:01:22), durée invalide signalée, glisser-déposer puis ↑ / ↓, enregistrement ; écran studio : Aujourd'hui → conducteur → lecture 2/3 → carte 3/3 → modification depuis un poste visible en direct → retour au conducteur par appui long → envoi depuis un poste ; duplication, corbeille et restauration ; ajout d'un type d'élément.
+- **Poids de `/studio`** : 54,9 Ko gzip (50,2 Ko avant), toujours sans l'éditeur.
+
+### Limites connues
+
+- Si l'on change le **script attaché à l'élément en cours** pendant la lecture, l'écran studio garde l'ancien texte jusqu'au prochain changement d'élément (la liste, elle, est à jour).
+- Les listes de conducteurs de l'écran studio (hors conducteur suivi) se rafraîchissent toutes les minutes, comme la bibliothèque.
+- Pas d'historique des versions pour les conducteurs (décision 7).

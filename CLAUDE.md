@@ -8,10 +8,10 @@ Documents liés :
 - `docs/plan-etape-1.md` : plan détaillé et **bilan** de l'étape 1 (socle), réalisée.
 - `docs/plan-etape-2.md` : plan détaillé et **bilan** de l'étape 2 (scripts), réalisée.
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
-- `docs/plan-etape-4.md` : plan de l'étape 4 (conducteurs), **validé**, en cours.
+- `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts) et 3 (écran studio) réalisées. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio) et 4 (conducteurs) réalisées. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -84,7 +84,7 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 
 ### Accès
 - Rôles : **admin** (gère les comptes) et **animateur** (gère ses scripts/conducteurs).
-- **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin. **Seule écriture permise** (décidé à l'étape 3) : choisir le script affiché (`POST /api/prompter`). Taille du texte réglée sur l'écran : mémorisée sur le Pi.
+- **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin. **Seule écriture permise** (décidé à l'étape 3) : choisir le script affiché (`POST /api/prompter`), étendu à l'étape 4 au choix d'un élément de conducteur. Taille du texte réglée sur l'écran : mémorisée sur le Pi.
 - **Bibliothèque** (décidé à l'étape 2) : un animateur modifie **son dossier et Commun** ; il voit les dossiers des collègues **en lecture seule** (pour dupliquer chez lui) ; l'admin modifie tout. Suppression = **corbeille 30 jours** ; **historique** des 20 dernières versions.
 
 ## 5. Écran studio (validé visuellement — voir maquette v3)
@@ -150,7 +150,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 1. ✅ **Socle** : projet, Docker, SQLite, auth (comptes + jeton kiosk lecture seule), paramétrage minimal, assistant de premier lancement. → détail et bilan dans `docs/plan-etape-1.md`.
 2. ✅ **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur », corbeille, historique. → détail et bilan dans `docs/plan-etape-2.md`.
 3. ✅ **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, Précédent / Suivant, sortie par appui long. → détail et bilan dans `docs/plan-etape-3.md`. (Les alertes de fin de titre arrivent avec RadioDJ, étape 5.)
-4. **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication. → plan **validé** dans `docs/plan-etape-4.md`. Passée avant RadioDJ à la demande de l'utilisateur : elle ne dépend que du code existant.
+4. ✅ **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication. → détail et bilan dans `docs/plan-etape-4.md`. Passée avant RadioDJ à la demande de l'utilisateur : elle ne dépend que du code existant.
 5. **RadioDJ** : titre en cours / à venir, compte à rebours, intro/outro.
 6. **On Air + météo**.
 7. **Raspberry Pi** : guide d'installation (Chromium kiosk, démarrage auto, NTP/chrony).
