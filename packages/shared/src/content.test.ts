@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   MAX_CONTENT_BYTES,
   countWords,
+  cueSeconds,
   cuesSchema,
   docToText,
   formatDuration,
+  parseCueSeconds,
   readingSeconds,
   sanitizeDoc,
   scriptDocSchema,
@@ -201,5 +203,82 @@ describe('cuesSchema', () => {
   it('refuse deux repères de même identifiant', () => {
     const c = { id: 'a', label: 'A', color: '#FAC775' };
     expect(cuesSchema.safeParse([c, c]).success).toBe(false);
+  });
+});
+
+describe('durée des repères', () => {
+  const withCues = (attrs: unknown[]): unknown => ({
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: attrs.map((a) => ({ type: 'cue', attrs: a })),
+      },
+    ],
+  });
+
+  it('accepte une durée entière, refuse le reste', () => {
+    const ok = withCues([{ cueId: 'jingle', label: 'JINGLE', seconds: 12 }]);
+    expect(scriptDocSchema.safeParse(ok).success).toBe(true);
+    for (const seconds of [0, -1, 1.5, 3601, '12', null]) {
+      const bad = withCues([{ cueId: 'jingle', label: 'JINGLE', seconds }]);
+      expect(scriptDocSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+
+  it('le nettoyage garde une durée valide et retire une durée invalide', () => {
+    const out = sanitizeDoc(
+      withCues([
+        { cueId: 'jingle', label: 'JINGLE', seconds: 12 },
+        { cueId: 'son', label: 'SON', seconds: null },
+        { cueId: 'pause', label: 'PAUSE', seconds: 99999 },
+      ]),
+    );
+    expect(scriptDocSchema.safeParse(out).success).toBe(true);
+    const cues = out.content[0]!.type === 'paragraph' ? out.content[0]!.content : [];
+    expect(cues?.map((c) => (c.type === 'cue' ? c.attrs.seconds : 'x'))).toEqual([
+      12,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('additionne les durées, y compris dans les listes', () => {
+    const d = sanitizeDoc({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'cue', attrs: { cueId: 'a', label: 'A', seconds: 12 } }],
+        },
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [{ type: 'cue', attrs: { cueId: 'b', label: 'B', seconds: 30 } }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(cueSeconds(d)).toBe(42);
+    expect(cueSeconds(doc)).toBe(0);
+  });
+
+  it('lit une durée saisie en secondes ou en minutes:secondes', () => {
+    expect(parseCueSeconds('')).toBeNull();
+    expect(parseCueSeconds(' 12 ')).toBe(12);
+    expect(parseCueSeconds('1:30')).toBe(90);
+    expect(parseCueSeconds('0:05')).toBe(5);
+    expect(parseCueSeconds('3600')).toBe(3600);
+    for (const bad of ['0', '3601', '1:75', '1:5', '1:5:0', 'abc', '-3', '1.5', '61:00']) {
+      expect(parseCueSeconds(bad)).toBeUndefined();
+    }
   });
 });

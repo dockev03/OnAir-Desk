@@ -111,3 +111,11 @@ L'écran kiosk était en lecture seule stricte. Il obtient **une seule** autoris
 - Section « Aujourd'hui » et ordre du conducteur pour Précédent / Suivant : **étape 5**.
 - Blocs On Air, météo, titre en cours et titre à venir dans le bandeau : **étapes 4 et 6**.
 
+
+## Évolution après test : durée des repères
+
+Demandée après le premier test à l'antenne : après un `[JINGLE]` de 12 s, le texte continuait de défiler alors que la suite ne se lit qu'à la fin du jingle.
+
+- **Durée facultative sur chaque repère** (`cue.attrs.seconds`, 1 s à 1 h, entier) : demandée à l'insertion dans l'éditeur (saisie `12` ou `1:30`, vide = pas d'arrêt), modifiable en cliquant sur le repère. Affichage `[JINGLE · 0:12]`. Aucune migration : le champ est facultatif dans le JSON du script.
+- **Prompteur** : en défilement automatique, quand un repère avec durée atteint la bande de lecture, le texte s'arrête et un décompte s'affiche au-dessus de la bande (sur du texte déjà lu), puis le défilement reprend. Bouton **« Reprendre »** si l'élément se termine plus tôt. **Pause** pendant l'attente : l'élément est considéré comme passé. **Molette** : une correction vers le bas laisse le décompte continuer ; en remontant au-dessus du repère, il s'arrêtera de nouveau. Plusieurs repères sur la même ligne : un seul arrêt, durées additionnées.
+- **Durées affichées** : le temps restant du prompteur et l'estimation de l'éditeur incluent les durées des repères. Les listes de la bibliothèque (calculées sur le nombre de mots enregistré) ne les incluent pas encore.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Cue, Inline, Mark } from '@onair-desk/shared';
+  import { formatDuration, type Cue, type Inline, type Mark } from '@onair-desk/shared';
 
   let { nodes, cues }: { nodes: Inline[]; cues: Cue[] } = $props();
 
@@ -27,7 +27,15 @@
     <br />
   {:else if node.type === 'cue'}
     {@const cue = cueOf(node.attrs.cueId)}
-    <span class="cue" style:color={cue?.color ?? '#B4B2A9'}>[{cue?.label ?? node.attrs.label}]</span
+    <!-- data-cue-seconds : repéré par le prompteur pour arrêter le défilement automatique. -->
+    <span
+      class="cue"
+      style:color={cue?.color ?? '#B4B2A9'}
+      data-cue-seconds={node.attrs.seconds}
+      data-cue-label={cue?.label ?? node.attrs.label}
+      >[{cue?.label ?? node.attrs.label}{node.attrs.seconds
+        ? ` · ${formatDuration(node.attrs.seconds)}`
+        : ''}]</span
     >
   {/if}
 {/each}

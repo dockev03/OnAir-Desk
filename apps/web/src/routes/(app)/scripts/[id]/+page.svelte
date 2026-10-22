@@ -5,6 +5,7 @@
     SPEED_WPM_MAX,
     SPEED_WPM_MIN,
     countWords,
+    cueSeconds,
     docToText,
     formatDuration,
     readingSeconds,
@@ -49,6 +50,8 @@
 
   const cues = $derived(stationSettings.value?.cues ?? []);
   const words = $derived(doc ? countWords(docToText(doc)) : 0);
+  /** Durée des éléments attachés aux repères : le prompteur s'arrête pendant ce temps. */
+  const cueSecs = $derived(doc ? cueSeconds(doc) : 0);
 
   function apply(s: Script) {
     script = s;
@@ -243,9 +246,10 @@
     <p class="muted estimate">
       {t('editor.estimate', {
         words,
-        duration: formatDuration(readingSeconds(words, speedWpm)),
+        duration: formatDuration(readingSeconds(words, speedWpm) + cueSecs),
         wpm: speedWpm,
       })}
+      {#if cueSecs > 0}{t('editor.estimateCues', { duration: formatDuration(cueSecs) })}{/if}
     </p>
 
     {#if status === 'conflict'}
@@ -325,9 +329,10 @@
     <p class="muted estimate">
       {t('editor.estimate', {
         words,
-        duration: formatDuration(readingSeconds(words, speedWpm)),
+        duration: formatDuration(readingSeconds(words, speedWpm) + cueSecs),
         wpm: speedWpm,
       })}
+      {#if cueSecs > 0}{t('editor.estimateCues', { duration: formatDuration(cueSecs) })}{/if}
     </p>
     <div class="card readonly"><ScriptView {doc} {cues} fontSize={22} /></div>
   {/if}

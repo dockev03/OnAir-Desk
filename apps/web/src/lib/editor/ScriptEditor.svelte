@@ -7,6 +7,8 @@
   import {
     HIGHLIGHT_COLORS,
     TEXT_COLORS,
+    formatDuration,
+    parseCueSeconds,
     sanitizeDoc,
     type Cue,
     type ScriptDoc,
@@ -73,10 +75,82 @@
       highlight: (e?.getAttributes('highlight').color as string | undefined)?.toUpperCase(),
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
+      /** Repère sélectionné (clic dessus) : sa durée peut être modifiée. */
+      cue: e?.isActive('cue')
+        ? {
+            at: e.state.selection.from,
+            label: e.getAttributes('cue').label as string,
+            seconds: (e.getAttributes('cue').seconds as number | null) ?? null,
+          }
+        : null,
     };
   });
 
   const chain = () => editor!.chain().focus();
+
+  // Durée d'un repère : demandée à l'insertion (vide = pas d'arrêt du défilement),
+  // modifiable ensuite en sélectionnant le repère.
+  let inserting = $state<Cue | null>(null);
+  let durationText = $state('');
+  let durationInvalid = $state(false);
+
+  // Sélection d'un autre repère : le champ reprend sa durée.
+  let shownCueAt = -1;
+  $effect(() => {
+    const at = active.cue?.at ?? -1;
+    if (at !== shownCueAt) {
+      shownCueAt = at;
+      if (active.cue && !inserting) {
+        durationText = active.cue.seconds ? formatDuration(active.cue.seconds) : '';
+        durationInvalid = false;
+      }
+    }
+  });
+
+  function askDuration(cue: Cue) {
+    inserting = cue;
+    durationText = '';
+    durationInvalid = false;
+  }
+
+  function cancelDuration() {
+    inserting = null;
+    durationInvalid = false;
+    editor?.commands.focus();
+  }
+
+  function submitDuration() {
+    const seconds = parseCueSeconds(durationText);
+    if (seconds === undefined) {
+      durationInvalid = true;
+      return;
+    }
+    if (inserting) {
+      const { id, label } = inserting;
+      chain()
+        .insertContent({
+          type: 'cue',
+          attrs: seconds ? { cueId: id, label, seconds } : { cueId: id, label },
+        })
+        .run();
+      inserting = null;
+    } else if (active.cue) {
+      chain().updateAttributes('cue', { seconds }).run();
+    }
+    durationInvalid = false;
+  }
+
+  function durationKey(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitDuration();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelDuration();
+    }
+  }
+
+  const focusOnMount = (el: HTMLInputElement) => el.focus();
 </script>
 
 <!-- Les boutons ne prennent pas le focus : la sélection et la frappe restent dans le texte. -->
@@ -85,7 +159,9 @@
   role="toolbar"
   tabindex="-1"
   aria-label={t('editor.toolbar')}
-  onmousedown={(e) => e.preventDefault()}
+  onmousedown={(e) => {
+    if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+  }}
 >
   <div class="group">
     <button
@@ -190,11 +266,9 @@
       <button
         type="button"
         class="cue-btn"
+        class:on={inserting?.id === cue.id}
         style:color={cue.color}
-        onclick={() =>
-          chain()
-            .insertContent({ type: 'cue', attrs: { cueId: cue.id, label: cue.label } })
-            .run()}>[{cue.label}]</button
+        onclick={() => askDuration(cue)}>[{cue.label}]</button
       >
     {/each}
   </div>
@@ -214,6 +288,41 @@
       onclick={() => chain().redo().run()}>↷</button
     >
   </div>
+  {#if inserting || active.cue}
+    <div class="cue-duration">
+      <span class="cue-name">[{inserting?.label ?? active.cue?.label}]</span>
+      <label>
+        {t('editor.cueDuration')}
+        {#if inserting}
+          <input
+            class="mono"
+            bind:value={durationText}
+            onkeydown={durationKey}
+            placeholder="0:12"
+            aria-invalid={durationInvalid}
+            use:focusOnMount
+          />
+        {:else}
+          <input
+            class="mono"
+            bind:value={durationText}
+            onkeydown={durationKey}
+            placeholder="0:12"
+            aria-invalid={durationInvalid}
+          />
+        {/if}
+      </label>
+      <button type="button" onclick={submitDuration}>
+        {inserting ? t('editor.cueInsert') : t('editor.cueApply')}
+      </button>
+      {#if inserting}
+        <button type="button" onclick={cancelDuration}>{t('common.cancel')}</button>
+      {/if}
+      <span class="hint" class:err={durationInvalid}>
+        {durationInvalid ? t('editor.cueDurationInvalid') : t('editor.cueDurationHint')}
+      </span>
+    </div>
+  {/if}
 </div>
 
 <div class="surface" bind:this={element}></div>
@@ -264,6 +373,35 @@
   .cue-btn {
     font-weight: 600;
     font-size: 0.8rem;
+  }
+  .cue-duration {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .cue-duration label {
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .cue-duration input {
+    width: 5rem;
+  }
+  .cue-name {
+    font-weight: 600;
+  }
+  .hint {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .hint.err {
+    color: #f7c1c1;
   }
   .lbl {
     color: var(--muted);

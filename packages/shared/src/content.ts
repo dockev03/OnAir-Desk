@@ -21,6 +21,8 @@ export const HIGHLIGHT_COLORS = ['#3C3489', '#085041', '#633806', '#712B13', '#0
 export const MAX_CONTENT_BYTES = 200_000;
 export const MAX_CONTENT_DEPTH = 8;
 export const MAX_CUES = 20;
+/** Durée maximale d'un élément attaché à un repère (jingle, son…), en secondes. */
+export const MAX_CUE_SECONDS = 3600;
 
 export type TextColor = (typeof TEXT_COLORS)[number];
 export type HighlightColor = (typeof HIGHLIGHT_COLORS)[number];
@@ -58,7 +60,14 @@ export const inlineSchema = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('cue'),
-      attrs: z.object({ cueId: cueIdSchema, label: z.string().max(40) }).strict(),
+      attrs: z
+        .object({
+          cueId: cueIdSchema,
+          label: z.string().max(40),
+          /** Durée de l'élément : le défilement automatique s'arrête pendant ce temps. */
+          seconds: z.number().int().min(1).max(MAX_CUE_SECONDS).optional(),
+        })
+        .strict(),
     })
     .strict(),
 ]);
@@ -179,6 +188,9 @@ type Loose = {
   content?: unknown[];
 };
 
+const isCueSeconds = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_CUE_SECONDS;
+
 function sanitizeMarks(marks: unknown[] | undefined): Mark[] | undefined {
   if (!marks) return undefined;
   const out: Mark[] = [];
@@ -221,9 +233,13 @@ function sanitizeInline(nodes: unknown[] | undefined): Inline[] | undefined {
     } else if (n.type === 'hardBreak') {
       out.push({ type: 'hardBreak' });
     } else if (n.type === 'cue' && typeof n.attrs?.cueId === 'string') {
+      const seconds = n.attrs.seconds;
+      const label = String(n.attrs.label ?? '').slice(0, 40);
       out.push({
         type: 'cue',
-        attrs: { cueId: n.attrs.cueId, label: String(n.attrs.label ?? '').slice(0, 40) },
+        attrs: isCueSeconds(seconds)
+          ? { cueId: n.attrs.cueId, label, seconds }
+          : { cueId: n.attrs.cueId, label },
       });
     }
   }
@@ -320,6 +336,35 @@ export function docToText(doc: ScriptDoc): string {
 
 export function countWords(text: string): number {
   return text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+}
+
+/** Durée cumulée des éléments attachés aux repères (jingles, sons…), en secondes. */
+export function cueSeconds(doc: ScriptDoc): number {
+  let total = 0;
+  const walk = (nodes: unknown[] | undefined) => {
+    for (const n of (nodes ?? []) as Loose[]) {
+      const seconds = n.attrs?.seconds;
+      if (n.type === 'cue' && isCueSeconds(seconds)) total += seconds;
+      else if (Array.isArray(n.content)) walk(n.content);
+    }
+  };
+  walk(doc.content);
+  return total;
+}
+
+/**
+ * Lecture d'une durée saisie : « 12 » (secondes) ou « 1:30 » (minutes:secondes).
+ * Vide → null (pas de durée) ; invalide ou hors limites → undefined.
+ */
+export function parseCueSeconds(input: string): number | null | undefined {
+  const v = input.trim();
+  if (v === '') return null;
+  const m = /^(?:(\d{1,2}):)?(\d{1,4})$/.exec(v);
+  if (!m) return undefined;
+  // Après « : », toujours deux chiffres (« 1:5 » est ambigu).
+  if (m[1] !== undefined && (m[2]!.length !== 2 || Number(m[2]) > 59)) return undefined;
+  const total = Number(m[1] ?? 0) * 60 + Number(m[2]);
+  return isCueSeconds(total) ? total : undefined;
 }
 
 /** Durée de lecture estimée, en secondes. */
