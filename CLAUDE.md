@@ -9,6 +9,7 @@ Documents liés :
 - `docs/plan-etape-2.md` : plan détaillé et **bilan** de l'étape 2 (scripts), réalisée.
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
 - `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
+- `docs/plan-etape-5.md` : plan de l'étape 5 (compléments conducteurs), validé, à réaliser.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio) et 4 (conducteurs) réalisées ; étapes 5 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
@@ -100,7 +101,7 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - **Notion de « studio »** dès maintenant, même avec un seul studio : état antenne, prompteur et messages sont rattachés à un studio (un studio par défaut).
 - **Simulateur d'automation** : faux connecteur qui joue une playlist fictive (titres, intros, outros), pour développer et tester sans RadioDJ ni AzuraCast ; sert aussi de démonstration et de modèle de connecteur.
 - **Calculs de temps dans `packages/shared`** : heure de démarrage, talk-over, avance / retard, backtiming, minuteur… en fonctions pures testées, utilisées par le serveur et par l'écran. Jamais dupliquées.
-- **Journal d'audit commun** : une table d'événements (qui, quoi, quand) pour les connexions, envois de la régie, changements de rôles, On Air… La main courante en est une vue filtrée.
+- **Journal d'audit commun** : la table d'événements existante (`audit_log`, étape 1), étendue (qui, quoi, quand) pour les connexions, envois de la régie, changements de rôles, On Air… La main courante en est une vue filtrée.
 - **Tests de bout en bout de l'écran studio** (Playwright) : passages d'alerte, reconnexion après coupure, appui long. Chaque étape ajoute les siens.
 
 ## 5. Écran studio (validé visuellement — voir maquette v3)
@@ -178,7 +179,7 @@ Thème sombre (lisibilité, pas d'éblouissement).
 12. **État des duplex et liaisons extérieures** : le réalisateur indique d'un clic l'état d'un correspondant ou d'un invité au téléphone (« en attente », « prêt », « à l'antenne », « coupé ») ; affiché sur l'écran studio.
 13. **Mode répétition** : dérouler un conducteur hors antenne pour le chronométrer avant l'émission, sans toucher au On Air ni au bilan d'émission.
 14. **Main courante de l'émission** : le réalisateur note les incidents en direct (coupure, retard d'invité, problème de son) avec l'heure ; elle est jointe au bilan d'émission.
-15. **Modèles d'émission récurrente** : dupliquer une émission comme modèle, et générer automatiquement le conducteur d'une émission quotidienne ou hebdomadaire.
+15. **Modèles d'émission récurrente** : enregistrer une émission comme modèle (jours de diffusion, période, exclusions), puis en créer les conducteurs en un clic. La création reste **manuelle**, faite par l'animateur.
 16. **Impression / PDF du conducteur** : version papier de secours pour la régie, et archive.
 17. **Écran de veille hors émission** : horloge, On Air, prochaine émission, et **titre en cours** quand même (via AzuraCast hors direct, §6).
 
@@ -202,15 +203,16 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 2. ✅ **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur », corbeille, historique. → détail et bilan dans `docs/plan-etape-2.md`.
 3. ✅ **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, Précédent / Suivant, sortie par appui long. → détail et bilan dans `docs/plan-etape-3.md`. (Les alertes de fin de titre arrivent avec RadioDJ, étape 7.)
 4. ✅ **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication. → détail et bilan dans `docs/plan-etape-4.md`. Passée avant RadioDJ à la demande de l'utilisateur : elle ne dépend que du code existant.
-5. **Compléments conducteurs** (étape courte, 2 fonctionnalités) :
-   1. modèles d'émission récurrente ;
-   2. impression / PDF du conducteur.
+5. **Compléments conducteurs** (étape courte, 3 fonctionnalités) → plan dans `docs/plan-etape-5.md` :
+   1. modèles d'émission récurrente (création des conducteurs **manuelle**, par l'animateur) ;
+   2. impression / PDF du conducteur ;
+   3. logo de la station (en plus du nom).
 6. **Socle antenne** (6 fonctionnalités, décisions d'architecture du §4) :
    1. état antenne central versionné, rattaché à un studio (studio par défaut) ;
    2. interface commune des connecteurs d'automation ;
    3. simulateur d'automation ;
    4. calculs de temps dans `packages/shared` ;
-   5. journal d'audit commun ;
+   5. journal d'audit commun (la table `audit_log` existe depuis l'étape 1 : la compléter et en faire la base de la main courante) ;
    6. tests de bout en bout de l'écran studio (mise en place et premiers scénarios).
 7. **RadioDJ** (6 fonctionnalités) :
    1. titre en cours ;
