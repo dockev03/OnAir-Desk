@@ -1,5 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import type { Cue as CueDef } from '@onair-desk/shared';
+import { formatDuration, type Cue as CueDef } from '@onair-desk/shared';
 
 export interface CueOptions {
   /** Repères de la station (libellé et couleur à jour). */
@@ -9,7 +9,8 @@ export interface CueOptions {
 /**
  * Repère inséré dans le texte ([JINGLE], [PAUSE]…). Nœud atomique : il se sélectionne et
  * s'efface d'un bloc. Le libellé est aussi conservé dans le script, au cas où le repère
- * serait retiré des paramètres.
+ * serait retiré des paramètres. Une durée facultative (jingle de 12 s…) arrête le
+ * défilement automatique du prompteur pendant ce temps.
  */
 export const CueNode = Node.create<CueOptions>({
   name: 'cue',
@@ -34,6 +35,14 @@ export const CueNode = Node.create<CueOptions>({
         parseHTML: (el) => el.getAttribute('data-label') ?? '',
         renderHTML: (attrs) => ({ 'data-label': attrs.label }),
       },
+      seconds: {
+        default: null,
+        parseHTML: (el) => {
+          const v = Number(el.getAttribute('data-seconds'));
+          return Number.isInteger(v) && v > 0 ? v : null;
+        },
+        renderHTML: (attrs) => (attrs.seconds ? { 'data-seconds': attrs.seconds } : {}),
+      },
     };
   },
 
@@ -50,11 +59,15 @@ export const CueNode = Node.create<CueOptions>({
         style: `color: ${def?.color ?? '#B4B2A9'}`,
         contenteditable: 'false',
       }),
-      `[${def?.label ?? node.attrs.label}]`,
+      cueText(def?.label ?? node.attrs.label, node.attrs.seconds),
     ];
   },
 
   renderText({ node }) {
-    return `[${node.attrs.label}]`;
+    return cueText(node.attrs.label, node.attrs.seconds);
   },
 });
+
+/** Texte affiché d'un repère : « [JINGLE] » ou « [JINGLE · 0:12] ». */
+export const cueText = (label: string, seconds?: number | null): string =>
+  seconds ? `[${label} · ${formatDuration(seconds)}]` : `[${label}]`;
