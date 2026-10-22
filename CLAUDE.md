@@ -8,6 +8,7 @@ Documents liés :
 - `docs/plan-etape-1.md` : plan détaillé et **bilan** de l'étape 1 (socle), réalisée.
 - `docs/plan-etape-2.md` : plan détaillé et **bilan** de l'étape 2 (scripts), réalisée.
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
+- `docs/plan-etape-4.md` : plan de l'étape 4 (conducteurs), **validé**, en cours.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts) et 3 (écran studio) réalisées. Ne rien développer d'une nouvelle étape sans validation explicite.**
@@ -96,7 +97,7 @@ Thème sombre (lisibilité, pas d'éblouissement).
    - **Alerte fin de titre** : ≤ 30 s → **orange** + « Bientôt à vous » ; ≤ 10 s → **rouge pulsé** + « À vous dans N s ».
    - Seuils **paramétrables**. Pulsation lente (~1 Hz, pas de flash rapide). Respect de `prefers-reduced-motion` (rouge fixe).
 3. **Bloc « Titre à venir »** : titre, artiste, durée, intro, **heure de démarrage calculée**.
-   - ⚠️ À trancher à l'étape 4 : heure actuelle + temps restant (maquette), ou prise en compte du fondu/outro si RadioDJ enchaîne en mix.
+   - ⚠️ À trancher à l'étape 5 (RadioDJ) : heure actuelle + temps restant (maquette), ou prise en compte du fondu/outro si RadioDJ enchaîne en mix.
 
 ### Barre latérale gauche
 - « Aujourd'hui » (conducteurs du jour), puis **un dossier par animateur** (Conducteurs triés par date / Scripts, sous-dossiers possibles), plus un dossier **Commun** (météo, agenda…).
@@ -148,15 +149,21 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 
 1. ✅ **Socle** : projet, Docker, SQLite, auth (comptes + jeton kiosk lecture seule), paramétrage minimal, assistant de premier lancement. → détail et bilan dans `docs/plan-etape-1.md`.
 2. ✅ **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur », corbeille, historique. → détail et bilan dans `docs/plan-etape-2.md`.
-3. ✅ **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, Précédent / Suivant, sortie par appui long. → détail et bilan dans `docs/plan-etape-3.md`. (Les alertes de fin de titre arrivent avec RadioDJ, étape 4.)
-4. **RadioDJ** : titre en cours / à venir, compte à rebours, intro/outro.
-5. **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication.
+3. ✅ **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, Précédent / Suivant, sortie par appui long. → détail et bilan dans `docs/plan-etape-3.md`. (Les alertes de fin de titre arrivent avec RadioDJ, étape 5.)
+4. **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication. → plan **validé** dans `docs/plan-etape-4.md`. Passée avant RadioDJ à la demande de l'utilisateur : elle ne dépend que du code existant.
+5. **RadioDJ** : titre en cours / à venir, compte à rebours, intro/outro.
 6. **On Air + météo**.
 7. **Raspberry Pi** : guide d'installation (Chromium kiosk, démarrage auto, NTP/chrony).
 
 ## 9. Règles de travail à respecter
 
-- Travail sur **branche dédiée** (feature/fix), jamais de commit/push direct sur `main`, `master` ou `staging`.
+- Travail sur **branche dédiée**, jamais de commit/push direct sur `main`, `master` ou `staging`.
+- **Nom de branche parlant**, en minuscules et avec des tirets, qui dit ce que contient la branche :
+  - `feature/etape-N-sujet` pour une étape du plan (ex. `feature/etape-4-conducteurs`) ;
+  - `feature/sujet` pour une évolution hors étape (ex. `feature/duree-reperes`) ;
+  - `fix/sujet` pour une correction (ex. `fix/reconnexion-kiosk`) ;
+  - `docs/sujet` pour la documentation seule.
+  - Jamais de nom généré sans rapport avec le contenu (ex. `claude/bold-gates-kwk0yg`). Une branche fusionnée n'est pas réutilisée : nouvelle évolution = nouvelle branche.
 - **Aucun commit ni push sans validation explicite** de l'utilisateur à chaque étape.
 - Pratiques sécurisées : validation des entrées, gestion d'erreurs, **aucun secret en dur** (variables d'environnement / coffre).
 - Pas d'exposition sur Internet par défaut (réseau interne / VPN), HTTPS.
