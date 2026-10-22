@@ -124,7 +124,9 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
 
   app.get('/api/trash', async (req): Promise<TrashItem[]> => {
     const user = requireUser(req);
-    return repos.scripts.listTrash().filter((t) => canWrite(user, t.ownerId));
+    return [...repos.scripts.listTrash(), ...repos.rundowns.listTrash()]
+      .filter((t) => canWrite(user, t.ownerId))
+      .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
   });
 
   app.post('/api/trash/:id/restore', async (req) => {
@@ -192,17 +194,18 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
     return library.prompterState();
   });
 
-  // Seule écriture permise à un écran kiosk : choisir le script affiché (ou vider l'écran).
+  // Seule écriture permise à un écran kiosk : choisir ce qui est affiché (un script, un
+  // élément de conducteur, ou rien). Aucune modification de contenu.
   app.post('/api/prompter', { config: { deviceMayWrite: true } }, async (req) => {
     const identity = requireIdentity(req);
-    const { scriptId } = parse(prompterSendSchema, req.body);
-    const state = library.sendToPrompter(identity, scriptId);
+    const input = parse(prompterSendSchema, req.body);
+    const state = library.sendToPrompter(identity, input);
     repos.audit.write(
       identity.kind === 'user'
         ? { type: 'user', id: identity.user.id }
         : { type: 'device', id: identity.device.id },
       'prompter.sent',
-      { scriptId },
+      input,
     );
     return state;
   });

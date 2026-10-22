@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CUES } from './content.js';
+import { DEFAULT_ITEM_TYPES } from './rundown.js';
 import { setupSchema, updateUserSchema, usernameSchema, settingsSchema } from './schemas.js';
 
 describe('usernameSchema', () => {
@@ -22,6 +23,7 @@ describe('settingsSchema', () => {
     defaultSpeedWpm: 150,
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
+    itemTypes: DEFAULT_ITEM_TYPES,
   };
   it('accepte un paramétrage valide', () => {
     expect(settingsSchema.safeParse(base).success).toBe(true);

@@ -9,6 +9,7 @@ import { registerIdentity, type Identity } from './auth/identity.js';
 import { LoginThrottle } from './auth/throttle.js';
 import { HttpError } from './lib/errors.js';
 import { Library } from './library.js';
+import { Rundowns } from './rundowns.js';
 import { SetupState } from './setup.js';
 import { inlineScriptHashes, readIndexHtml, registerStatic } from './static.js';
 import { Hub } from './ws/hub.js';
@@ -17,6 +18,7 @@ import type { RouteContext } from './routes/context.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerDeviceRoutes } from './routes/devices.js';
 import { registerLibraryRoutes } from './routes/library.js';
+import { registerRundownRoutes } from './routes/rundowns.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
@@ -52,11 +54,13 @@ export async function buildApp(opts: AppOptions): Promise<App> {
 
   const repos = createRepos(db);
   const hub = new Hub();
+  const library = new Library(repos, hub);
   const ctx: RouteContext = {
     config,
     repos,
     hub,
-    library: new Library(repos, hub),
+    library,
+    rundowns: new Rundowns(repos, library),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
     rootCaPem: opts.rootCaPem ?? (() => null),
@@ -107,6 +111,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerDeviceRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
+  registerRundownRoutes(app, ctx);
   registerWsRoutes(app, repos, ctx.hub, ctx.library, config.allowedOrigins);
   await registerStatic(app, config.webDir, indexHtml);
 

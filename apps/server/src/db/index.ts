@@ -3,6 +3,7 @@ import { AuditRepo } from './audit.js';
 import { DeviceRepo } from './devices.js';
 import { FolderRepo } from './folders.js';
 import { PrompterRepo } from './prompter.js';
+import { RundownRepo } from './rundowns.js';
 import { ScriptRepo } from './scripts.js';
 import { SessionRepo } from './sessions.js';
 import { SettingsRepo } from './settings.js';
@@ -18,6 +19,7 @@ export interface Repos {
   folders: FolderRepo;
   scripts: ScriptRepo;
   prompter: PrompterRepo;
+  rundowns: RundownRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -31,9 +33,11 @@ export function createRepos(db: Db): Repos {
     folders: new FolderRepo(db),
     scripts: new ScriptRepo(db),
     prompter: new PrompterRepo(db),
+    rundowns: new RundownRepo(db),
   };
 }
 
 export { openDatabase, openMemoryDatabase, type Db } from './database.js';
 export { toPublicUser, type User } from './users.js';
 export type { ScriptRecord } from './scripts.js';
+export type { RundownRecord } from './rundowns.js';

@@ -1,4 +1,5 @@
 import type { ScriptDoc } from './content.js';
+import type { ItemScriptInfo } from './rundown.js';
 import type { Locale, Role, Settings } from './schemas.js';
 
 export interface PublicUser {
@@ -60,6 +61,8 @@ export interface ScriptSummary {
   folderId: number | null;
   title: string;
   wordCount: number;
+  /** Durée cumulée des repères (jingles, sons…), en secondes. */
+  cueSeconds: number;
   speedWpm: number;
   updatedAt: string;
   updatedByName: string | null;
@@ -83,11 +86,14 @@ export interface SearchHit extends ScriptSummary {
 }
 
 export interface TrashItem {
+  kind: 'script' | 'rundown';
   id: number;
   ownerId: number | null;
   ownerName: string;
   title: string;
-  wordCount: number;
+  /** Script : nombre de mots ; conducteur : nombre d'éléments. */
+  wordCount?: number;
+  itemCount?: number;
   deletedAt: string;
   deletedByName: string | null;
   /** Date de suppression définitive automatique. */
@@ -107,6 +113,47 @@ export interface Revision extends RevisionSummary {
   content: ScriptDoc;
 }
 
+// ---- Conducteurs -----------------------------------------------------------------
+
+export interface RundownSummary {
+  id: number;
+  ownerId: number | null;
+  title: string;
+  /** Date de diffusion AAAA-MM-JJ. */
+  airDate: string;
+  /** Heure de début HH:MM:SS. */
+  startTime: string;
+  itemCount: number;
+  /** Durée totale prévue, en secondes. */
+  totalSeconds: number;
+  updatedAt: string;
+  updatedByName: string | null;
+}
+
+export interface RundownItem {
+  uid: string;
+  typeId: string;
+  title: string;
+  /** Durée saisie à la main ; null : calculée depuis le script. */
+  durationSeconds: number | null;
+  notes: string;
+  scriptId: number | null;
+  /** Script attaché (sans son contenu) ; null si aucun ou supprimé définitivement. */
+  script: ItemScriptInfo | null;
+}
+
+export interface Rundown extends RundownSummary {
+  items: RundownItem[];
+  version: number;
+  canWrite: boolean;
+}
+
+export interface RundownList {
+  /** Date du jour dans le fuseau de la station (AAAA-MM-JJ). */
+  today: string;
+  rundowns: RundownSummary[];
+}
+
 // ---- Prompteur ------------------------------------------------------------------
 
 export interface PrompterScript {
@@ -120,9 +167,22 @@ export interface PrompterScript {
   folderId?: number | null;
 }
 
+/** Conducteur affiché sur l'écran studio (copie, sans le contenu des scripts). */
+export interface PrompterRundown {
+  id: number;
+  ownerId: number | null;
+  title: string;
+  airDate: string;
+  startTime: string;
+  items: RundownItem[];
+}
+
 export interface PrompterState {
   /** Copie du script affiché (gardée même s'il est supprimé : jamais d'écran blanc). */
   script: PrompterScript | null;
+  /** Conducteur suivi, et élément en cours ; null si un script seul est affiché. */
+  rundown: PrompterRundown | null;
+  itemUid: string | null;
   /** Le script affiché a été mis à la corbeille ou supprimé. */
   deleted: boolean;
   sentAt: string | null;

@@ -1,5 +1,12 @@
 import { z } from 'zod';
 import { cuesSchema, scriptDocSchema } from './content.js';
+import {
+  airDateSchema,
+  itemTypesSchema,
+  itemUidSchema,
+  rundownItemsSchema,
+  startTimeSchema,
+} from './rundown.js';
 
 export const LOCALES = ['fr', 'en'] as const;
 export const ROLES = ['admin', 'animateur'] as const;
@@ -50,6 +57,8 @@ export const settingsSchema = z.object({
   prompterFontSize: z.number().int().min(PROMPTER_FONT_MIN).max(PROMPTER_FONT_MAX),
   /** Repères insérables dans les scripts. */
   cues: cuesSchema,
+  /** Types d'éléments de conducteur et leurs couleurs. */
+  itemTypes: itemTypesSchema,
 });
 
 /** Modification des paramètres : seuls les champs fournis changent. */
@@ -155,7 +164,43 @@ export const searchQuerySchema = z.object({ q: z.string().trim().max(100).defaul
 
 export const restoreRevisionSchema = z.object({ version: z.number().int().positive() });
 
-export const prompterSendSchema = z.object({ scriptId: z.number().int().positive().nullable() });
+// ---- Conducteurs -----------------------------------------------------------------
+
+export const rundownTitleSchema = z.string().trim().min(1).max(120);
+
+export const createRundownSchema = z.object({
+  ownerId: ownerIdSchema,
+  title: rundownTitleSchema,
+  airDate: airDateSchema,
+  startTime: startTimeSchema,
+  items: rundownItemsSchema.optional(),
+});
+
+export const updateRundownSchema = z
+  .object({
+    /** Version connue du client : refus (409) si le conducteur a changé entre-temps. */
+    version: z.number().int().positive(),
+    title: rundownTitleSchema.optional(),
+    airDate: airDateSchema.optional(),
+    startTime: startTimeSchema.optional(),
+    items: rundownItemsSchema.optional(),
+  })
+  .refine((v) => Object.keys(v).length > 1, 'empty');
+
+export const duplicateRundownSchema = z.object({
+  ownerId: ownerIdSchema,
+  airDate: airDateSchema,
+  title: rundownTitleSchema.optional(),
+});
+
+/**
+ * Choix de l'affichage de l'écran studio : un script seul, un élément de conducteur, ou
+ * rien (scriptId null).
+ */
+export const prompterSendSchema = z.union([
+  z.object({ scriptId: z.number().int().positive().nullable() }).strict(),
+  z.object({ rundownId: z.number().int().positive(), itemUid: itemUidSchema }).strict(),
+]);
 
 export type Locale = z.infer<typeof localeSchema>;
 export type Role = z.infer<typeof roleSchema>;
@@ -169,3 +214,6 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
 export type CreateScriptInput = z.infer<typeof createScriptSchema>;
 export type UpdateScriptInput = z.infer<typeof updateScriptSchema>;
+export type CreateRundownInput = z.infer<typeof createRundownSchema>;
+export type UpdateRundownInput = z.infer<typeof updateRundownSchema>;
+export type PrompterSendInput = z.infer<typeof prompterSendSchema>;

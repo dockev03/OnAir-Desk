@@ -37,3 +37,34 @@ describe('openDatabase', () => {
     expect(() => openDatabase(dir)).toThrow(/plus récente/);
   });
 });
+
+describe('migration 4', () => {
+  it('remplit la durée des repères des scripts existants', () => {
+    const v3 = openDatabase(dir, () => {}, migrations.slice(0, 3));
+    const content = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'cue', attrs: { cueId: 'jingle', label: 'JINGLE', seconds: 12 } },
+            { type: 'text', text: 'seconds' },
+            { type: 'cue', attrs: { cueId: 'son', label: 'SON', seconds: 30 } },
+            { type: 'cue', attrs: { cueId: 'pause', label: 'PAUSE' } },
+          ],
+        },
+      ],
+    });
+    const insert = v3.prepare('INSERT INTO scripts (title, content, speed_wpm) VALUES (?, ?, 150)');
+    insert.run('Avec repères', content);
+    insert.run('Sans repère', '{"type":"doc","content":[{"type":"paragraph"}]}');
+    v3.close();
+
+    const db = openDatabase(dir);
+    expect(db.prepare('SELECT title, cue_seconds FROM scripts ORDER BY id').all()).toEqual([
+      { title: 'Avec repères', cue_seconds: 42 },
+      { title: 'Sans repère', cue_seconds: 0 },
+    ]);
+    db.close();
+  });
+});

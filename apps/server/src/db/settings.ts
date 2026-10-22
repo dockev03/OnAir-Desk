@@ -1,4 +1,10 @@
-import { DEFAULT_CUES, DEFAULT_SPEED_WPM, settingsSchema, type Settings } from '@onair-desk/shared';
+import {
+  DEFAULT_CUES,
+  DEFAULT_ITEM_TYPES,
+  DEFAULT_SPEED_WPM,
+  settingsSchema,
+  type Settings,
+} from '@onair-desk/shared';
 import type { Db } from './database.js';
 
 export function defaultSettings(): Settings {
@@ -11,6 +17,7 @@ export function defaultSettings(): Settings {
     defaultSpeedWpm: DEFAULT_SPEED_WPM,
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
+    itemTypes: DEFAULT_ITEM_TYPES,
   };
 }
 
