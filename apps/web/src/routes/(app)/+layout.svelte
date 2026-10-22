@@ -36,6 +36,7 @@
   const isAdmin = $derived(session.user?.role === 'admin');
   const links = $derived([
     { href: '/scripts', label: t('nav.scripts') },
+    { href: '/rundowns', label: t('nav.rundowns') },
     { href: '/trash', label: t('nav.trash') },
     ...(isAdmin
       ? [

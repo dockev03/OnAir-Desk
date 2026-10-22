@@ -29,9 +29,13 @@
     }
   }
 
+  /** Routes de la corbeille : scripts à la racine, conducteurs sous /rundowns. */
+  const trashUrl = (item: TrashItem) =>
+    item.kind === 'rundown' ? `/api/trash/rundowns/${item.id}` : `/api/trash/${item.id}`;
+
   function remove(item: TrashItem) {
     if (confirm(t('trash.deleteConfirm', { title: item.title }))) {
-      void run(() => api('DELETE', `/api/trash/${item.id}`));
+      void run(() => api('DELETE', trashUrl(item)));
     }
   }
 </script>
@@ -46,13 +50,16 @@
   <div class="table-wrap">
     <table>
       <tbody>
-        {#each items as item (item.id)}
+        {#each items as item (`${item.kind}-${item.id}`)}
           <tr>
             <td>
               <strong>{item.title}</strong>
               <div class="muted small">
+                {#if item.kind === 'rundown'}{t('trash.kindRundown')} ·{/if}
                 {item.ownerId === null ? t('library.common') : item.ownerName} ·
-                {t('library.words', { n: item.wordCount })}
+                {item.kind === 'rundown'
+                  ? t('trash.items', { n: item.itemCount ?? 0 })
+                  : t('library.words', { n: item.wordCount ?? 0 })}
               </div>
             </td>
             <td class="small">
@@ -68,7 +75,7 @@
               <div class="row" style="justify-content: flex-end">
                 <button
                   class="primary"
-                  onclick={() => run(() => api('POST', `/api/trash/${item.id}/restore`))}
+                  onclick={() => run(() => api('POST', `${trashUrl(item)}/restore`))}
                   >{t('trash.restore')}</button
                 >
                 <button class="danger" onclick={() => remove(item)}

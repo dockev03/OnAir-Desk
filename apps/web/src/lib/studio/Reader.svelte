@@ -24,6 +24,8 @@
     onprev,
     onnext,
     onexit,
+    label,
+    exitLabel,
   }: {
     script: PrompterScript;
     cues: Cue[];
@@ -35,6 +37,10 @@
     onprev: () => void;
     onnext: () => void;
     onexit: () => void;
+    /** Contexte affiché à la place du titre (ex. élément 3/12 d'un conducteur). */
+    label?: string;
+    /** Libellé du bouton de sortie (ex. retour au conducteur). */
+    exitLabel?: string;
   } = $props();
 
   /** Position de la bande de lecture, en proportion de la hauteur de la zone. */
@@ -208,7 +214,7 @@
       <button onclick={() => onfont(4)} aria-label={t('studio.larger')}>A+</button>
     </div>
     <span class="title">
-      {script.title}
+      {label ?? script.title}
       {#if deleted}<span class="deleted">{t('studio.deleted')}</span>{/if}
     </span>
     <span class="remain mono" title={t('studio.remaining')}>{formatDuration(remaining)}</span>
@@ -249,7 +255,11 @@
 
   <div class="nav">
     <button class="big" onclick={onprev} disabled={!canPrev}>‹ {t('studio.previous')}</button>
-    <HoldButton label={t('studio.exit')} hint={t('studio.holdToExit')} onhold={onexit} />
+    <HoldButton
+      label={exitLabel ?? t('studio.exit')}
+      hint={t('studio.holdToExit')}
+      onhold={onexit}
+    />
     <button class="big" onclick={onnext} disabled={!canNext}>{t('studio.next')} ›</button>
   </div>
 </div>
