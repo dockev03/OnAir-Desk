@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { clockOffset, formatClock } from './time.js';
+import { formatClock } from './time.js';
+import { clockOffset } from './timing.js';
 
 describe('clockOffset', () => {
   it('compense la moitié du trajet aller-retour', () => {

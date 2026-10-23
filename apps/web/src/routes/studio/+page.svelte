@@ -17,6 +17,7 @@
   import { groupByDate, type StudioView } from '$lib/rundowns.js';
   import { logoUrl } from '$lib/settings.svelte.js';
   import ItemCard from '$lib/studio/ItemCard.svelte';
+  import NowPlaying from '$lib/studio/NowPlaying.svelte';
   import Reader from '$lib/studio/Reader.svelte';
   import RundownPicker from '$lib/studio/RundownPicker.svelte';
   import RundownView from '$lib/studio/RundownView.svelte';
@@ -29,14 +30,13 @@
   const link = new LiveLink();
   /** Heure serveur estimée, mise à jour à chaque changement de seconde. */
   let now = $state(Date.now());
-  // Recalculée aussi dès que les paramètres (fuseau, format) arrivent ou changent.
-  const clock = $derived(
-    formatClock(
-      new Date(now),
-      link.settings?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
-      link.settings?.timeFormat ?? '24h',
-    ),
+  const timezone = $derived(
+    link.settings?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
+  // Recalculée aussi dès que les paramètres (fuseau, format) arrivent ou changent.
+  const clock = $derived(formatClock(new Date(now), timezone, link.settings?.timeFormat ?? '24h'));
+  /** Titres en cours / à venir : affichés dès qu'une source d'automation est choisie. */
+  const showAir = $derived((link.air?.state.source.id ?? 'none') !== 'none');
 
   let lib = $state<Library | null>(null);
   let rundownList = $state<RundownList | null>(null);
@@ -263,8 +263,16 @@
       <div class="station">{link.settings?.stationName ?? ''}</div>
       <div class="clock mono" aria-live="off">{clock}</div>
     </div>
+    {#if showAir && link.air}
+      <NowPlaying
+        air={link.air.state}
+        {now}
+        {timezone}
+        timeFormat={link.settings?.timeFormat ?? '24h'}
+      />
+    {/if}
     <!-- Dans le bandeau : une coupure ne décale pas le texte en cours de lecture. -->
-    <div class="spacer">
+    <div class="spacer" class:compact={showAir}>
       {#if link.state === 'offline'}<div class="offline-line">{t('studio.offline')}</div>{/if}
     </div>
     <div class="link {link.state}" title={link.state}><span class="dot"></span></div>
@@ -418,6 +426,9 @@
     flex: 1;
     display: flex;
     align-items: center;
+  }
+  .spacer.compact {
+    flex: 0 1 auto;
   }
   .link {
     display: flex;

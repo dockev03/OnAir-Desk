@@ -4,9 +4,11 @@ import {
   logoUploadSchema,
   settingsSchema,
   settingsUpdateSchema,
+  type AirSnapshot,
   type Settings,
 } from '@onair-desk/shared';
-import { requireAdmin, requireIdentity } from '../auth/identity.js';
+import { requireAdmin, requireIdentity, studioOf } from '../auth/identity.js';
+import { DEFAULT_STUDIO_ID } from '../db/index.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { detectImageType } from '../lib/image.js';
 import { parse } from '../lib/validate.js';
@@ -28,12 +30,34 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) 
     const values = parse(settingsUpdateSchema, req.body);
     // Contrôle de l'ensemble après fusion (ex. cohérence des repères).
     parse(settingsSchema, { ...repos.settings.get(), ...values });
+    const before = repos.settings.get();
     const settings = repos.settings.set(values);
     hub.broadcastSettings(settings);
     repos.audit.write({ type: 'user', id: admin.id }, 'settings.updated', {
       fields: Object.keys(values),
     });
+    if (
+      settings.automationSource !== before.automationSource ||
+      settings.simulatorSpeed !== before.simulatorSpeed
+    ) {
+      repos.audit.write(
+        { type: 'user', id: admin.id },
+        'automation.source_changed',
+        {
+          from: before.automationSource,
+          to: settings.automationSource,
+          speed: settings.simulatorSpeed,
+        },
+        DEFAULT_STUDIO_ID,
+      );
+      ctx.automation.apply(settings);
+    }
     return settings;
+  });
+
+  // État antenne du studio de l'appelant (état du connecteur pour la page Paramètres).
+  app.get('/api/air', async (req): Promise<AirSnapshot> => {
+    return ctx.air.get(studioOf(requireIdentity(req)));
   });
 
   // ---- Logo de la station ----------------------------------------------------------

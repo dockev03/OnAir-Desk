@@ -1,3 +1,4 @@
+import type { AirMessage, AirSnapshot, Studio } from './air.js';
 import type { ScriptDoc } from './content.js';
 import type { ItemScriptInfo } from './rundown.js';
 import type { Locale, Role, Settings } from './schemas.js';
@@ -16,6 +17,8 @@ export interface PublicUser {
 export interface PublicDevice {
   id: number;
   name: string;
+  /** Studio dont l'écran affiche l'état antenne et le prompteur. */
+  studioId: number;
   createdAt: string;
   lastSeenAt: string | null;
   revokedAt: string | null;
@@ -229,13 +232,24 @@ export interface PrompterState {
 
 /** Messages WebSocket serveur → client. */
 export type ServerMessage =
-  | { type: 'hello'; serverTime: number; settings: Settings; prompter: PrompterState }
+  | {
+      type: 'hello';
+      serverTime: number;
+      settings: Settings;
+      prompter: PrompterState;
+      studio: Studio;
+      air: AirSnapshot;
+    }
   | { type: 'pong'; t0: number; serverTime: number }
   | { type: 'settings'; settings: Settings }
-  | { type: 'prompter'; prompter: PrompterState };
+  | { type: 'prompter'; prompter: PrompterState }
+  | AirMessage;
 
 /** Messages WebSocket client → serveur. */
-export type ClientMessage = { type: 'ping'; t0: number };
+export type ClientMessage =
+  | { type: 'ping'; t0: number }
+  /** Demande de l'état antenne complet (version manquante). */
+  | { type: 'air.sync' };
 
 /** Codes de fermeture WebSocket propres à l'application. */
 export const WS_CLOSE = {

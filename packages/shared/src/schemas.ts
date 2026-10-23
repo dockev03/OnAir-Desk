@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AUTOMATION_SOURCES, SIMULATOR_SPEED_MAX } from './air.js';
 import { cuesSchema, scriptDocSchema } from './content.js';
 import {
   airDateSchema,
@@ -59,6 +60,10 @@ export const settingsSchema = z.object({
   cues: cuesSchema,
   /** Types d'éléments de conducteur et leurs couleurs. */
   itemTypes: itemTypesSchema,
+  /** Source d'automation du studio (titre en cours / à venir). */
+  automationSource: z.enum(AUTOMATION_SOURCES),
+  /** Simulateur : accélération des durées (1 = temps réel), pour les démonstrations. */
+  simulatorSpeed: z.number().int().min(1).max(SIMULATOR_SPEED_MAX),
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.

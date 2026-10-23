@@ -11,7 +11,7 @@ import {
   type Script,
   type ScriptDoc,
 } from '@onair-desk/shared';
-import type { Identity } from './auth/identity.js';
+import { studioOf, type Identity } from './auth/identity.js';
 import type { Repos, RundownRecord, ScriptRecord, User } from './db/index.js';
 import { badRequest, conflict, forbidden, notFound } from './lib/errors.js';
 import type { Hub } from './ws/hub.js';
@@ -201,24 +201,30 @@ export class Library {
     const s = this.repos.scripts.findById(id);
     if (!s?.deletedAt) throw notFound();
     this.assertWrite(user, s.ownerId);
-    const rundownId = this.repos.prompter.get().rundownId;
+    const followed = this.studioIds().map((studio) => this.repos.prompter.get(studio).rundownId);
     this.repos.scripts.delete(id);
     // Les éléments qui l'utilisaient perdent leur script : copie du conducteur à jour.
-    if (rundownId !== null) this.rundownRefresh(rundownId);
+    for (const rundownId of new Set(followed))
+      if (rundownId !== null) this.rundownRefresh(rundownId);
   }
 
   // ---- Prompteur ------------------------------------------------------------------
 
-  prompterState(): PrompterState {
-    const { scriptId: _s, rundownId: _r, ...state } = this.repos.prompter.get();
+  private studioIds(): number[] {
+    return this.repos.studios.list().map((s) => s.id);
+  }
+
+  prompterState(studioId: number): PrompterState {
+    const { scriptId: _s, rundownId: _r, ...state } = this.repos.prompter.get(studioId);
     return state;
   }
 
   /**
-   * Affiche un script, un élément de conducteur, ou vide l'écran ; possible depuis un compte
-   * ou un écran kiosk.
+   * Affiche un script, un élément de conducteur, ou vide l'écran du studio de l'appelant ;
+   * possible depuis un compte ou un écran kiosk.
    */
   sendToPrompter(identity: Identity, input: PrompterSendInput): PrompterState {
+    const studioId = studioOf(identity);
     const by =
       identity.kind === 'user' ? { userId: identity.user.id } : { deviceId: identity.device.id };
     if ('rundownId' in input) {
@@ -230,49 +236,58 @@ export class Library {
       const record =
         item.scriptId === null ? undefined : this.repos.scripts.findById(item.scriptId);
       const script = record && !record.deletedAt ? toPrompterScript(record) : null;
-      this.repos.prompter.send(script, by, {
+      this.repos.prompter.send(studioId, script, by, {
         rundown: toPrompterRundown(rundown),
         itemUid: item.uid,
       });
     } else {
       const script =
         input.scriptId === null ? null : toPrompterScript(this.getLive(input.scriptId));
-      this.repos.prompter.send(script, by);
+      this.repos.prompter.send(studioId, script, by);
     }
-    this.broadcastPrompter();
-    return this.prompterState();
+    this.broadcastPrompter(studioId);
+    return this.prompterState(studioId);
   }
 
   /** Si le script est affiché ou dans le conducteur suivi, l'écran reçoit la nouvelle version. */
   private prompterRefresh(record: ScriptRecord): void {
-    const state = this.repos.prompter.get();
-    let changed = false;
-    if (state.scriptId === record.id) {
-      this.repos.prompter.refresh(toPrompterScript(record), record.deletedAt !== null);
-      changed = true;
+    for (const studioId of this.studioIds()) {
+      const state = this.repos.prompter.get(studioId);
+      let changed = false;
+      if (state.scriptId === record.id) {
+        this.repos.prompter.refresh(studioId, toPrompterScript(record), record.deletedAt !== null);
+        changed = true;
+      }
+      // Les durées du conducteur dépendent du script (nombre de mots, repères, vitesse).
+      if (state.rundown?.items.some((i) => i.scriptId === record.id)) {
+        changed = this.refreshRundownSnapshot(studioId, state.rundownId) || changed;
+      }
+      if (changed) this.broadcastPrompter(studioId);
     }
-    // Les durées du conducteur dépendent du script (nombre de mots, repères, vitesse).
-    if (state.rundown?.items.some((i) => i.scriptId === record.id)) {
-      changed = this.refreshRundownSnapshot(state.rundownId) || changed;
-    }
-    if (changed) this.broadcastPrompter();
   }
 
-  /** Si le conducteur est suivi sur l'écran studio, l'écran reçoit sa nouvelle version. */
+  /** Si le conducteur est suivi sur un écran studio, cet écran reçoit sa nouvelle version. */
   rundownRefresh(rundownId: number): void {
-    if (this.refreshRundownSnapshot(rundownId)) this.broadcastPrompter();
+    for (const studioId of this.studioIds()) {
+      if (this.refreshRundownSnapshot(studioId, rundownId)) this.broadcastPrompter(studioId);
+    }
   }
 
-  private refreshRundownSnapshot(rundownId: number | null): boolean {
-    if (rundownId === null || this.repos.prompter.get().rundownId !== rundownId) return false;
+  private refreshRundownSnapshot(studioId: number, rundownId: number | null): boolean {
+    if (rundownId === null || this.repos.prompter.get(studioId).rundownId !== rundownId) {
+      return false;
+    }
     const rundown = this.repos.rundowns.findById(rundownId);
     if (!rundown) return false;
-    this.repos.prompter.refreshRundown(toPrompterRundown(rundown));
+    this.repos.prompter.refreshRundown(studioId, toPrompterRundown(rundown));
     return true;
   }
 
-  broadcastPrompter(): void {
-    this.hub.broadcast({ type: 'prompter', prompter: this.prompterState() });
+  broadcastPrompter(studioId: number): void {
+    this.hub.broadcastStudio(studioId, {
+      type: 'prompter',
+      prompter: this.prompterState(studioId),
+    });
   }
 
   /** Purge quotidienne de la corbeille (scripts, conducteurs et modèles). */

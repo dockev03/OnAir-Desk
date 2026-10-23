@@ -47,6 +47,7 @@
           { href: '/admin/users', label: t('nav.users') },
           { href: '/admin/devices', label: t('nav.devices') },
           { href: '/admin/settings', label: t('nav.settings') },
+          { href: '/admin/audit', label: t('nav.audit') },
         ]
       : []),
     { href: '/account', label: t('nav.account') },

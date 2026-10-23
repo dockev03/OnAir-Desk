@@ -235,4 +235,58 @@ export const migrations: string[] = [
     updated_at TEXT    NOT NULL DEFAULT ${NOW}
   );
   `,
+  /* 6 — socle antenne : studios, prompteur par studio, journal d'audit complété */ `
+  CREATE TABLE studios (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT    NOT NULL,
+    created_at TEXT    NOT NULL DEFAULT ${NOW},
+    updated_at TEXT    NOT NULL DEFAULT ${NOW}
+  );
+  INSERT INTO studios (id, name) VALUES (1, 'Studio');
+
+  -- Studio de l'écran (null : studio par défaut). SQLite n'accepte pas ici de valeur par
+  -- défaut non nulle sur une colonne liée : les écrans existants sont rattachés ci-dessous.
+  ALTER TABLE devices ADD COLUMN studio_id INTEGER REFERENCES studios (id) ON DELETE SET NULL;
+  UPDATE devices SET studio_id = 1;
+
+  -- Prompteur : une ligne par studio au lieu d'une ligne unique (données reprises).
+  CREATE TABLE prompter_studio (
+    studio_id        INTEGER PRIMARY KEY REFERENCES studios (id) ON DELETE CASCADE,
+    script_id        INTEGER REFERENCES scripts (id) ON DELETE SET NULL,
+    snapshot         TEXT,
+    deleted          INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+    sent_by          INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    sent_by_device   INTEGER REFERENCES devices (id) ON DELETE SET NULL,
+    sent_at          TEXT,
+    rundown_id       INTEGER REFERENCES rundowns (id) ON DELETE SET NULL,
+    item_uid         TEXT,
+    rundown_snapshot TEXT
+  );
+  INSERT INTO prompter_studio (studio_id, script_id, snapshot, deleted, sent_by, sent_by_device,
+                               sent_at, rundown_id, item_uid, rundown_snapshot)
+    SELECT 1, script_id, snapshot, deleted, sent_by, sent_by_device, sent_at, rundown_id,
+           item_uid, rundown_snapshot
+      FROM prompter_state;
+  DROP TABLE prompter_state;
+  ALTER TABLE prompter_studio RENAME TO prompter_state;
+
+  -- Journal : catégorie (filtres, future main courante), nom figé de l'auteur, studio.
+  ALTER TABLE audit_log ADD COLUMN category TEXT NOT NULL DEFAULT 'systeme'
+    CHECK (category IN ('securite', 'contenu', 'antenne', 'regie', 'systeme'));
+  ALTER TABLE audit_log ADD COLUMN actor_name TEXT;
+  ALTER TABLE audit_log ADD COLUMN studio_id INTEGER REFERENCES studios (id) ON DELETE SET NULL;
+  UPDATE audit_log SET category = CASE
+      WHEN action LIKE 'auth.%' OR action LIKE 'setup.%' OR action LIKE 'user.%'
+        OR action LIKE 'device.%' THEN 'securite'
+      WHEN action LIKE 'script.%' OR action LIKE 'rundown.%' OR action LIKE 'template.%'
+        THEN 'contenu'
+      WHEN action LIKE 'prompter.%' THEN 'antenne'
+      ELSE 'systeme'
+    END;
+  UPDATE audit_log SET actor_name = (SELECT display_name FROM users WHERE id = audit_log.actor_id)
+   WHERE actor_type = 'user';
+  UPDATE audit_log SET actor_name = (SELECT name FROM devices WHERE id = audit_log.actor_id)
+   WHERE actor_type = 'device';
+  CREATE INDEX audit_log_category_at ON audit_log (category, at);
+  `,
 ];

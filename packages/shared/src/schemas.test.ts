@@ -24,6 +24,8 @@ describe('settingsSchema', () => {
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
     itemTypes: DEFAULT_ITEM_TYPES,
+    automationSource: 'none',
+    simulatorSpeed: 1,
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {

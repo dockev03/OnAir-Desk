@@ -10,10 +10,10 @@ Documents liés :
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
 - `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
 - `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
-- `docs/plan-etape-6.md` : plan de l'étape 6 (socle antenne), validé, à réaliser.
+- `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs) et 5 (compléments conducteurs) réalisées ; étapes 6 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs) et 6 (socle antenne) réalisées ; étapes 7 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -75,7 +75,9 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - Textes de l'interface : clés dans `apps/web/src/lib/i18n/fr.ts` **et** `en.ts` (le typage impose les deux).
 - Contenu des scripts : liste blanche dans `packages/shared/src/content.ts` (validation serveur, nettoyage éditeur). L'affichage passe par `apps/web/src/lib/content/` : **jamais de `{@html}`**.
 - La page `/studio` (afficheur) ne doit pas importer l'éditeur TipTap : vérifier son poids après toute modification.
-- Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+- Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e` (après le build).
+- Tests de bout en bout dans `e2e/` (`*.e2e.ts`, Playwright) : le serveur compilé y est lancé sur une base temporaire ; chaque étape ajoute ses scénarios.
+- Connecteurs d'automation dans `apps/server/src/connectors/` : implémenter `AutomationConnector` (`types.ts`) et l'ajouter au gestionnaire ; le simulateur sert de modèle. Toute nouvelle action journalisée s'ajoute au catalogue `packages/shared/src/audit.ts`.
 
 ## 4. Architecture
 
@@ -208,7 +210,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    1. modèles d'émission récurrente (création des conducteurs **manuelle**, par l'animateur) ;
    2. impression / PDF du conducteur ;
    3. logo de la station (en plus du nom).
-6. **Socle antenne** (6 fonctionnalités, décisions d'architecture du §4) → plan dans `docs/plan-etape-6.md` :
+6. ✅ **Socle antenne** (6 fonctionnalités, décisions d'architecture du §4) → détail et bilan dans `docs/plan-etape-6.md` :
    1. état antenne central versionné, rattaché à un studio (studio par défaut) ;
    2. interface commune des connecteurs d'automation ;
    3. simulateur d'automation ;

@@ -1,10 +1,13 @@
 import {
   WS_CLOSE,
+  applyAirMessage,
   clockOffset,
+  type AirSnapshot,
   type ClientMessage,
   type PrompterState,
   type ServerMessage,
   type Settings,
+  type Studio,
 } from '@onair-desk/shared';
 
 export type LinkState = 'connecting' | 'online' | 'offline' | 'unauthorized' | 'revoked';
@@ -15,14 +18,18 @@ const MAX_BACKOFF_MS = 30_000;
 const SAMPLES = 5;
 
 /**
- * Liaison temps réel avec le serveur : heure de référence et paramètres de la station.
- * Se reconnecte seule ; l'état affiché est conservé pendant les coupures.
+ * Liaison temps réel avec le serveur : heure de référence, paramètres de la station, prompteur
+ * et état antenne du studio. Se reconnecte seule ; l'état affiché est conservé pendant les
+ * coupures.
  */
 export class LiveLink {
   state = $state<LinkState>('connecting');
   settings = $state<Settings | null>(null);
   /** Script affiché sur le prompteur (conservé pendant une coupure). */
   prompter = $state<PrompterState | null>(null);
+  /** Studio de cet écran et son état antenne (titre en cours / à venir…). */
+  studio = $state<Studio | null>(null);
+  air = $state<AirSnapshot | null>(null);
   /** Décalage (ms) à ajouter à Date.now() pour obtenir l'heure serveur. */
   offset = $state(0);
 
@@ -83,11 +90,17 @@ export class LiveLink {
         this.state = 'online';
         this.settings = msg.settings;
         this.prompter = msg.prompter;
+        this.studio = msg.studio;
+        this.air = msg.air;
         if (this.samples.length === 0) this.offset = msg.serverTime - Date.now();
       } else if (msg.type === 'settings') {
         this.settings = msg.settings;
       } else if (msg.type === 'prompter') {
         this.prompter = msg.prompter;
+      } else if (msg.type === 'air') {
+        const next = applyAirMessage(this.air, msg);
+        if (next === 'resync') this.send({ type: 'air.sync' });
+        else this.air = next;
       } else if (msg.type === 'pong') {
         const t1 = Date.now();
         const sample = { rtt: t1 - msg.t0, offset: clockOffset(msg.t0, msg.serverTime, t1) };
@@ -115,8 +128,10 @@ export class LiveLink {
   }
 
   private ping(): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return;
-    const msg: ClientMessage = { type: 'ping', t0: Date.now() };
-    this.ws.send(JSON.stringify(msg));
+    this.send({ type: 'ping', t0: Date.now() });
+  }
+
+  private send(msg: ClientMessage): void {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
   }
 }

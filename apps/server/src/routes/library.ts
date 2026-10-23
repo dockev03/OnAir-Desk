@@ -15,7 +15,7 @@ import {
   type RevisionSummary,
   type TrashItem,
 } from '@onair-desk/shared';
-import { requireIdentity, requireUser } from '../auth/identity.js';
+import { requireIdentity, requireUser, studioOf } from '../auth/identity.js';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
 import { parse } from '../lib/validate.js';
 import { MAX_FOLDER_DEPTH, canWrite } from '../library.js';
@@ -194,8 +194,7 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
   // ---- Prompteur ------------------------------------------------------------------
 
   app.get('/api/prompter', async (req) => {
-    requireIdentity(req);
-    return library.prompterState();
+    return library.prompterState(studioOf(requireIdentity(req)));
   });
 
   // Seule écriture permise à un écran kiosk : choisir ce qui est affiché (un script, un
@@ -210,6 +209,7 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
         : { type: 'device', id: identity.device.id },
       'prompter.sent',
       input,
+      studioOf(identity),
     );
     return state;
   });

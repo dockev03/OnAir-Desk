@@ -8,6 +8,7 @@ import { RundownRepo } from './rundowns.js';
 import { ScriptRepo } from './scripts.js';
 import { SessionRepo } from './sessions.js';
 import { SettingsRepo } from './settings.js';
+import { StudioRepo } from './studios.js';
 import { TemplateRepo } from './templates.js';
 import { UserRepo } from './users.js';
 
@@ -24,6 +25,7 @@ export interface Repos {
   rundowns: RundownRepo;
   templates: TemplateRepo;
   logo: LogoRepo;
+  studios: StudioRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -40,6 +42,7 @@ export function createRepos(db: Db): Repos {
     rundowns: new RundownRepo(db),
     templates: new TemplateRepo(db),
     logo: new LogoRepo(db),
+    studios: new StudioRepo(db),
   };
 }
 
@@ -48,3 +51,4 @@ export { toPublicUser, type User } from './users.js';
 export type { ScriptRecord } from './scripts.js';
 export type { RundownRecord } from './rundowns.js';
 export type { TemplateRecord } from './templates.js';
+export { DEFAULT_STUDIO_ID } from './studios.js';
