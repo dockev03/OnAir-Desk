@@ -1,6 +1,6 @@
 # Étape 6 — Socle antenne : plan
 
-> **Statut : plan validé (décisions 1 à 13), à réaliser.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §4 (décisions d'architecture), §5 (bandeau supérieur), §8 étape 6, §10 (connecteurs interchangeables). Branche prévue : `feature/etape-6-socle-antenne`.
 > 6 fonctionnalités. Aucune intégration réelle (RadioDJ, AzuraCast, On Air, météo) : elles se brancheront sur ce socle aux étapes 7 à 9.
 
@@ -82,3 +82,42 @@ Les 13 décisions sont **validées** ; la colonne « Alternative » garde trace 
 - **Nouvelle dépendance de développement** : `@playwright/test` (pas dans l'image Docker). Les navigateurs ne sont pas téléchargés à l'installation (`allowScripts` inchangé) ; la CI installe Chromium dans son propre job.
 - **Format du WebSocket** modifié (`hello` enrichi, message `air`) : serveur et écran sont livrés ensemble dans la même image, sans incidence pour l'utilisateur.
 - Aucune nouvelle exposition réseau : le simulateur n'ouvre aucun port et n'appelle rien à l'extérieur.
+
+---
+
+## Bilan de l'étape 6
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - `timing.ts` : calculs existants regroupés (décalage d'horloge, durées et heures de passage du conducteur) et nouveaux calculs du titre en cours : temps écoulé / restant, progression, heure de démarrage du suivant, intro restante (talk-over), niveau d'alerte (`none` / `soon` / `now`, prêt pour l'étape 7), compte à rebours arrondi à la seconde supérieure ;
+  - `air.ts` : types de l'état antenne (titre, source, studio), messages `air` et `air.sync`, application d'un message côté écran avec détection d'une version manquante ;
+  - `audit.ts` : catalogue des actions et de leur catégorie (une action inconnue ne compile pas), filtres du journal ;
+  - paramètres `automationSource` (`none` / `simulator`) et `simulatorSpeed` (1 à 60).
+- **Migration 6** : table `studios` et studio par défaut ; `devices.studio_id` ; `prompter_state` recréée avec une ligne par studio (données reprises) ; `audit_log` complétée (`category`, `actor_name`, `studio_id`, index) avec les catégories et noms des entrées existantes. `devices.studio_id` est facultative (null = studio par défaut) : SQLite refuse une valeur par défaut non nulle sur une colonne liée ajoutée après coup.
+- **Serveur** :
+  - `air/state.ts` : état par studio, en mémoire, versionné ; seuls les champs réellement modifiés sont diffusés, et seulement aux connexions du studio ;
+  - `connectors/` : contrat commun (`start` / `stop`, `update` / `fail`, heures sur l'horloge serveur), gestionnaire (redémarrage seulement si la configuration change, appels d'un ancien connecteur ignorés, erreur affichée et journalisée une fois, nouvel essai toutes les 30 s, retour journalisé), simulateur (12 titres inventés, enchaînement calculé sur l'heure de fin théorique, sans dérive) ;
+  - prompteur et WebSocket rattachés au studio de la connexion (écran : son studio ; compte : studio par défaut) ; `hello` enrichi (studio, état antenne complet), message `air`, `air.sync` limité à une demande par seconde ;
+  - `GET /api/air` (état du connecteur pour la page Paramètres), `GET /api/audit` (admin, filtres et pagination par 50) ;
+  - journal : écriture typée, nom de l'auteur figé, changement de source tracé (`automation.source_changed`), purge quotidienne à 1 an.
+- **Interface** :
+  - écran studio : blocs **Titre en cours** (titre, artiste, temps restant en grand, barre de progression animée par `transform`, durée, outro) et **Titre à venir** (titre, artiste, durée, intro, heure de démarrage), calculés sur l'heure serveur, masqués si la source est « aucune », conservés pendant une coupure ;
+  - Paramètres : section **Source d'automation** (aucune / simulateur, accélération) avec l'état du connecteur ;
+  - page admin **Journal** : filtres catégorie, auteur, période ; pagination ; heures dans le fuseau de la station ;
+  - textes FR et EN.
+- **Tests de bout en bout** : `@playwright/test` 1.56.1 en dépendance de développement, dossier `e2e/` (serveur compilé lancé sur une base temporaire, arrêtable et relançable), `npm run test:e2e`, job CI `e2e` (Chromium, rapport conservé en cas d'échec). `npm run typecheck` couvre aussi `e2e/`.
+
+### Tests
+
+- 160 tests unitaires (55 en commun, 105 serveur), dont : calculs de temps (début, milieu, fin, dépassement, passage de minuit, seuils exacts), application des messages `air` (ordre, trou de version, doublon) ; migration 6 (écran, prompteur et journal existants) ; état antenne (version, différentiel, isolation par studio) ; simulateur (enchaînement sans dérive, arrêt, changement de source) ; connecteur en erreur (état, journal une seule fois, nouvel essai, retour) ; WebSocket (`hello`, différentiel, `air.sync` limité) ; prompteur et état antenne isolés entre deux studios ; journal (admin seul, catégories, nom figé après renommage, filtres, pagination, purge).
+- **Bout en bout (Chromium)**, 4 scénarios, stables sur trois passages : appairage par l'adresse du kiosk (jeton retiré de l'adresse) et affichage ; titre en cours qui change (le titre annoncé « à venir » est bien le suivant) ; **coupure du serveur** (texte et titres conservés, bandeau de coupure, reconnexion seule, état resynchronisé) ; sortie de lecture (un clic ne fait rien, l'appui long sort).
+- **Poids de `/studio`** : +2,5 Ko gzip (73,7 → 76,2 Ko, entrées et mise en page comprises), toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- En cas d'erreur du connecteur, titre en cours et titre à venir sont effacés (on ne sait plus ce qui passe) : le bloc affiche « Source d'automation indisponible » jusqu'au retour.
+- Après un redémarrage du serveur, le simulateur repart du premier titre (état en mémoire, décision 3).
+- Les filtres de dates du journal sont en UTC (une heure ou deux d'écart en bord de journée) ; l'affichage, lui, est dans le fuseau de la station.
+- Les actions du journal sont affichées par leur code technique (`script.trashed`…), avec leur catégorie traduite.
+

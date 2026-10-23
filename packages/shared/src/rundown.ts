@@ -1,9 +1,8 @@
 import { z } from 'zod';
-import { readingSeconds } from './content.js';
 
 /**
- * Conducteurs : types d'éléments (paramétrables), validation des éléments et calcul des
- * heures de passage. Utilisé par le serveur, l'interface et l'écran studio.
+ * Conducteurs : types d'éléments (paramétrables), validation des éléments et saisie des
+ * durées (les calculs de temps sont dans timing.ts). Utilisé par le serveur et l'interface.
  */
 
 /** Couleurs de fond autorisées pour un type d'élément, avec la couleur de texte associée. */
@@ -98,7 +97,7 @@ export const startTimeSchema = z
   .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/)
   .transform((t) => (t.length === 5 ? `${t}:00` : t));
 
-// ---- Durées et heures de passage ---------------------------------------------------
+// ---- Durées ----------------------------------------------------------------------
 
 /** Informations du script attaché utiles au calcul (sans son contenu). */
 export interface ItemScriptInfo {
@@ -113,13 +112,6 @@ export interface ItemScriptInfo {
 export interface ItemTiming {
   durationSeconds: number | null;
   script?: ItemScriptInfo | null;
-}
-
-/** Durée d'un élément : saisie à la main, sinon lecture du script + durées des repères. */
-export function itemSeconds(item: ItemTiming): number {
-  if (item.durationSeconds !== null) return item.durationSeconds;
-  const s = item.script;
-  return s ? readingSeconds(s.wordCount, s.speedWpm) + s.cueSeconds : 0;
 }
 
 /**
@@ -138,32 +130,4 @@ export function parseItemDuration(input: string): number | null | undefined {
         ? Number(m[4]) * 60 + Number(m[5])
         : Number(m[6]);
   return total <= MAX_ITEM_SECONDS ? total : undefined;
-}
-
-/** « HH:MM:SS » → secondes depuis minuit. */
-export function timeToSeconds(t: string): number {
-  const [h = 0, m = 0, s = 0] = t.split(':').map(Number);
-  return h * 3600 + m * 60 + s;
-}
-
-/** Secondes depuis minuit → « HH:MM:SS » (au-delà de minuit, on repart de 00:00:00). */
-export function secondsToTime(total: number): string {
-  const s = ((Math.round(total) % 86400) + 86400) % 86400;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-}
-
-/** Heure de passage de chaque élément (secondes depuis minuit) et fin du conducteur. */
-export function rundownSchedule(
-  startTime: string,
-  items: ItemTiming[],
-): { starts: number[]; end: number; total: number } {
-  const start = timeToSeconds(startTime);
-  const starts: number[] = [];
-  let t = start;
-  for (const item of items) {
-    starts.push(t);
-    t += itemSeconds(item);
-  }
-  return { starts, end: t, total: t - start };
 }

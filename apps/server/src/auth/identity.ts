@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PublicDevice } from '@onair-desk/shared';
-import type { Repos, User } from '../db/index.js';
+import { DEFAULT_STUDIO_ID, type Repos, type User } from '../db/index.js';
 import { forbidden, unauthorized } from '../lib/errors.js';
 import { hashToken } from './tokens.js';
 
@@ -94,6 +94,14 @@ export function requireAdmin(req: FastifyRequest): User {
   const user = requireUser(req);
   if (user.role !== 'admin') throw forbidden();
   return user;
+}
+
+/**
+ * Studio d'une connexion : celui de l'écran kiosk, ou le studio par défaut pour un compte
+ * (un seul studio pour l'instant ; le rattachement des comptes viendra avec la régie).
+ */
+export function studioOf(identity: Identity): number {
+  return identity.kind === 'device' ? identity.device.studioId : DEFAULT_STUDIO_ID;
 }
 
 /** Compte ou appareil kiosk : lecture autorisée. */

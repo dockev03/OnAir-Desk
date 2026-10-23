@@ -23,22 +23,28 @@ export interface PrompterRundownChoice {
 }
 
 /**
- * Script (et éventuellement conducteur) affiché sur l'écran studio, conservé en base pour
- * survivre à un redémarrage.
+ * Script (et éventuellement conducteur) affiché sur l'écran de chaque studio, conservé en
+ * base pour survivre à un redémarrage.
  */
 export class PrompterRepo {
   constructor(private readonly db: Db) {}
 
-  get(): PrompterState & { scriptId: number | null; rundownId: number | null } {
+  /** La ligne du studio est créée au premier usage (studio ajouté après la migration). */
+  private ensure(studioId: number): void {
+    this.db.prepare('INSERT OR IGNORE INTO prompter_state (studio_id) VALUES (?)').run(studioId);
+  }
+
+  get(studioId: number): PrompterState & { scriptId: number | null; rundownId: number | null } {
+    this.ensure(studioId);
     const r = this.db
       .prepare(
         `SELECT p.*, COALESCE(u.display_name, d.name) AS sent_by_name
            FROM prompter_state p
            LEFT JOIN users u ON u.id = p.sent_by
            LEFT JOIN devices d ON d.id = p.sent_by_device
-          WHERE p.id = 1`,
+          WHERE p.studio_id = ?`,
       )
-      .get() as Row;
+      .get(studioId) as Row;
     return {
       scriptId: r.script_id,
       rundownId: r.rundown_id,
@@ -56,16 +62,18 @@ export class PrompterRepo {
    * dont le script peut être absent (titre, pub…).
    */
   send(
+    studioId: number,
     script: PrompterScript | null,
     by: PrompterSender,
     choice: PrompterRundownChoice | null = null,
   ): void {
+    this.ensure(studioId);
     this.db
       .prepare(
         `UPDATE prompter_state
             SET script_id = ?, snapshot = ?, deleted = 0, sent_by = ?, sent_by_device = ?,
                 sent_at = ?, rundown_id = ?, item_uid = ?, rundown_snapshot = ?
-          WHERE id = 1`,
+          WHERE studio_id = ?`,
       )
       .run(
         script?.id ?? null,
@@ -76,24 +84,21 @@ export class PrompterRepo {
         choice?.rundown.id ?? null,
         choice?.itemUid ?? null,
         choice ? JSON.stringify(choice.rundown) : null,
+        studioId,
       );
   }
 
   /** Met à jour la copie du conducteur suivi (élément ajouté, durée modifiée…). */
-  refreshRundown(rundown: PrompterRundown): void {
+  refreshRundown(studioId: number, rundown: PrompterRundown): void {
     this.db
-      .prepare('UPDATE prompter_state SET rundown_snapshot = ? WHERE id = 1')
-      .run(JSON.stringify(rundown));
+      .prepare('UPDATE prompter_state SET rundown_snapshot = ? WHERE studio_id = ?')
+      .run(JSON.stringify(rundown), studioId);
   }
 
   /** Met à jour la copie affichée (modification du script, restauration…). */
-  refresh(script: PrompterScript, deleted: boolean): void {
+  refresh(studioId: number, script: PrompterScript, deleted: boolean): void {
     this.db
-      .prepare('UPDATE prompter_state SET snapshot = ?, deleted = ? WHERE id = 1')
-      .run(JSON.stringify(script), deleted ? 1 : 0);
-  }
-
-  markDeleted(): void {
-    this.db.prepare('UPDATE prompter_state SET deleted = 1 WHERE id = 1').run();
+      .prepare('UPDATE prompter_state SET snapshot = ?, deleted = ? WHERE studio_id = ?')
+      .run(JSON.stringify(script), deleted ? 1 : 0, studioId);
   }
 }

@@ -3,8 +3,10 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyWebsocket from '@fastify/websocket';
+import { AirStateStore } from './air/state.js';
 import type { Config } from './config.js';
-import { createRepos, type Db } from './db/index.js';
+import { AutomationManager } from './connectors/manager.js';
+import { DEFAULT_STUDIO_ID, createRepos, type Db } from './db/index.js';
 import { registerIdentity, type Identity } from './auth/identity.js';
 import { LoginThrottle } from './auth/throttle.js';
 import { HttpError } from './lib/errors.js';
@@ -16,6 +18,7 @@ import { inlineScriptHashes, readIndexHtml, registerStatic } from './static.js';
 import { Hub } from './ws/hub.js';
 import { registerWsRoutes } from './ws/routes.js';
 import type { RouteContext } from './routes/context.js';
+import { registerAuditRoutes } from './routes/audit.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerDeviceRoutes } from './routes/devices.js';
 import { registerLibraryRoutes } from './routes/library.js';
@@ -58,6 +61,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   const hub = new Hub();
   const library = new Library(repos, hub);
   const rundowns = new Rundowns(repos, library);
+  const air = new AirStateStore(hub);
   const ctx: RouteContext = {
     config,
     repos,
@@ -65,6 +69,8 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     library,
     rundowns,
     templates: new Templates(repos, library, rundowns),
+    air,
+    automation: new AutomationManager(DEFAULT_STUDIO_ID, air, repos.audit),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
     rootCaPem: opts.rootCaPem ?? (() => null),
@@ -117,7 +123,8 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);
-  registerWsRoutes(app, repos, ctx.hub, ctx.library, config.allowedOrigins);
+  registerAuditRoutes(app, ctx);
+  registerWsRoutes(app, ctx);
   await registerStatic(app, config.webDir, indexHtml);
 
   // Ménage périodique : sessions expirées, compteurs d'échecs, connexions devenues invalides.
@@ -131,15 +138,21 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     );
   }, 60_000).unref();
 
-  // Purge quotidienne de la corbeille (éléments supprimés depuis plus de 30 jours).
+  // Purge quotidienne : corbeille (30 jours) et journal d'audit (1 an).
   const purge = () => {
     const n = ctx.library.purgeTrash();
     if (n > 0) app.log.info(`Corbeille : ${n} élément(s) supprimé(s) définitivement.`);
+    const old = repos.audit.purge();
+    if (old > 0) app.log.info(`Journal : ${old} entrée(s) de plus d'un an supprimée(s).`);
   };
   purge();
   const purgeTimer = setInterval(purge, 24 * 60 * 60_000).unref();
 
+  // Connecteur d'automation choisi dans les paramètres (aucun par défaut).
+  ctx.automation.apply(repos.settings.get());
+
   app.addHook('onClose', async () => {
+    ctx.automation.stop();
     clearInterval(sweep);
     clearInterval(purgeTimer);
     ctx.hub.close();

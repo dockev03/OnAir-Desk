@@ -5,7 +5,11 @@ import type { Identity } from '../auth/identity.js';
 interface Client {
   socket: WebSocket;
   identity: Identity;
+  /** Studio dont la connexion reçoit l'état antenne et le prompteur. */
+  studioId: number;
   alive: boolean;
+  /** Dernière demande d'état complet (limite de débit). */
+  lastSync: number;
 }
 
 /** Connexions WebSocket ouvertes (écran studio, postes animateurs). */
@@ -15,8 +19,8 @@ export class Hub {
 
   constructor(private readonly heartbeatMs = 30_000) {}
 
-  add(socket: WebSocket, identity: Identity): Client {
-    const client: Client = { socket, identity, alive: true };
+  add(socket: WebSocket, identity: Identity, studioId: number): Client {
+    const client: Client = { socket, identity, studioId, alive: true, lastSync: 0 };
     this.clients.add(client);
     socket.on('pong', () => (client.alive = true));
     socket.on('close', () => this.clients.delete(client));
@@ -35,6 +39,11 @@ export class Hub {
 
   broadcast(msg: ServerMessage): void {
     for (const c of this.clients) this.send(c, msg);
+  }
+
+  /** Envoi aux seules connexions d'un studio (état antenne, prompteur). */
+  broadcastStudio(studioId: number, msg: ServerMessage): void {
+    for (const c of this.clients) if (c.studioId === studioId) this.send(c, msg);
   }
 
   broadcastSettings(settings: Settings): void {

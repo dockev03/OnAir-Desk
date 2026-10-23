@@ -1,4 +1,6 @@
+import type { AirStateStore } from '../air/state.js';
 import type { Config } from '../config.js';
+import type { AutomationManager } from '../connectors/manager.js';
 import type { Repos } from '../db/index.js';
 import type { LoginThrottle } from '../auth/throttle.js';
 import type { Library } from '../library.js';
@@ -15,6 +17,9 @@ export interface RouteContext {
   library: Library;
   rundowns: Rundowns;
   templates: Templates;
+  air: AirStateStore;
+  /** Connecteur d'automation du studio par défaut. */
+  automation: AutomationManager;
   throttle: LoginThrottle;
   setup: SetupState;
   /** Certificat racine de l'autorité interne (PEM), s'il y en a une. */

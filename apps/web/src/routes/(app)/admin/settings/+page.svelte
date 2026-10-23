@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    AUTOMATION_SOURCES,
     ITEM_COLORS,
     LOCALES,
     LOGO_TYPES,
@@ -9,9 +10,11 @@
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     SPEED_WPM_MAX,
+    SIMULATOR_SPEED_MAX,
     SPEED_WPM_MIN,
     TEXT_COLORS,
     TIME_FORMATS,
+    type AirSnapshot,
     type Settings,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
@@ -23,11 +26,20 @@
   let error = $state('');
   let saved = $state(false);
   let hasRootCa = $state(false);
+  /** État du connecteur d'automation (en marche, erreur…). */
+  let air = $state<AirSnapshot | null>(null);
+
+  function loadAir() {
+    api<AirSnapshot>('GET', '/api/air')
+      .then((a) => (air = a))
+      .catch(() => {});
+  }
 
   $effect(() => {
     api<Settings>('GET', '/api/settings')
       .then((s) => (settings = s))
       .catch((e) => (error = errorMessage(errorCode(e))));
+    loadAir();
     fetch('/api/tls/root-ca.crt', { method: 'HEAD' })
       .then((r) => (hasRootCa = r.ok))
       .catch(() => {});
@@ -144,6 +156,8 @@
       settings = await api<Settings>('PUT', '/api/settings', settings);
       stationSettings.set(settings);
       saved = true;
+      // Le connecteur redémarre aussitôt : son nouvel état est relu un instant après.
+      setTimeout(loadAir, 500);
     } catch (err) {
       error = errorMessage(errorCode(err));
     }
@@ -203,6 +217,40 @@
         {#each TIME_FORMATS as f (f)}<option value={f}>{t(`timeFormat.${f}`)}</option>{/each}
       </select>
     </label>
+
+    <h2>{t('settings.automation')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.automationIntro')}</p>
+    <label>
+      {t('settings.automationSource')}
+      <select bind:value={settings.automationSource}>
+        {#each AUTOMATION_SOURCES as source (source)}
+          <option value={source}>{t(`automation.${source}`)}</option>
+        {/each}
+      </select>
+    </label>
+    {#if settings.automationSource === 'simulator'}
+      <label>
+        {t('settings.simulatorSpeed')}
+        <input
+          type="number"
+          min="1"
+          max={SIMULATOR_SPEED_MAX}
+          bind:value={settings.simulatorSpeed}
+          required
+        />
+      </label>
+    {/if}
+    {#if air && air.state.source.id !== 'none'}
+      <p class="source-state {air.state.source.state}" role="status">
+        {t(`automation.state.${air.state.source.state}`)}
+        {#if air.state.source.updatedAt}
+          · {t('settings.automationUpdated', {
+            time: new Date(air.state.source.updatedAt).toLocaleTimeString(),
+          })}
+        {/if}
+        {#if air.state.source.error}<br /><span class="mono">{air.state.source.error}</span>{/if}
+      </p>
+    {/if}
 
     <h2>{t('settings.scripts')}</h2>
     <label>
@@ -355,6 +403,16 @@
 {/if}
 
 <style>
+  .source-state {
+    margin: 0;
+    color: var(--muted);
+  }
+  .source-state.ok {
+    color: var(--ok);
+  }
+  .source-state.error {
+    color: #f7c1c1;
+  }
   .logo-card {
     margin-bottom: 1rem;
   }

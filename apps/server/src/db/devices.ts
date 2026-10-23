@@ -1,5 +1,6 @@
 import type { PublicDevice } from '@onair-desk/shared';
 import type { Db } from './database.js';
+import { DEFAULT_STUDIO_ID } from './studios.js';
 import { nowIso } from '../lib/time.js';
 
 interface DeviceRow {
@@ -9,6 +10,7 @@ interface DeviceRow {
   created_at: string;
   last_seen_at: string | null;
   revoked_at: string | null;
+  studio_id: number | null;
 }
 
 const toDevice = (r: DeviceRow): PublicDevice => ({
@@ -17,6 +19,7 @@ const toDevice = (r: DeviceRow): PublicDevice => ({
   createdAt: r.created_at,
   lastSeenAt: r.last_seen_at,
   revokedAt: r.revoked_at,
+  studioId: r.studio_id ?? DEFAULT_STUDIO_ID,
 });
 
 export class DeviceRepo {
@@ -44,8 +47,8 @@ export class DeviceRepo {
 
   create(name: string, tokenHash: string): PublicDevice {
     const info = this.db
-      .prepare('INSERT INTO devices (name, token_hash) VALUES (?, ?)')
-      .run(name, tokenHash);
+      .prepare('INSERT INTO devices (name, token_hash, studio_id) VALUES (?, ?, ?)')
+      .run(name, tokenHash, DEFAULT_STUDIO_ID);
     return this.findById(Number(info.lastInsertRowid))!;
   }
 

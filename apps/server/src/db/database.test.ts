@@ -93,3 +93,38 @@ describe('migration 5', () => {
     db.close();
   });
 });
+
+describe('migration 6', () => {
+  it('rattache écrans et prompteur au studio par défaut, complète le journal', () => {
+    const v5 = openDatabase(dir, () => {}, migrations.slice(0, 5));
+    v5.prepare(
+      "INSERT INTO users (id, username, display_name, password_hash, role) VALUES (7, 'jean', 'Jean', 'x', 'animateur')",
+    ).run();
+    v5.prepare("INSERT INTO devices (id, name, token_hash) VALUES (3, 'Afficheur', 'h')").run();
+    v5.prepare(
+      "UPDATE prompter_state SET snapshot = '{\"id\":1}', sent_by_device = 3, item_uid = 'a' WHERE id = 1",
+    ).run();
+    const log = v5.prepare('INSERT INTO audit_log (actor_type, actor_id, action) VALUES (?, ?, ?)');
+    log.run('user', 7, 'auth.login');
+    log.run('user', 7, 'script.trashed');
+    log.run('device', 3, 'prompter.sent');
+    log.run('user', 7, 'settings.updated');
+    v5.close();
+
+    const db = openDatabase(dir);
+    expect(db.prepare('SELECT id, name FROM studios').all()).toEqual([{ id: 1, name: 'Studio' }]);
+    expect(db.prepare('SELECT studio_id FROM devices').get()).toEqual({ studio_id: 1 });
+    expect(
+      db.prepare('SELECT studio_id, snapshot, sent_by_device, item_uid FROM prompter_state').all(),
+    ).toEqual([{ studio_id: 1, snapshot: '{"id":1}', sent_by_device: 3, item_uid: 'a' }]);
+    expect(
+      db.prepare('SELECT action, category, actor_name FROM audit_log ORDER BY id').all(),
+    ).toEqual([
+      { action: 'auth.login', category: 'securite', actor_name: 'Jean' },
+      { action: 'script.trashed', category: 'contenu', actor_name: 'Jean' },
+      { action: 'prompter.sent', category: 'antenne', actor_name: 'Afficheur' },
+      { action: 'settings.updated', category: 'systeme', actor_name: 'Jean' },
+    ]);
+    db.close();
+  });
+});
