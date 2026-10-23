@@ -10,6 +10,7 @@ Documents liés :
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
 - `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
 - `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
+- `docs/plan-etape-6.md` : plan de l'étape 6 (socle antenne), validé, à réaliser.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs) et 5 (compléments conducteurs) réalisées ; étapes 6 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
@@ -207,7 +208,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    1. modèles d'émission récurrente (création des conducteurs **manuelle**, par l'animateur) ;
    2. impression / PDF du conducteur ;
    3. logo de la station (en plus du nom).
-6. **Socle antenne** (6 fonctionnalités, décisions d'architecture du §4) :
+6. **Socle antenne** (6 fonctionnalités, décisions d'architecture du §4) → plan dans `docs/plan-etape-6.md` :
    1. état antenne central versionné, rattaché à un studio (studio par défaut) ;
    2. interface commune des connecteurs d'automation ;
    3. simulateur d'automation ;
