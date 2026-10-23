@@ -29,9 +29,13 @@
     }
   }
 
-  /** Routes de la corbeille : scripts à la racine, conducteurs sous /rundowns. */
+  /** Routes de la corbeille : scripts à la racine, conducteurs et modèles à part. */
   const trashUrl = (item: TrashItem) =>
-    item.kind === 'rundown' ? `/api/trash/rundowns/${item.id}` : `/api/trash/${item.id}`;
+    item.kind === 'rundown'
+      ? `/api/trash/rundowns/${item.id}`
+      : item.kind === 'template'
+        ? `/api/trash/templates/${item.id}`
+        : `/api/trash/${item.id}`;
 
   function remove(item: TrashItem) {
     if (confirm(t('trash.deleteConfirm', { title: item.title }))) {
@@ -56,8 +60,9 @@
               <strong>{item.title}</strong>
               <div class="muted small">
                 {#if item.kind === 'rundown'}{t('trash.kindRundown')} ·{/if}
+                {#if item.kind === 'template'}{t('trash.kindTemplate')} ·{/if}
                 {item.ownerId === null ? t('library.common') : item.ownerName} ·
-                {item.kind === 'rundown'
+                {item.kind !== 'script'
                   ? t('trash.items', { n: item.itemCount ?? 0 })
                   : t('library.words', { n: item.wordCount ?? 0 })}
               </div>

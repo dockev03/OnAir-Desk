@@ -1,6 +1,6 @@
 # Étape 5 — Compléments conducteurs : plan
 
-> **Statut : plan validé (décisions 1 à 13), à réaliser.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §7 (idées 15 et 16), §8 étape 5, §10 (identité de la station : logo). Branche prévue : `feature/etape-5-complements-conducteurs`.
 > Étape courte (3 fonctionnalités), sur le code des conducteurs de l'étape 4 et des paramètres.
 
@@ -86,3 +86,43 @@ Les 13 décisions sont **validées** (3, 4, 10, 11 et 13 ajustées par l'utilisa
 ## Vérifications avant de pousser
 
 `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, et contrôle du poids de `/studio`.
+
+---
+
+## Bilan de l'étape 5
+
+### Réalisé
+
+- **Commun** (`packages/shared/src/template.ts`) : jours de diffusion (1 = lundi … 7 = dimanche, masque en base), schémas zod des modèles (au moins un jour, période cohérente, 100 exclusions max, mêmes règles d'éléments que les conducteurs), période de création de 3 mois max (92 jours), et la fonction pure `templateDates` (jours cochés, période de validité, exclusions), utilisée par le serveur **et** par l'aperçu de l'interface. `addDays` y est déplacé (l'interface l'importait en double).
+- **Migration 5** : `rundown_templates`, `rundown_template_items`, `rundown_template_exclusions`, `rundowns.template_id` / `template_date` avec index unique (ni doublon, ni résurrection), `station_logo`. Aucune migration livrée modifiée.
+- **Serveur** :
+  - routes `/api/templates` (liste, lecture, création, enregistrement avec contrôle de version, duplication, corbeille / restauration / suppression définitive), `POST /api/templates/:id/create-rundowns`, `POST /api/rundowns/:id/save-as-template`, `POST /api/rundowns/:id/reapply-template` ;
+  - lecture et écriture des éléments mises en commun entre conducteurs et modèles (`readItems` / `writeItems`) ;
+  - corbeille commune scripts + conducteurs + modèles, purge à 30 jours ; les conducteurs créés restent quand le modèle est supprimé ;
+  - journal d'audit : `rundown.created_from_template`, `template.*`, `rundown.template_reapplied`, `logo.updated` / `logo.removed` ;
+  - logo : `PUT` / `DELETE /api/settings/logo` (admin), `GET /api/station/logo` public, type vérifié sur les premiers octets (PNG, JPEG, WebP ; SVG et faux PNG refusés), 3 Mo max, limite de requête relevée à 4,5 Mo **pour cette seule route**, `ETag`, `nosniff`, cache long quand l'URL porte l'empreinte (`?v=`).
+  - L'**empreinte du logo** (`logoHash`) est ajoutée aux paramètres, en lecture seule : elle part avec la diffusion WebSocket des paramètres, l'écran studio recharge donc le logo sans code nouveau.
+- **Interface postes** :
+  - menu **Conducteurs** : section **Modèles** par propriétaire (jours, heure, nombre d'éléments, durée, « suspendu »), « Nouveau modèle » (du lundi au vendredi par défaut), duplication, corbeille ;
+  - **éditeur de modèle** (`/rundowns/templates/[id]`) : titre, heure, jours, période de validité, actif, exclusions (date seule ou plage, motif), éléments, enregistrement automatique ; **« Créer les conducteurs »** avec période (semaine suivante par défaut), aperçu des dates et résumé (créés avec liens, déjà existants, ignorés et pourquoi) ;
+  - **éditeur de conducteur** : « Imprimer », « Enregistrer comme modèle » (chez soi pour le conducteur d'un collègue), modèle d'origine et « Réappliquer le modèle » avec confirmation ;
+  - l'éditeur d'éléments (`lib/rundown-editor/ItemsEditor.svelte`) et l'enregistrement automatique (`autosave.svelte.ts`) sont **extraits en composants communs** aux deux éditeurs ;
+  - **page d'impression** (`/rundowns/[id]/print`) : feuille A4, logo, station, titre, date, heures de début et de fin, durée ; tableau (heure, pastille **et** libellé du type, titre, durée, notes, script) ; option « Inclure le texte des scripts » (rendu par `lib/content`, jamais de `{@html}`) ; pied de page « Imprimé le … » et « Page n / N » (marges `@page`) ;
+  - **Paramètres** : logo (aperçu, envoyer / remplacer, retirer) ;
+  - **logo** dans l'en-tête (avec le nom de la station à la place de « OnAir-Desk ») et sur la page de connexion ;
+  - textes FR et EN.
+- **Écran studio** : logo en haut de la barre latérale, masqué quand elle est réduite et en lecture ; les conducteurs créés depuis un modèle apparaissent dans « Aujourd'hui » comme les autres.
+- **Correction au passage** : supprimer un compte qui possède des conducteurs (ou des modèles) provoquait une erreur 500 (contrainte `RESTRICT`) ; c'est maintenant le refus prévu `user_has_content`.
+
+### Tests
+
+- 141 tests au total (45 en commun, 96 serveur), dont : calcul des dates (jours, période, exclusions, changement d'heure, fins de mois, année complète), validation ; migration 5 (conducteurs existants conservés, unicité modèle + date) ; création (nombre, exclusions, hors période, idempotence, pas de résurrection après corbeille ou déplacement, modèle suspendu, période trop longue), modèle modifié puis « Réappliquer », droits, conflit de version, corbeille, « Enregistrer comme modèle », compte avec modèles ; logo (admin seul, SVG, faux PNG, taille, 3 Mo pile accepté, lecture publique, type, cache, 304, empreinte non modifiable par les paramètres, audit).
+- **Navigateur (Chromium)**, 26 vérifications : « Enregistrer comme modèle », jours cochés, exclusion du 11 novembre, enregistrement automatique, « Créer les conducteurs » sur 3 semaines (14 créés, 1 exclu), second clic sans doublon, suspension, liste des modèles, conducteur généré et « Réappliquer », logo (SVG et faux PNG refusés, PNG accepté), en-tête, page de connexion, impression (logo, tableau, texte des scripts, en-tête masqué, PDF A4 avec pied de page), écran studio (conducteur du jour, logo masqué en lecture), aucune erreur JavaScript.
+- **Poids de `/studio`** : +3,4 Ko gzip (70,3 → 73,7 Ko, entrées et mise en page comprises), dont ~1,9 Ko de nouveaux textes FR/EN (dictionnaire unique) et ~0,7 Ko de schémas zod des modèles ; toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Assistant de premier lancement** : pas d'envoi de logo (décision 13 : facultatif) ; il se fait dans Paramètres.
+- Un conducteur généré mis à la corbeille puis **purgé** (30 jours) libère sa date : elle pourrait être recréée par une nouvelle demande sur cette période (en pratique une date passée).
+- La date d'impression du pied de page est celle de l'ouverture de la page d'impression.
+

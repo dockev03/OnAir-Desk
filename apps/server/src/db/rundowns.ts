@@ -21,11 +21,12 @@ interface RundownRow {
   updated_by: number | null;
   updated_at: string;
   deleted_at: string | null;
+  template_id: number | null;
   updated_by_name: string | null;
 }
 
 interface ItemRow {
-  rundown_id: number;
+  parent_id: number;
   uid: string;
   type_id: string;
   title: string;
@@ -52,12 +53,67 @@ export interface RundownHeader {
   startTime: string;
 }
 
+/** Lien d'un conducteur vers le modèle qui l'a créé, et la date d'origine. */
+export interface TemplateLink {
+  templateId: number;
+  templateDate: string;
+}
+
 const SELECT = `SELECT r.*, u.display_name AS updated_by_name
   FROM rundowns r LEFT JOIN users u ON u.id = r.updated_by`;
 
-const SELECT_ITEMS = `SELECT i.*, s.title AS script_title, s.word_count, s.speed_wpm,
-       s.cue_seconds, s.deleted_at AS script_deleted_at
-  FROM rundown_items i LEFT JOIN scripts s ON s.id = i.script_id`;
+/**
+ * Éléments de conducteurs ou de modèles (mêmes colonnes), avec les infos du script attaché,
+ * dans l'ordre, regroupés par conducteur ou modèle.
+ */
+export function readItems(
+  db: Db,
+  table: 'rundown_items' | 'rundown_template_items',
+  parentColumn: 'rundown_id' | 'template_id',
+  parentIds: number[],
+): Map<number, RundownItem[]> {
+  const map = new Map<number, RundownItem[]>(parentIds.map((id) => [id, []]));
+  if (parentIds.length === 0) return map;
+  const rows = db
+    .prepare(
+      `SELECT i.*, i.${parentColumn} AS parent_id, s.title AS script_title, s.word_count,
+              s.speed_wpm, s.cue_seconds, s.deleted_at AS script_deleted_at
+         FROM ${table} i LEFT JOIN scripts s ON s.id = i.script_id
+        WHERE i.${parentColumn} IN (SELECT value FROM json_each(?))
+        ORDER BY i.${parentColumn}, i.position`,
+    )
+    .all(JSON.stringify(parentIds)) as ItemRow[];
+  for (const r of rows) map.get(r.parent_id)?.push(toItem(r));
+  return map;
+}
+
+/** Remplace la liste complète des éléments d'un conducteur ou d'un modèle. */
+export function writeItems(
+  db: Db,
+  table: 'rundown_items' | 'rundown_template_items',
+  parentColumn: 'rundown_id' | 'template_id',
+  parentId: number,
+  items: RundownItemInput[],
+): void {
+  db.prepare(`DELETE FROM ${table} WHERE ${parentColumn} = ?`).run(parentId);
+  const insert = db.prepare(
+    `INSERT INTO ${table} (${parentColumn}, uid, position, type_id, title, duration_seconds,
+                           notes, script_id)
+     VALUES (@parentId, @uid, @position, @typeId, @title, @durationSeconds, @notes, @scriptId)`,
+  );
+  items.forEach((item, position) =>
+    insert.run({
+      parentId,
+      position,
+      uid: item.uid,
+      typeId: item.typeId,
+      title: item.title,
+      durationSeconds: item.durationSeconds,
+      notes: item.notes,
+      scriptId: item.scriptId,
+    }),
+  );
+}
 
 const toItem = (r: ItemRow): RundownItem => ({
   uid: r.uid,
@@ -89,6 +145,7 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
     totalSeconds: rundownSchedule(r.start_time, items).total,
     updatedAt: r.updated_at,
     updatedByName: r.updated_by_name,
+    templateId: r.template_id,
     items,
     version: r.version,
     updatedBy: r.updated_by,
@@ -96,24 +153,20 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
   };
 }
 
-const toSummary = ({ items: _i, version: _v, updatedBy: _u, deletedAt: _d, ...s }: RundownRecord) =>
-  s;
+const toSummary = ({
+  items: _i,
+  version: _v,
+  updatedBy: _u,
+  deletedAt: _d,
+  ...s
+}: RundownRecord): RundownSummary => s;
 
 /** Conducteurs et leurs éléments. */
 export class RundownRepo {
   constructor(private readonly db: Db) {}
 
   private itemsOf(rundownIds: number[]): Map<number, RundownItem[]> {
-    const map = new Map<number, RundownItem[]>(rundownIds.map((id) => [id, []]));
-    if (rundownIds.length === 0) return map;
-    const rows = this.db
-      .prepare(
-        `${SELECT_ITEMS} WHERE i.rundown_id IN (SELECT value FROM json_each(?))
-          ORDER BY i.rundown_id, i.position`,
-      )
-      .all(JSON.stringify(rundownIds)) as ItemRow[];
-    for (const r of rows) map.get(r.rundown_id)?.push(toItem(r));
-    return map;
+    return readItems(this.db, 'rundown_items', 'rundown_id', rundownIds);
   }
 
   /** Conducteurs hors corbeille, par date puis heure de début. */
@@ -144,17 +197,35 @@ export class RundownRepo {
     ).map((r) => r.id);
   }
 
+  /** Dates d'origine des conducteurs déjà créés depuis ce modèle (corbeille comprise). */
+  templateDates(templateId: number): Set<string> {
+    return new Set(
+      (
+        this.db
+          .prepare('SELECT template_date FROM rundowns WHERE template_id = ?')
+          .all(templateId) as { template_date: string }[]
+      ).map((r) => r.template_date),
+    );
+  }
+
   create(
     header: RundownHeader & { ownerId: number | null; userId: number },
     items: RundownItemInput[],
+    link?: TemplateLink,
   ): RundownRecord {
     return this.db.transaction(() => {
       const info = this.db
         .prepare(
-          `INSERT INTO rundowns (owner_id, title, air_date, start_time, created_by, updated_by)
-           VALUES (@ownerId, @title, @airDate, @startTime, @userId, @userId)`,
+          `INSERT INTO rundowns (owner_id, title, air_date, start_time, created_by, updated_by,
+                                 template_id, template_date)
+           VALUES (@ownerId, @title, @airDate, @startTime, @userId, @userId,
+                   @templateId, @templateDate)`,
         )
-        .run(header);
+        .run({
+          ...header,
+          templateId: link?.templateId ?? null,
+          templateDate: link?.templateDate ?? null,
+        });
       const id = Number(info.lastInsertRowid);
       this.writeItems(id, items);
       return this.findById(id)!;
@@ -189,13 +260,7 @@ export class RundownRepo {
   }
 
   private writeItems(rundownId: number, items: RundownItemInput[]): void {
-    this.db.prepare('DELETE FROM rundown_items WHERE rundown_id = ?').run(rundownId);
-    const insert = this.db.prepare(
-      `INSERT INTO rundown_items (rundown_id, uid, position, type_id, title, duration_seconds,
-                                  notes, script_id)
-       VALUES (@rundownId, @uid, @position, @typeId, @title, @durationSeconds, @notes, @scriptId)`,
-    );
-    items.forEach((item, position) => insert.run({ ...item, rundownId, position }));
+    writeItems(this.db, 'rundown_items', 'rundown_id', rundownId, items);
   }
 
   // ---- Corbeille ----------------------------------------------------------------

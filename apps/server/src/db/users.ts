@@ -107,12 +107,14 @@ export class UserRepo {
     return this.findById(id);
   }
 
-  /** Vrai si le compte possède des dossiers ou des scripts (corbeille comprise). */
+  /** Vrai si le compte possède dossiers, scripts, conducteurs ou modèles (corbeille comprise). */
   hasContent(id: number): boolean {
     const row = this.db
       .prepare(
         `SELECT EXISTS (SELECT 1 FROM scripts WHERE owner_id = @id)
-             OR EXISTS (SELECT 1 FROM folders WHERE owner_id = @id) AS n`,
+             OR EXISTS (SELECT 1 FROM folders WHERE owner_id = @id)
+             OR EXISTS (SELECT 1 FROM rundowns WHERE owner_id = @id)
+             OR EXISTS (SELECT 1 FROM rundown_templates WHERE owner_id = @id) AS n`,
       )
       .get({ id }) as { n: number };
     return row.n === 1;

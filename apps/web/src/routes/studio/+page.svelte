@@ -15,6 +15,7 @@
   import { ownerName } from '$lib/library.js';
   import { LiveLink } from '$lib/live.svelte.js';
   import { groupByDate, type StudioView } from '$lib/rundowns.js';
+  import { logoUrl } from '$lib/settings.svelte.js';
   import ItemCard from '$lib/studio/ItemCard.svelte';
   import Reader from '$lib/studio/Reader.svelte';
   import RundownPicker from '$lib/studio/RundownPicker.svelte';
@@ -277,6 +278,7 @@
         ownerId={currentOwner}
         {folderId}
         {collapsed}
+        logo={reading ? null : logoUrl(link.settings)}
         onselect={(o, f) => navigate('scripts', () => select(o, f))}
         ontoday={() => navigate('today', () => {})}
         onrundowns={(o) => navigate('rundowns', () => select(o, null))}

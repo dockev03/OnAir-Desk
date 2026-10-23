@@ -59,10 +59,19 @@ export const settingsSchema = z.object({
   cues: cuesSchema,
   /** Types d'éléments de conducteur et leurs couleurs. */
   itemTypes: itemTypesSchema,
+  /**
+   * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
+   * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
+   */
+  logoHash: z
+    .string()
+    .regex(/^[a-f0-9]{16}$/)
+    .nullable(),
 });
 
 /** Modification des paramètres : seuls les champs fournis changent. */
 export const settingsUpdateSchema = settingsSchema
+  .omit({ logoHash: true })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'empty');
 
@@ -75,6 +84,20 @@ export const setupSchema = z.object({
     password: passwordSchema,
   }),
 });
+
+/** Logo de la station : PNG, JPEG ou WebP (type vérifié sur le contenu), 3 Mo au plus. */
+export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export const MAX_LOGO_BYTES = 3 * 1024 * 1024;
+export const logoUploadSchema = z
+  .object({
+    /** Contenu du fichier, encodé en base64. */
+    data: z
+      .string()
+      .min(4)
+      .max(Math.ceil(MAX_LOGO_BYTES / 3) * 4)
+      .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  })
+  .strict();
 
 export const loginSchema = z.object({
   username: z.string().trim().toLowerCase().min(1).max(64),

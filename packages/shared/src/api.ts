@@ -1,6 +1,7 @@
 import type { ScriptDoc } from './content.js';
 import type { ItemScriptInfo } from './rundown.js';
 import type { Locale, Role, Settings } from './schemas.js';
+import type { SkipReason, TemplateExclusion } from './template.js';
 
 export interface PublicUser {
   id: number;
@@ -86,12 +87,12 @@ export interface SearchHit extends ScriptSummary {
 }
 
 export interface TrashItem {
-  kind: 'script' | 'rundown';
+  kind: 'script' | 'rundown' | 'template';
   id: number;
   ownerId: number | null;
   ownerName: string;
   title: string;
-  /** Script : nombre de mots ; conducteur : nombre d'éléments. */
+  /** Script : nombre de mots ; conducteur ou modèle : nombre d'éléments. */
   wordCount?: number;
   itemCount?: number;
   deletedAt: string;
@@ -128,6 +129,8 @@ export interface RundownSummary {
   totalSeconds: number;
   updatedAt: string;
   updatedByName: string | null;
+  /** Modèle d'origine (conducteur créé depuis un modèle), sinon null. */
+  templateId: number | null;
 }
 
 export interface RundownItem {
@@ -146,6 +149,41 @@ export interface Rundown extends RundownSummary {
   items: RundownItem[];
   version: number;
   canWrite: boolean;
+  /** Modèle d'origine, s'il existe encore (null s'il a été supprimé définitivement). */
+  template: { id: number; title: string; deleted: boolean } | null;
+}
+
+// ---- Modèles d'émission récurrente -------------------------------------------------
+
+export interface TemplateSummary {
+  id: number;
+  ownerId: number | null;
+  title: string;
+  startTime: string;
+  /** Jours de diffusion, 1 = lundi … 7 = dimanche. */
+  days: number[];
+  validFrom: string | null;
+  validUntil: string | null;
+  active: boolean;
+  itemCount: number;
+  totalSeconds: number;
+  updatedAt: string;
+  updatedByName: string | null;
+}
+
+export interface Template extends TemplateSummary {
+  exclusions: TemplateExclusion[];
+  items: RundownItem[];
+  version: number;
+  canWrite: boolean;
+}
+
+/** Résumé de « Créer les conducteurs ». */
+export interface CreateFromTemplateResult {
+  created: { date: string; rundownId: number }[];
+  /** Dates déjà créées depuis ce modèle (même supprimées ou déplacées depuis). */
+  existing: string[];
+  skipped: { date: string; reason: SkipReason }[];
 }
 
 export interface RundownList {

@@ -275,9 +275,13 @@ export class Library {
     this.hub.broadcast({ type: 'prompter', prompter: this.prompterState() });
   }
 
-  /** Purge quotidienne de la corbeille (scripts et conducteurs). */
+  /** Purge quotidienne de la corbeille (scripts, conducteurs et modèles). */
   purgeTrash(): number {
-    return this.repos.scripts.purgeTrash().length + this.repos.rundowns.purgeTrash().length;
+    return (
+      this.repos.scripts.purgeTrash().length +
+      this.repos.rundowns.purgeTrash().length +
+      this.repos.templates.purgeTrash().length
+    );
   }
 }
 

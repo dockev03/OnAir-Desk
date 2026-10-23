@@ -10,6 +10,7 @@
     ownerId,
     folderId,
     collapsed,
+    logo,
     onselect,
     ontoday,
     onrundowns,
@@ -20,6 +21,8 @@
     ownerId: number | null | undefined;
     folderId: number | null;
     collapsed: boolean;
+    /** Adresse du logo de la station ; null pour le masquer (aucun logo, ou mode lecture). */
+    logo: string | null;
     onselect: (owner: number | null, folder: number | null) => void;
     ontoday: () => void;
     onrundowns: (owner: number | null) => void;
@@ -30,6 +33,7 @@
 </script>
 
 <nav class="side" class:mini={collapsed} aria-label={t('studio.folders')}>
+  {#if logo && !collapsed}<img class="logo" src={logo} alt="" />{/if}
   <button class="it toggle" onclick={ontoggle} aria-expanded={!collapsed}>
     <span class="ic">{collapsed ? '»' : '«'}</span>
     <span class="tx">{t('studio.collapse')}</span>
@@ -86,6 +90,13 @@
   }
   .side.mini {
     width: 54px;
+  }
+  .logo {
+    display: block;
+    max-width: 100%;
+    max-height: 72px;
+    object-fit: contain;
+    margin: 0.25rem auto 0.5rem;
   }
   .mini .tx {
     display: none;

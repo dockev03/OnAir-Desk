@@ -176,4 +176,63 @@ export const migrations: string[] = [
   ALTER TABLE prompter_state ADD COLUMN item_uid TEXT;
   ALTER TABLE prompter_state ADD COLUMN rundown_snapshot TEXT;
   `,
+  /* 5 — modèles d'émission récurrente ; logo de la station */ `
+  CREATE TABLE rundown_templates (
+    id          INTEGER PRIMARY KEY,
+    owner_id    INTEGER REFERENCES users (id) ON DELETE RESTRICT,
+    title       TEXT    NOT NULL,
+    start_time  TEXT    NOT NULL,
+    -- Jours de diffusion : bit 0 = lundi … bit 6 = dimanche.
+    days        INTEGER NOT NULL CHECK (days BETWEEN 1 AND 127),
+    valid_from  TEXT,
+    valid_until TEXT,
+    active      INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+    version     INTEGER NOT NULL DEFAULT 1,
+    created_by  INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    updated_by  INTEGER REFERENCES users (id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL DEFAULT ${NOW},
+    updated_at  TEXT    NOT NULL DEFAULT ${NOW},
+    deleted_at  TEXT,
+    deleted_by  INTEGER REFERENCES users (id) ON DELETE SET NULL
+  );
+  CREATE INDEX rundown_templates_deleted_at ON rundown_templates (deleted_at);
+
+  CREATE TABLE rundown_template_items (
+    template_id      INTEGER NOT NULL REFERENCES rundown_templates (id) ON DELETE CASCADE,
+    uid              TEXT    NOT NULL,
+    position         INTEGER NOT NULL,
+    type_id          TEXT    NOT NULL,
+    title            TEXT    NOT NULL,
+    duration_seconds INTEGER,
+    notes            TEXT    NOT NULL DEFAULT '',
+    script_id        INTEGER REFERENCES scripts (id) ON DELETE SET NULL,
+    PRIMARY KEY (template_id, uid)
+  );
+  CREATE INDEX rundown_template_items_script ON rundown_template_items (script_id);
+
+  -- Dates sans émission : une date seule a un début et une fin identiques.
+  CREATE TABLE rundown_template_exclusions (
+    id          INTEGER PRIMARY KEY,
+    template_id INTEGER NOT NULL REFERENCES rundown_templates (id) ON DELETE CASCADE,
+    start_date  TEXT    NOT NULL,
+    end_date    TEXT    NOT NULL,
+    label       TEXT    NOT NULL DEFAULT ''
+  );
+  CREATE INDEX rundown_template_exclusions_template ON rundown_template_exclusions (template_id);
+
+  -- Conducteur créé depuis un modèle : un seul par modèle et par date d'origine, même s'il
+  -- a été déplacé ou mis à la corbeille depuis (ni doublon, ni résurrection).
+  ALTER TABLE rundowns ADD COLUMN template_id INTEGER
+    REFERENCES rundown_templates (id) ON DELETE SET NULL;
+  ALTER TABLE rundowns ADD COLUMN template_date TEXT;
+  CREATE UNIQUE INDEX rundowns_template_date ON rundowns (template_id, template_date);
+
+  CREATE TABLE station_logo (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    data       BLOB    NOT NULL,
+    mime       TEXT    NOT NULL,
+    hash       TEXT    NOT NULL,
+    updated_at TEXT    NOT NULL DEFAULT ${NOW}
+  );
+  `,
 ];

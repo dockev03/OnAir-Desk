@@ -6,6 +6,7 @@ import {
   type Settings,
 } from '@onair-desk/shared';
 import type { Db } from './database.js';
+import { LogoRepo } from './logo.js';
 
 export function defaultSettings(): Settings {
   const tz = process.env.TZ;
@@ -18,6 +19,7 @@ export function defaultSettings(): Settings {
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
     itemTypes: DEFAULT_ITEM_TYPES,
+    logoHash: null,
   };
 }
 
@@ -42,12 +44,14 @@ export class SettingsRepo {
     const result: Record<string, unknown> = { ...defaultSettings() };
     for (const [key, value] of Object.entries(stored)) {
       const field = settingsSchema.shape[key as keyof Settings];
-      if (field?.safeParse(value).success) result[key] = value;
+      if (key !== 'logoHash' && field?.safeParse(value).success) result[key] = value;
     }
+    // L'empreinte du logo vient de l'image elle-même.
+    result.logoHash = new LogoRepo(this.db).hash();
     return result as Settings;
   }
 
-  set(values: Partial<Settings>): Settings {
+  set(values: Partial<Omit<Settings, 'logoHash'>>): Settings {
     const stmt = this.db.prepare(
       'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     );

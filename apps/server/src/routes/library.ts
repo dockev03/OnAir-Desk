@@ -124,7 +124,11 @@ export function registerLibraryRoutes(app: FastifyInstance, ctx: RouteContext) {
 
   app.get('/api/trash', async (req): Promise<TrashItem[]> => {
     const user = requireUser(req);
-    return [...repos.scripts.listTrash(), ...repos.rundowns.listTrash()]
+    return [
+      ...repos.scripts.listTrash(),
+      ...repos.rundowns.listTrash(),
+      ...repos.templates.listTrash(),
+    ]
       .filter((t) => canWrite(user, t.ownerId))
       .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt));
   });

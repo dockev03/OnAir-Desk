@@ -2,6 +2,8 @@
   import {
     ITEM_COLORS,
     LOCALES,
+    LOGO_TYPES,
+    MAX_LOGO_BYTES,
     MAX_CUES,
     MAX_ITEM_TYPES,
     PROMPTER_FONT_MAX,
@@ -14,7 +16,7 @@
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
   import { errorMessage, t } from '$lib/i18n/index.svelte.js';
-  import { stationSettings } from '$lib/settings.svelte.js';
+  import { logoUrl, stationSettings } from '$lib/settings.svelte.js';
   import { timezones } from '$lib/timezones.js';
 
   let settings = $state<Settings | null>(null);
@@ -83,6 +85,56 @@
     });
   }
 
+  // ---- Logo : envoyé tout de suite, indépendamment du formulaire -------------------------
+
+  let logoError = $state('');
+  let logoBusy = $state(false);
+
+  /** Contenu d'un fichier en base64 (sans l'en-tête « data:… »). */
+  function readBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function logoAction(action: () => Promise<Settings>) {
+    logoError = '';
+    logoBusy = true;
+    try {
+      const next = await action();
+      stationSettings.set(next);
+      if (settings) settings.logoHash = next.logoHash;
+    } catch (err) {
+      logoError = errorMessage(errorCode(err));
+    } finally {
+      logoBusy = false;
+    }
+  }
+
+  async function uploadLogo(e: Event & { currentTarget: HTMLInputElement }) {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    // Vérifications anticipées ; le serveur contrôle le contenu réel du fichier.
+    if (file.size > MAX_LOGO_BYTES) return void (logoError = errorMessage('logo_too_large'));
+    if (!(LOGO_TYPES as readonly string[]).includes(file.type)) {
+      return void (logoError = errorMessage('logo_type'));
+    }
+    await logoAction(async () =>
+      api<Settings>('PUT', '/api/settings/logo', { data: await readBase64(file) }),
+    );
+  }
+
+  function removeLogo() {
+    if (confirm(t('settings.logoRemoveConfirm'))) {
+      void logoAction(() => api<Settings>('DELETE', '/api/settings/logo'));
+    }
+  }
+
   async function save(e: SubmitEvent) {
     e.preventDefault();
     if (!settings) return;
@@ -101,6 +153,33 @@
 <h1>{t('settings.title')}</h1>
 
 {#if settings}
+  <section class="card logo-card">
+    <h2>{t('settings.logo')}</h2>
+    <p class="muted">{t('settings.logoIntro')}</p>
+    <div class="row">
+      {#if logoUrl(settings)}
+        <img class="logo-preview" src={logoUrl(settings)} alt={t('settings.logo')} />
+      {:else}
+        <span class="muted">{t('settings.noLogo')}</span>
+      {/if}
+      <label class="file" class:disabled={logoBusy}>
+        {logoUrl(settings) ? t('settings.logoReplace') : t('settings.logoUpload')}
+        <input
+          type="file"
+          accept={LOGO_TYPES.join(',')}
+          disabled={logoBusy}
+          onchange={uploadLogo}
+        />
+      </label>
+      {#if logoUrl(settings)}
+        <button class="danger" disabled={logoBusy} onclick={removeLogo}
+          >{t('settings.logoRemove')}</button
+        >
+      {/if}
+    </div>
+    {#if logoError}<p class="error" role="alert">{logoError}</p>{/if}
+  </section>
+
   <form class="card stack" onsubmit={save}>
     <label>
       {t('field.stationName')}
@@ -276,6 +355,44 @@
 {/if}
 
 <style>
+  .logo-card {
+    margin-bottom: 1rem;
+  }
+  .logo-card h2 {
+    margin-top: 0;
+  }
+  .logo-preview {
+    max-height: 64px;
+    max-width: 200px;
+    object-fit: contain;
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 4px;
+  }
+  /* Bouton d'envoi de fichier : le champ natif est masqué, le libellé sert de bouton. */
+  .file {
+    position: relative;
+    display: inline-block;
+    color: var(--text);
+    font-size: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    padding: 0.5rem 0.9rem;
+  }
+  .file.disabled {
+    opacity: 0.55;
+  }
+  .file input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+  .file:focus-within {
+    outline: 2px solid #85b7eb;
+  }
   .cues {
     display: flex;
     flex-direction: column;

@@ -1,5 +1,7 @@
 import type { RundownSummary } from '@onair-desk/shared';
 
+export { addDays } from '@onair-desk/shared';
+
 /** Identifiant stable d'un nouvel élément de conducteur. */
 export function newItemUid(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
@@ -16,13 +18,6 @@ export function formatAirDate(airDate: string, locale: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${airDate}T00:00:00Z`));
-}
-
-/** Date AAAA-MM-JJ décalée d'un nombre de jours. */
-export function addDays(airDate: string, days: number): string {
-  const d = new Date(`${airDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 /** HH:MM:SS → HH:MM (les secondes ne servent qu'au calcul). */

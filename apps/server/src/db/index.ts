@@ -2,11 +2,13 @@ import type { Db } from './database.js';
 import { AuditRepo } from './audit.js';
 import { DeviceRepo } from './devices.js';
 import { FolderRepo } from './folders.js';
+import { LogoRepo } from './logo.js';
 import { PrompterRepo } from './prompter.js';
 import { RundownRepo } from './rundowns.js';
 import { ScriptRepo } from './scripts.js';
 import { SessionRepo } from './sessions.js';
 import { SettingsRepo } from './settings.js';
+import { TemplateRepo } from './templates.js';
 import { UserRepo } from './users.js';
 
 export interface Repos {
@@ -20,6 +22,8 @@ export interface Repos {
   scripts: ScriptRepo;
   prompter: PrompterRepo;
   rundowns: RundownRepo;
+  templates: TemplateRepo;
+  logo: LogoRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -34,6 +38,8 @@ export function createRepos(db: Db): Repos {
     scripts: new ScriptRepo(db),
     prompter: new PrompterRepo(db),
     rundowns: new RundownRepo(db),
+    templates: new TemplateRepo(db),
+    logo: new LogoRepo(db),
   };
 }
 
@@ -41,3 +47,4 @@ export { openDatabase, openMemoryDatabase, type Db } from './database.js';
 export { toPublicUser, type User } from './users.js';
 export type { ScriptRecord } from './scripts.js';
 export type { RundownRecord } from './rundowns.js';
+export type { TemplateRecord } from './templates.js';

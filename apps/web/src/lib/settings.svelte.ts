@@ -20,3 +20,7 @@ export const stationSettings = {
     current = s;
   },
 };
+
+/** Adresse du logo de la station (change avec l'image : le navigateur peut la garder en cache). */
+export const logoUrl = (s: Settings | null): string | null =>
+  s?.logoHash ? `/api/station/logo?v=${s.logoHash}` : null;

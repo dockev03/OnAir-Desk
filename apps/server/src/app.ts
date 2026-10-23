@@ -11,6 +11,7 @@ import { HttpError } from './lib/errors.js';
 import { Library } from './library.js';
 import { Rundowns } from './rundowns.js';
 import { SetupState } from './setup.js';
+import { Templates } from './templates.js';
 import { inlineScriptHashes, readIndexHtml, registerStatic } from './static.js';
 import { Hub } from './ws/hub.js';
 import { registerWsRoutes } from './ws/routes.js';
@@ -22,6 +23,7 @@ import { registerRundownRoutes } from './routes/rundowns.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
+import { registerTemplateRoutes } from './routes/templates.js';
 import { registerUserRoutes } from './routes/users.js';
 
 export interface AppOptions {
@@ -55,12 +57,14 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   const repos = createRepos(db);
   const hub = new Hub();
   const library = new Library(repos, hub);
+  const rundowns = new Rundowns(repos, library);
   const ctx: RouteContext = {
     config,
     repos,
     hub,
     library,
-    rundowns: new Rundowns(repos, library),
+    rundowns,
+    templates: new Templates(repos, library, rundowns),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
     rootCaPem: opts.rootCaPem ?? (() => null),
@@ -112,6 +116,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerSettingsRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
+  registerTemplateRoutes(app, ctx);
   registerWsRoutes(app, repos, ctx.hub, ctx.library, config.allowedOrigins);
   await registerStatic(app, config.webDir, indexHtml);
 
@@ -126,10 +131,10 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     );
   }, 60_000).unref();
 
-  // Purge quotidienne de la corbeille (scripts supprimés depuis plus de 30 jours).
+  // Purge quotidienne de la corbeille (éléments supprimés depuis plus de 30 jours).
   const purge = () => {
     const n = ctx.library.purgeTrash();
-    if (n > 0) app.log.info(`Corbeille : ${n} script(s) supprimé(s) définitivement.`);
+    if (n > 0) app.log.info(`Corbeille : ${n} élément(s) supprimé(s) définitivement.`);
   };
   purge();
   const purgeTimer = setInterval(purge, 24 * 60 * 60_000).unref();

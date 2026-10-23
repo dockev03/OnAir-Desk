@@ -7,15 +7,19 @@
     type Rundown,
     type RundownList,
     type RundownSummary,
+    type Template,
+    type TemplateSummary,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
   import { errorMessage, i18n, t } from '$lib/i18n/index.svelte.js';
   import { ownerKey, ownerName, parseOwnerKey } from '$lib/library.js';
   import { addDays, formatAirDate, groupByDate, shortTime } from '$lib/rundowns.js';
+  import { formatDays } from '$lib/templates.js';
   import { session } from '$lib/session.svelte.js';
 
   let lib = $state<Library | null>(null);
   let list = $state<RundownList | null>(null);
+  let templates = $state<TemplateSummary[] | null>(null);
   let error = $state('');
   let notice = $state('');
 
@@ -24,6 +28,11 @@
   let newTitle = $state('');
   let newDate = $state('');
   let newStart = $state('07:00');
+
+  // Nouveau modèle : titre et heure de début (le reste se règle dans son éditeur).
+  let creatingTemplate = $state(false);
+  let templateTitle = $state('');
+  let templateStart = $state('07:00');
 
   // Duplication : conducteur choisi et date cible.
   let duplicating = $state<number | null>(null);
@@ -45,9 +54,10 @@
 
   async function refresh() {
     try {
-      [lib, list] = await Promise.all([
+      [lib, list, templates] = await Promise.all([
         api<Library>('GET', '/api/library'),
         api<RundownList>('GET', '/api/rundowns'),
+        api<TemplateSummary[]>('GET', '/api/templates'),
       ]);
     } catch (e) {
       error = errorMessage(errorCode(e));
@@ -60,6 +70,7 @@
 
   function select(owner: number | null) {
     creating = false;
+    creatingTemplate = false;
     duplicating = null;
     void goto(`/rundowns?owner=${ownerKey(owner)}`, { keepFocus: true, noScroll: true });
   }
@@ -117,6 +128,52 @@
       void run(() => api('DELETE', `/api/rundowns/${r.id}`));
     }
   }
+
+  function startCreateTemplate() {
+    creatingTemplate = true;
+    templateTitle = '';
+  }
+
+  /** Nouveau modèle : du lundi au vendredi par défaut, à ajuster dans l'éditeur. */
+  async function createTemplate(e: SubmitEvent) {
+    e.preventDefault();
+    await run(async () => {
+      const tpl = await api<Template>('POST', '/api/templates', {
+        ownerId,
+        title: templateTitle,
+        startTime: templateStart,
+        days: [1, 2, 3, 4, 5],
+      });
+      await goto(`/rundowns/templates/${tpl.id}`);
+    });
+  }
+
+  async function duplicateTemplate(tpl: TemplateSummary) {
+    await run(async () => {
+      const copy = await api<Template>('POST', `/api/templates/${tpl.id}/duplicate`, {
+        // Modèle d'un collègue : la copie va chez moi.
+        ownerId: canWrite ? tpl.ownerId : session.user!.id,
+        ...(canWrite ? { title: t('library.copyTitle', { title: tpl.title }) } : {}),
+      });
+      await goto(`/rundowns/templates/${copy.id}`);
+    });
+  }
+
+  function trashTemplate(tpl: TemplateSummary) {
+    if (confirm(t('templates.trashConfirm', { title: tpl.title }))) {
+      void run(() => api('DELETE', `/api/templates/${tpl.id}`));
+    }
+  }
+
+  const ownTemplates = $derived(templates?.filter((x) => x.ownerId === ownerId) ?? []);
+
+  const templateMeta = (x: TemplateSummary) =>
+    t('templates.meta', {
+      days: formatDays(x.days, i18n.locale),
+      time: shortTime(x.startTime),
+      n: x.itemCount,
+      duration: formatDuration(x.totalSeconds),
+    });
 
   const meta = (r: RundownSummary) =>
     t('rundowns.meta', {
@@ -220,6 +277,54 @@
         <h2>{t('rundowns.past')}</h2>
         {@render rundownList(groups.past)}
       {/if}
+
+      <div class="row head templates-head">
+        <h2>{t('templates.title')}</h2>
+        {#if canWrite && !creatingTemplate}
+          <button onclick={startCreateTemplate}>{t('templates.new')}</button>
+        {/if}
+      </div>
+      {#if creatingTemplate}
+        <form class="card row create" onsubmit={createTemplate}>
+          <label class="grow">
+            {t('rundowns.field.title')}
+            <input bind:value={templateTitle} required maxlength="120" />
+          </label>
+          <label>
+            {t('rundowns.field.startTime')}
+            <input type="time" bind:value={templateStart} required />
+          </label>
+          <button class="primary">{t('rundowns.create')}</button>
+          <button type="button" onclick={() => (creatingTemplate = false)}
+            >{t('common.cancel')}</button
+          >
+        </form>
+      {/if}
+      {#if ownTemplates.length === 0}
+        <p class="muted">{t('templates.empty')}</p>
+      {:else}
+        <ul class="list">
+          {#each ownTemplates as tpl (tpl.id)}
+            <li class="item">
+              <div class="info">
+                <a href="/rundowns/templates/{tpl.id}" class="title">
+                  {tpl.title}
+                  {#if !tpl.active}<span class="badge">{t('templates.suspended')}</span>{/if}
+                </a>
+                <span class="muted small">{templateMeta(tpl)}</span>
+              </div>
+              <div class="row actions">
+                <button onclick={() => duplicateTemplate(tpl)}>{t('rundowns.duplicate')}</button>
+                {#if canWrite}
+                  <button class="danger" onclick={() => trashTemplate(tpl)}
+                    >{t('library.trash')}</button
+                  >
+                {/if}
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     {:else if !error}
       <p class="muted">{t('common.loading')}</p>
     {/if}
@@ -277,6 +382,14 @@
     margin-bottom: 0.75rem;
   }
   .head h1 {
+    margin: 0;
+  }
+  .templates-head {
+    margin: 2rem 0 0;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .templates-head h2 {
     margin: 0;
   }
   h2 {

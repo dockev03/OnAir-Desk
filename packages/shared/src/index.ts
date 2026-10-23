@@ -3,3 +3,4 @@ export * from './api.js';
 export * from './time.js';
 export * from './content.js';
 export * from './rundown.js';
+export * from './template.js';

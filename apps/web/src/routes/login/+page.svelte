@@ -10,6 +10,8 @@
   let password = $state('');
   let busy = $state(false);
   let error = $state('');
+  /** Logo de la station (public) ; masqué s'il n'y en a pas. */
+  let showLogo = $state(true);
 
   /** Redirection après connexion : uniquement vers une page de cette application. */
   function nextUrl(): string {
@@ -38,6 +40,9 @@
 </script>
 
 <div class="narrow">
+  {#if showLogo}
+    <img class="logo" src="/api/station/logo" alt="" onerror={() => (showLogo = false)} />
+  {/if}
   <form class="card stack" onsubmit={submit}>
     <h1>{t('login.title')}</h1>
     <label>
@@ -52,3 +57,13 @@
     <button class="primary" disabled={busy}>{t('login.submit')}</button>
   </form>
 </div>
+
+<style>
+  .logo {
+    display: block;
+    max-height: 96px;
+    max-width: 70%;
+    object-fit: contain;
+    margin: 0 auto 1.25rem;
+  }
+</style>

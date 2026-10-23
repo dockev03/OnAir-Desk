@@ -109,7 +109,8 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
-button {
+button,
+a.button {
   font: inherit;
   cursor: pointer;
   border-radius: 6px;
@@ -117,6 +118,11 @@ button {
   background: var(--surface-2);
   color: var(--text);
   padding: 0.5rem 0.9rem;
+}
+
+a.button {
+  display: inline-block;
+  text-decoration: none;
 }
 
 button.primary {
@@ -195,4 +201,19 @@ th {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
   border: 1px solid var(--border);
+}
+
+/* Impression : seul le contenu de la page, en noir sur blanc. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .no-print {
+    display: none !important;
+  }
 }
