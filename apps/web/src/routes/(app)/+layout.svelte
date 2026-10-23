@@ -5,6 +5,7 @@
   import { api } from '$lib/api.js';
   import { t } from '$lib/i18n/index.svelte.js';
   import { loadMe, logout, session } from '$lib/session.svelte.js';
+  import { logoUrl as logoOf, stationSettings } from '$lib/settings.svelte.js';
 
   let { children } = $props();
   let ready = $state(false);
@@ -22,6 +23,8 @@
       if (!me)
         return goto(`/login?next=${encodeURIComponent(page.url.pathname)}`, { replaceState: true });
       if (me.kind === 'device') return goto('/studio', { replaceState: true });
+      // Nom et logo de la station dans l'en-tête ; un échec n'empêche pas d'utiliser l'outil.
+      void stationSettings.load().catch(() => {});
       ready = true;
     } catch {
       failed = true;
@@ -34,6 +37,7 @@
   }
 
   const isAdmin = $derived(session.user?.role === 'admin');
+  const logoUrl = $derived(logoOf(stationSettings.value));
   const links = $derived([
     { href: '/scripts', label: t('nav.scripts') },
     { href: '/rundowns', label: t('nav.rundowns') },
@@ -53,8 +57,11 @@
 {#if failed}
   <div class="narrow"><p class="error">{t('error.network')}</p></div>
 {:else if ready && session.user}
-  <header>
-    <a class="brand" href="/">{t('app.name')}</a>
+  <header class="no-print">
+    <a class="brand" href="/">
+      {#if logoUrl}<img class="logo" src={logoUrl} alt="" />{/if}
+      {stationSettings.value?.stationName ?? t('app.name')}
+    </a>
     <nav>
       {#each links as link (link.href)}
         <a href={link.href} class:active={page.url.pathname.startsWith(link.href)}>{link.label}</a>
@@ -81,9 +88,17 @@
     background: var(--surface);
   }
   .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 600;
     color: var(--text);
     text-decoration: none;
+  }
+  .logo {
+    height: 28px;
+    max-width: 120px;
+    object-fit: contain;
   }
   nav {
     display: flex;
@@ -108,5 +123,11 @@
     max-width: 960px;
     margin: 0 auto;
     padding: 1.5rem 16px 3rem;
+  }
+  @media print {
+    main {
+      max-width: none;
+      padding: 0;
+    }
   }
 </style>

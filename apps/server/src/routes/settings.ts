@@ -1,8 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import { settingsSchema, settingsUpdateSchema } from '@onair-desk/shared';
+import {
+  MAX_LOGO_BYTES,
+  logoUploadSchema,
+  settingsSchema,
+  settingsUpdateSchema,
+  type Settings,
+} from '@onair-desk/shared';
 import { requireAdmin, requireIdentity } from '../auth/identity.js';
+import { badRequest, notFound } from '../lib/errors.js';
+import { detectImageType } from '../lib/image.js';
 import { parse } from '../lib/validate.js';
 import type { RouteContext } from './context.js';
+
+/** Logo de 3 Mo encodé en base64 (+ un tiers), plus l'enveloppe JSON. */
+const LOGO_BODY_LIMIT = 4.5 * 1024 * 1024;
 
 export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) {
   const { repos, hub } = ctx;
@@ -23,5 +34,52 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) 
       fields: Object.keys(values),
     });
     return settings;
+  });
+
+  // ---- Logo de la station ----------------------------------------------------------
+
+  app.put('/api/settings/logo', { bodyLimit: LOGO_BODY_LIMIT }, async (req): Promise<Settings> => {
+    const admin = requireAdmin(req);
+    const { data } = parse(logoUploadSchema, req.body);
+    const bytes = Buffer.from(data, 'base64');
+    if (bytes.length > MAX_LOGO_BYTES) throw badRequest('logo_too_large');
+    const mime = detectImageType(bytes);
+    if (!mime) throw badRequest('logo_type');
+    const hash = repos.logo.set(bytes, mime);
+    const settings = repos.settings.get();
+    hub.broadcastSettings(settings);
+    repos.audit.write({ type: 'user', id: admin.id }, 'logo.updated', {
+      type: mime,
+      bytes: bytes.length,
+      hash,
+    });
+    return settings;
+  });
+
+  app.delete('/api/settings/logo', async (req): Promise<Settings> => {
+    const admin = requireAdmin(req);
+    repos.logo.clear();
+    const settings = repos.settings.get();
+    hub.broadcastSettings(settings);
+    repos.audit.write({ type: 'user', id: admin.id }, 'logo.removed');
+    return settings;
+  });
+
+  // Public : affiché sur la page de connexion et l'écran studio. Avec ?v=<empreinte> (lien
+  // fourni par les paramètres), l'image peut rester en cache : le lien change avec elle.
+  app.get('/api/station/logo', async (req, reply) => {
+    const logo = repos.logo.get();
+    if (!logo) throw notFound();
+    const etag = `"${logo.hash}"`;
+    const { v } = req.query as { v?: unknown };
+    reply
+      .header('etag', etag)
+      .header('x-content-type-options', 'nosniff')
+      .header(
+        'cache-control',
+        v === logo.hash ? 'public, max-age=31536000, immutable' : 'no-cache',
+      );
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type(logo.mime).send(logo.data);
   });
 }

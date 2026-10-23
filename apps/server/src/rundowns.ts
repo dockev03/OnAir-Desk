@@ -1,6 +1,7 @@
 import type {
   CreateRundownInput,
   Rundown,
+  RundownItem,
   RundownItemInput,
   RundownList,
   UpdateRundownInput,
@@ -9,6 +10,9 @@ import type { Identity } from './auth/identity.js';
 import type { Repos, RundownRecord, User } from './db/index.js';
 import { badRequest, conflict, notFound } from './lib/errors.js';
 import { canWrite, type Library } from './library.js';
+
+/** Élément tel qu'enregistré (sans les infos du script attaché). */
+export const toItemInput = ({ script: _s, ...item }: RundownItem): RundownItemInput => item;
 
 /** Date du jour (AAAA-MM-JJ) dans le fuseau de la station. */
 export function todayIn(timezone: string, now = new Date()): string {
@@ -47,9 +51,14 @@ export class Rundowns {
 
   toRundown(record: RundownRecord, identity: Identity): Rundown {
     const { updatedBy: _u, deletedAt: _d, ...rest } = record;
+    const template =
+      record.templateId === null ? undefined : this.repos.templates.findById(record.templateId);
     return {
       ...rest,
       canWrite: identity.kind === 'user' && canWrite(identity.user, record.ownerId),
+      template: template
+        ? { id: template.id, title: template.title, deleted: template.deletedAt !== null }
+        : null,
     };
   }
 
@@ -58,7 +67,7 @@ export class Rundowns {
    * le conducteur reste accepté (type retiré des paramètres, script mis à la corbeille depuis) :
    * un conducteur ancien doit toujours pouvoir être enregistré.
    */
-  private checkItems(items: RundownItemInput[], current?: RundownRecord): void {
+  checkItems(items: RundownItemInput[], current?: { items: RundownItemInput[] }): void {
     const types = new Set(this.repos.settings.get().itemTypes.map((t) => t.id));
     const keptTypes = new Set(current?.items.map((i) => i.typeId));
     const keptScripts = new Set(current?.items.map((i) => i.scriptId));
@@ -118,8 +127,30 @@ export class Rundowns {
         startTime: source.startTime,
         userId: user.id,
       },
-      source.items.map(({ script: _s, ...item }) => item),
+      source.items.map(toItemInput),
     );
+  }
+
+  /**
+   * « Réappliquer le modèle » : le conducteur reprend le titre, l'heure de début et les
+   * éléments de son modèle d'origine ; sa date ne change pas.
+   */
+  reapplyTemplate(user: User, id: number, version: number): RundownRecord {
+    const updated = this.repos.db.transaction(() => {
+      const current = this.getLive(id);
+      this.library.assertWrite(user, current.ownerId);
+      if (version !== current.version) throw conflict('version_conflict');
+      const template =
+        current.templateId === null ? undefined : this.repos.templates.findById(current.templateId);
+      if (!template || template.deletedAt) throw badRequest('no_template');
+      return this.repos.rundowns.update(id, user.id, {
+        title: template.title,
+        startTime: template.startTime,
+        items: template.items.map(toItemInput),
+      });
+    })();
+    this.library.rundownRefresh(id);
+    return updated;
   }
 
   trash(user: User, id: number): void {

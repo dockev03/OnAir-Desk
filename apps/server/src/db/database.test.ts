@@ -68,3 +68,28 @@ describe('migration 4', () => {
     db.close();
   });
 });
+
+describe('migration 5', () => {
+  it('garde les conducteurs existants et interdit deux conducteurs par modèle et par date', () => {
+    const v4 = openDatabase(dir, () => {}, migrations.slice(0, 4));
+    v4.prepare(
+      "INSERT INTO rundowns (title, air_date, start_time) VALUES ('Ancien', '2026-10-22', '07:00:00')",
+    ).run();
+    v4.close();
+
+    const db = openDatabase(dir);
+    expect(db.prepare('SELECT title, template_id FROM rundowns').all()).toEqual([
+      { title: 'Ancien', template_id: null },
+    ]);
+    db.prepare(
+      "INSERT INTO rundown_templates (title, start_time, days) VALUES ('Modèle', '07:00:00', 1)",
+    ).run();
+    const insert = db.prepare(
+      `INSERT INTO rundowns (title, air_date, start_time, template_id, template_date)
+       VALUES ('Généré', '2026-10-26', '07:00:00', 1, '2026-10-26')`,
+    );
+    insert.run();
+    expect(() => insert.run()).toThrow(/UNIQUE/);
+    db.close();
+  });
+});

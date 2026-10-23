@@ -9,10 +9,10 @@ Documents liés :
 - `docs/plan-etape-2.md` : plan détaillé et **bilan** de l'étape 2 (scripts), réalisée.
 - `docs/plan-etape-3.md` : plan et **bilan** de l'étape 3 (écran studio), réalisée.
 - `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
-- `docs/plan-etape-5.md` : plan de l'étape 5 (compléments conducteurs), validé, à réaliser.
+- `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio) et 4 (conducteurs) réalisées ; étapes 5 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs) et 5 (compléments conducteurs) réalisées ; étapes 6 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -203,7 +203,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
 2. ✅ **Scripts** : éditeur TipTap, bibliothèque, vitesse de défilement par script, « Envoyer au prompteur », corbeille, historique. → détail et bilan dans `docs/plan-etape-2.md`.
 3. ✅ **Écran studio** : kiosk, navigation latérale, horloge, temps réel, défilement manuel/auto, Précédent / Suivant, sortie par appui long. → détail et bilan dans `docs/plan-etape-3.md`. (Les alertes de fin de titre arrivent avec RadioDJ, étape 7.)
 4. ✅ **Conducteurs** : édition, couleurs, glisser-déposer, heures de passage, lien prompteur, duplication. → détail et bilan dans `docs/plan-etape-4.md`. Passée avant RadioDJ à la demande de l'utilisateur : elle ne dépend que du code existant.
-5. **Compléments conducteurs** (étape courte, 3 fonctionnalités) → plan dans `docs/plan-etape-5.md` :
+5. ✅ **Compléments conducteurs** (étape courte, 3 fonctionnalités) → détail et bilan dans `docs/plan-etape-5.md` :
    1. modèles d'émission récurrente (création des conducteurs **manuelle**, par l'animateur) ;
    2. impression / PDF du conducteur ;
    3. logo de la station (en plus du nom).

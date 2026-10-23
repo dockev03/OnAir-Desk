@@ -24,6 +24,7 @@ describe('settingsSchema', () => {
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
     itemTypes: DEFAULT_ITEM_TYPES,
+    logoHash: null,
   };
   it('accepte un paramétrage valide', () => {
     expect(settingsSchema.safeParse(base).success).toBe(true);
