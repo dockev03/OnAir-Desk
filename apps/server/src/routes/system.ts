@@ -8,7 +8,7 @@ export function registerSystemRoutes(app: FastifyInstance, ctx: RouteContext) {
     return { status: 'ok' };
   });
 
-  // Certificat racine public de l'autorité interne, à installer sur le Pi et les postes.
+  // Certificat racine public de l'autorité interne, à installer sur l'afficheur et les postes.
   app.get('/api/tls/root-ca.crt', async (_req, reply) => {
     const pem = ctx.rootCaPem();
     if (!pem) throw notFound();

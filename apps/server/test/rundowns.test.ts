@@ -277,7 +277,7 @@ describe('conducteurs : liste, duplication, corbeille', () => {
 });
 
 describe('conducteurs : écran studio', () => {
-  it('le Pi choisit un élément ; le script de l’élément est affiché', async () => {
+  it('l’afficheur choisit un élément ; le script de l’élément est affiché', async () => {
     const s = await newScript(jean.cookie, jean.id);
     const r = await newRundown(jean.cookie, jean.id, [
       item('a'),

@@ -38,7 +38,7 @@ export const fr = {
   'setup.submit': "Terminer l'installation",
   'setup.doneTitle': 'Installation terminée',
   'setup.doneText':
-    'Pour éviter les alertes de sécurité du navigateur, installez le certificat racine OnAir-Desk sur le Raspberry Pi et sur chaque poste.',
+    "Pour éviter les alertes de sécurité du navigateur, installez le certificat racine OnAir-Desk sur l'afficheur du studio et sur chaque poste.",
   'setup.downloadCa': 'Télécharger le certificat racine',
   'setup.continue': "Aller à l'administration",
 
@@ -69,10 +69,10 @@ export const fr = {
 
   'devices.title': 'Écrans studio (kiosk)',
   'devices.intro':
-    "Chaque Raspberry Pi est identifié par un jeton, en lecture seule. Le jeton n'est affiché qu'une fois : recopiez l'adresse dans la configuration du kiosk.",
+    "Chaque afficheur est identifié par un jeton, en lecture seule. Le jeton n'est affiché qu'une fois : recopiez l'adresse dans la configuration du kiosk.",
   'devices.add': 'Ajouter un écran',
   'devices.name': "Nom de l'écran",
-  'devices.namePlaceholder': 'Pi studio 1',
+  'devices.namePlaceholder': 'Écran studio 1',
   'devices.lastSeen': 'Dernière connexion',
   'devices.never': 'jamais',
   'devices.revoked': 'révoqué',
@@ -84,7 +84,7 @@ export const fr = {
   'devices.revokeConfirm': "Révoquer « {name} » ? L'écran sera déconnecté immédiatement.",
   'devices.tokenTitle': 'Adresse du kiosk pour « {name} »',
   'devices.tokenText':
-    'Copiez cette adresse dans la configuration de Chromium sur le Pi. Elle ne sera plus affichée : en cas de perte, générez un nouveau jeton.',
+    "Copiez cette adresse dans le navigateur de l'afficheur, en mode kiosk. Elle ne sera plus affichée : en cas de perte, générez un nouveau jeton.",
   'devices.copy': "Copier l'adresse",
   'devices.copied': 'Copié.',
   'devices.close': "J'ai copié l'adresse",
@@ -92,7 +92,7 @@ export const fr = {
   'settings.title': 'Paramètres de la station',
   'settings.tls': 'Certificat HTTPS',
   'settings.tlsText':
-    'Le certificat racine de cette installation doit être installé sur le Raspberry Pi et sur chaque poste.',
+    "Le certificat racine de cette installation doit être installé sur l'afficheur du studio et sur chaque poste.",
 
   'account.title': 'Mon compte',
   'account.changePassword': 'Changer mon mot de passe',

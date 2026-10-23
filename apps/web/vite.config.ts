@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [sveltekit()],
   build: {
-    // Chromium récent sur le Pi : pas besoin de transpiler pour de vieux navigateurs.
+    // Navigateur récent sur l'afficheur : pas besoin de transpiler pour de vieux navigateurs.
     target: 'es2022',
   },
   server: {
