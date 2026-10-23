@@ -40,7 +40,7 @@ export const en: Record<MessageKey, string> = {
   'setup.submit': 'Finish setup',
   'setup.doneTitle': 'Setup complete',
   'setup.doneText':
-    'To avoid browser security warnings, install the OnAir-Desk root certificate on the Raspberry Pi and on every workstation.',
+    'To avoid browser security warnings, install the OnAir-Desk root certificate on the studio display and on every workstation.',
   'setup.downloadCa': 'Download the root certificate',
   'setup.continue': 'Go to administration',
 
@@ -71,10 +71,10 @@ export const en: Record<MessageKey, string> = {
 
   'devices.title': 'Studio screens (kiosk)',
   'devices.intro':
-    'Each Raspberry Pi is identified by a read-only token. The token is shown only once: copy the address into the kiosk configuration.',
+    'Each studio display is identified by a read-only token. The token is shown only once: copy the address into the kiosk configuration.',
   'devices.add': 'Add a screen',
   'devices.name': 'Screen name',
-  'devices.namePlaceholder': 'Studio Pi 1',
+  'devices.namePlaceholder': 'Studio screen 1',
   'devices.lastSeen': 'Last seen',
   'devices.never': 'never',
   'devices.revoked': 'revoked',
@@ -85,7 +85,7 @@ export const en: Record<MessageKey, string> = {
   'devices.revokeConfirm': 'Revoke “{name}”? The screen will be disconnected immediately.',
   'devices.tokenTitle': 'Kiosk address for “{name}”',
   'devices.tokenText':
-    'Copy this address into the Chromium configuration on the Pi. It will not be shown again: if lost, generate a new token.',
+    "Copy this address into the display's browser, in kiosk mode. It will not be shown again: if lost, generate a new token.",
   'devices.copy': 'Copy address',
   'devices.copied': 'Copied.',
   'devices.close': 'I have copied the address',
@@ -93,7 +93,7 @@ export const en: Record<MessageKey, string> = {
   'settings.title': 'Station settings',
   'settings.tls': 'HTTPS certificate',
   'settings.tlsText':
-    "This installation's root certificate must be installed on the Raspberry Pi and on every workstation.",
+    "This installation's root certificate must be installed on the studio display and on every workstation.",
 
   'account.title': 'My account',
   'account.changePassword': 'Change my password',
