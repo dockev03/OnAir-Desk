@@ -8,6 +8,8 @@
 
 L'export Web du plugin n'envoie que `Artiste - Titre`. Il sert donc de **signal** (« un titre vient de démarrer »). Les données, elles, sont lues **en base, en lecture seule** : `history`, `songs`, `queuelist`. La base n'est plus un repli, elle est **indispensable** à 5 des 6 fonctionnalités de l'étape 7.
 
+RadioDJ refuse le certificat HTTPS d'OnAir-Desk : le signal arrive donc sur un **port HTTP dédié aux connecteurs**, avec le jeton dans le champ Password du plugin.
+
 ## 1. Plugin « Metadata Export » (ex « Now Playing Info »)
 
 En v3, le plugin s'appelle **Metadata Export** (fenêtre « Now Playing Info Exporter »). Il est livré avec RadioDJ et s'active dans Options → Plugins.
@@ -29,29 +31,51 @@ Testé avec un récepteur HTTP qui répond `200`.
 
 | Point | Constat |
 |---|---|
-| Contenu envoyé | Toujours `Artiste - Titre` (`$autotitle$`), en texte brut UTF-8 **non encodé**, malgré l'en-tête `Content-Type: application/x-www-form-urlencoded; charset=utf-8` |
-| Custom Data | **Ignorée**, en POST comme en GET |
+| Contenu envoyé, **Custom Data vide** | Formulaire encodé correctement : `title=<Artiste - Titre>` (ex. `title=C%C3%A9sar%20-%20Libert%C3%A0`) |
+| Contenu envoyé, Custom Data remplie | `Artiste - Titre` en texte brut UTF-8 **non encodé**, malgré l'en-tête `Content-Type: application/x-www-form-urlencoded; charset=utf-8` |
+| Custom Data | **Ignorée**, en POST comme en GET (elle ne fait que casser l'encodage) |
 | Variables dans l'URL | **Non remplacées** (`$track_id$` arrive tel quel) |
-| Password | **Envoyé nulle part** (ni en-tête, ni corps) |
-| POST | URL intacte, titre dans le corps |
+| Password | Envoyé **dans le corps**, champ `xpwd`, **seulement si la Custom Data est vide** : `xpwd=test1234&title=C%C3%A9sar%20-%20Libert%C3%A0` |
+| POST | URL intacte, données dans le corps |
 | GET | RadioDJ ajoute `?<titre>` à l'URL, **même si elle contient déjà un `?`** |
 | Chemin | Arrive intact (`/test/abc123`) |
 | Répétition | Une seule requête par titre, pas de nouvel essai |
 | En-têtes | `User-Agent: http_requester/0.1`, `Expect: 100-continue` (géré nativement par Node.js) |
 
+Réglage retenu dans RadioDJ (onglet Web) : URL `http://<serveur>:<port-connecteurs>/api/connectors/radiodj`, **Password = jeton**, **Custom Data vide**, méthode **POST**.
+
 Conséquences pour le connecteur :
-- méthode **POST** ;
-- jeton **dans le chemin** (`/api/connectors/radiodj/<jeton>`), à **masquer dans les journaux** du serveur ;
-- corps lu **en texte brut**, jamais avec le lecteur de formulaires (un titre contenant `&`, `=` ou `+` serait mal découpé) ;
-- le corps ne sert qu'en **mode dégradé** (base injoignable) : titre affiché sans temps restant. On ne le découpe pas sur ` - ` pour en tirer des données fiables.
+- jeton lu dans le champ **`xpwd`** du corps : il n'apparaît pas dans l'URL ni dans les journaux ;
+- corps lu comme un formulaire encodé (`xpwd`, `title`) ;
+- le titre ne sert qu'en **mode dégradé** (base injoignable) : affiché sans temps restant. On ne le découpe pas sur ` - ` pour en tirer des données fiables.
 
 Si une version future de RadioDJ honore la Custom Data, on pourra l'exploiter. Rien ne doit en dépendre.
+
+### HTTPS : refusé par RadioDJ
+
+Tests avec le certificat interne d'OnAir-Desk (ECDSA P-256, adresse IP dans le certificat), autorité installée dans les magasins « Utilisateur actuel » **et** « Ordinateur local », RadioDJ redémarré. Chrome et Edge acceptent ce certificat ; RadioDJ non :
+
+| Configuration du serveur | Résultat |
+|---|---|
+| Défaut (TLS 1.3) | Rien n'arrive au serveur |
+| TLS 1.2, AES-GCM | Négociation faite, puis `decryption failed or bad record mac` |
+| TLS 1.2, AES-CBC | Négociation faite, puis **alerte TLS 42 « bad certificate » envoyée par RadioDJ** |
+
+RadioDJ refuse donc le certificat lui-même. Causes non tranchées (abandonnées, jugées trop coûteuses à creuser) : clé ECDSA, adresse IP au lieu d'un nom DNS, ou vérification de révocation (l'autorité interne ne publie pas de liste de révocation).
+
+**Décision de l'utilisateur : port HTTP dédié aux connecteurs**, comme envisagé dans `docs/plan-etape-1.md`. Le risque est faible, car la requête n'est qu'un signal : une fausse requête ne provoque qu'une relecture de la base. Conditions à détailler dans le plan de l'étape 7 :
+- **désactivé par défaut**, activé par l'admin ;
+- n'expose **que** les routes d'entrée des connecteurs, jamais l'interface ni les sessions ;
+- **réseau interne uniquement** ;
+- jeton dans `xpwd`. Il circule en clair sur le réseau local, et le titre affiché en mode dégradé pourrait être falsifié depuis ce réseau : limites acceptées.
+
+C'est un **changement à risque d'exposition réseau** (`CLAUDE.md` §9).
 
 ### Filtres (types de piste)
 
 Les numéros correspondent à la colonne `song_type` de la base : 0 Music, 1 Jingle, 2 Sweeper, 3 Voiceover, 4 Commercial, 5 InternetStream, 6 Other, 7 VDF, 8 Podcast, 9 Request, 10 News, 11 PlaylistEvent, 12 FileByDate, 13 NewestFromFolder, 14 Teaser.
 
-Option retenue : **exporter presque tout** et laisser OnAir-Desk trier selon le type lu en base. Sinon, pendant une pub non exportée, l'écran garderait le titre précédent avec un compte à rebours faux. Laisser **Voiceover** (joué par-dessus un titre) et **PlaylistEvent** (pas de l'audio) décochés. Le réglage exact sera fixé dans le plan de l'étape 7.
+Option retenue : **exporter presque tout** et laisser OnAir-Desk trier selon le type lu en base. Sinon, pendant une pub non exportée, l'écran garderait le titre précédent avec un compte à rebours faux. Laisser **Voiceover** (joué par-dessus un titre) et **PlaylistEvent** (pas de l'audio) décochés. Laisser aussi **Sweeper** décoché : un sweeper posé sur un titre déclenche un second signal juste après celui du titre, sans rien apporter. Le réglage exact sera fixé dans le plan de l'étape 7.
 
 ## 2. Base MariaDB, en lecture seule
 
@@ -61,7 +85,8 @@ Tables présentes : `carts`, `carts_list`, `category`, `events`, `events_categor
 
 - Une ligne est écrite **au démarrage** de chaque titre : `trackID`, `date_played`, `song_type`, `duration`, `artist`, `title`, `album`…
 - Vérifié : *Summertime* a démarré à 15:11:46, avant son `ETA` (15:12:20), parce que le titre précédent a été coupé. `history` reflète donc ce qui passe réellement.
-- Prévoir un **court délai** : le signal du plugin peut arriver avant l'écriture de la ligne.
+- ⚠️ **Les habillages ont aussi leur ligne.** Un sweeper posé sur un titre est inscrit avec son propre `song_type` (2), **dans la même seconde** que le titre et **juste après lui** (ID plus grand). Le titre en cours est donc la dernière ligne **qui n'est pas un habillage** (Sweeper 2, Voiceover 3), et non la dernière ligne tout court.
+- Délai entre le signal et l'écriture : le signal et `date_played` tombent dans la même seconde. Prévoir quand même une relecture après un court délai si la ligne n'est pas encore là.
 
 ### `songs.cue_times` : repères
 
@@ -87,7 +112,7 @@ Chaîne de clés et de valeurs, en secondes depuis le début du fichier, par exe
 - **Tenue à jour en temps réel** (la question ouverte du §6 est réglée) et **sans le titre en cours** : un titre sort de la table quand il démarre.
 - **Les `ID` sont renumérotés** à chaque réécriture : s'appuyer sur l'ordre et le `songID`, jamais sur `ID`.
 - `ETA` est calculée par RadioDJ et recalculée en continu. Elle s'est révélée exacte (15:10:01 annoncée, 15:10:01 dans `history`).
-- `swID` / `vtID` : sweeper ou voicetrack posé par-dessus le titre (`-100` et `0` vus quand il n'y en a pas, à confirmer).
+- `swID` / `vtID` : ID (`songs.ID`) du sweeper ou du voicetrack posé par-dessus le titre. Vu : `swID = 50` (un jingle), `swPlay = -20` ; sans voicetrack, `vtID = 0` et `vtPlay = -100` ; sans sweeper, `swID = -100`. Le sens de `swPlay` n'est pas établi : avec `-20`, le sweeper est parti au **début** du titre.
 - La base ne prévient de rien : relire la file **à chaque signal** et **périodiquement** (quelques secondes), car l'animateur peut modifier la playlist sans changer de titre.
 
 ## 3. Répartition des fonctionnalités de l'étape 7
@@ -112,13 +137,13 @@ Heure de démarrage du titre suivant : la calculer dans `packages/shared` (heure
   GRANT SELECT ON radiodj3.* TO 'onairdesk'@'<ip-du-debian>';
   ```
   À restreindre ensuite aux tables utiles (`history`, `songs`, `queuelist`). Mot de passe en variable d'environnement, jamais en dur.
-- **Jeton dans l'URL** : seul moyen d'authentifier le plugin. Il ne doit apparaître ni dans les journaux ni dans les traces d'audit.
+- **Port HTTP dédié aux connecteurs** (changement à risque) : voir « HTTPS : refusé par RadioDJ » plus haut.
+- **Jeton** : transmis dans le champ `xpwd`. Il ne doit apparaître ni dans les journaux ni dans les traces d'audit.
 
 ## 5. Reste à vérifier
 
-- **HTTPS** : le plugin accepte-t-il une URL `https://` avec le certificat interne d'OnAir-Desk (avec et sans le certificat racine installé sur le PC RadioDJ) ? À tester contre le vrai serveur. Sinon : port HTTP dédié aux connecteurs, désactivé par défaut (voir `docs/plan-etape-1.md`).
-- Signification exacte de `swID = -100` et du comportement avec un sweeper ou un voicetrack.
-- Délai réel entre le signal du plugin et l'écriture dans `history`.
+- Sens exact de `swPlay` / `vtPlay`, et comportement avec un **voicetrack** (non testé).
+- Délai réel entre le signal du plugin et l'écriture dans `history`, à mesurer avec le vrai connecteur.
 
 ## Annexe : récepteur de test
 

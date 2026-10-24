@@ -142,7 +142,8 @@ Thème sombre (lisibilité, pas d'éblouissement).
 Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radiodj.md`.
 
 ### RadioDJ — titre en cours
-- Plugin **Metadata Export** (ex « Now Playing Info »), onglet Web, en **POST** : il n'envoie que `Artiste - Titre` (Custom Data, variables et mot de passe ignorés en 3.0.0.5). Il sert donc de **signal** « un titre démarre » ; jeton d'authentification **dans le chemin** de l'URL.
+- Plugin **Metadata Export** (ex « Now Playing Info »), onglet Web, en **POST** : il n'envoie que `Artiste - Titre` (Custom Data, variables et mot de passe ignorés en 3.0.0.5). Il sert donc de **signal** « un titre démarre » ; jeton d'authentification dans le champ **Password** du plugin (envoyé dans le corps, champ `xpwd`, si la Custom Data est vide).
+- RadioDJ **refuse le certificat HTTPS** d'OnAir-Desk : le signal arrive sur un **port HTTP dédié aux connecteurs** (désactivé par défaut, routes des connecteurs seulement, réseau interne). Changement à risque à détailler dans le plan de l'étape 7.
 - Données lues **en lecture seule** dans la base MySQL/MariaDB de RadioDJ (compte dédié `SELECT` seul) : table `history` (titre en cours, heure de début, type de piste). La base n'est plus un repli : elle est indispensable.
 
 ### RadioDJ — titre à venir, intro/outro
