@@ -50,8 +50,9 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) 
         },
         DEFAULT_STUDIO_ID,
       );
-      ctx.automation.apply(settings);
     }
+    // Ne redémarre le connecteur que si sa configuration a changé (accès RadioDJ, fuseau…).
+    ctx.automation.apply(settings);
     return settings;
   });
 

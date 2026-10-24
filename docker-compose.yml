@@ -12,11 +12,18 @@ services:
     init: true
     ports:
       - '${HOST_PORT:-443}:8443'
+      # Port HTTP dédié aux connecteurs (plugin RadioDJ). Fermé par défaut : l'application ne
+      # l'écoute que si CONNECTOR_HTTP_PORT est renseigné, et Docker ne le publie que sur
+      # l'interface locale tant que CONNECTOR_BIND n'est pas l'adresse de la Debian sur le réseau.
+      - '${CONNECTOR_BIND:-127.0.0.1}:${CONNECTOR_HTTP_PORT:-8780}:${CONNECTOR_HTTP_PORT:-8780}'
     environment:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN est obligatoire, ex. https://onair-desk.lan}
       TLS_HOSTNAMES: ${TLS_HOSTNAMES:-}
       TZ: ${TZ:-Europe/Paris}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      CONNECTOR_HTTP_PORT: ${CONNECTOR_HTTP_PORT:-}
+      # Secret : mot de passe du compte MariaDB (lecture seule) de RadioDJ.
+      RADIODJ_DB_PASSWORD: ${RADIODJ_DB_PASSWORD:-}
       # Certificat fourni par la station (facultatif) : décommenter aussi le volume plus bas.
       # TLS_CERT_FILE: /certs/onair-desk.crt
       # TLS_KEY_FILE: /certs/onair-desk.key

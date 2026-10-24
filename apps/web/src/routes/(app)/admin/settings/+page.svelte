@@ -14,7 +14,11 @@
     SPEED_WPM_MIN,
     TEXT_COLORS,
     TIME_FORMATS,
+    TRACK_ALERT_MAX_SECONDS,
     type AirSnapshot,
+    type ConnectorTokenCreated,
+    type ConnectorTokenStatus,
+    type RadiodjTestResult,
     type Settings,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
@@ -35,11 +39,68 @@
       .catch(() => {});
   }
 
+  // ---- RadioDJ : test de la base, jeton du plugin ---------------------------------------
+
+  let tokenStatus = $state<ConnectorTokenStatus | null>(null);
+  /** Jeton tout juste généré : affiché une seule fois. */
+  let newToken = $state('');
+  let tokenError = $state('');
+  let testResult = $state<RadiodjTestResult | null>(null);
+  let testing = $state(false);
+
+  /** Adresse à recopier dans le plugin : celle du serveur, sur le port dédié aux connecteurs. */
+  const pluginUrl = $derived(
+    tokenStatus?.httpPort
+      ? `http://${location.hostname}:${tokenStatus.httpPort}/api/connectors/radiodj`
+      : '',
+  );
+
+  function loadToken() {
+    api<ConnectorTokenStatus>('GET', '/api/settings/radiodj/token')
+      .then((s) => (tokenStatus = s))
+      .catch(() => {});
+  }
+
+  async function generateToken() {
+    if (tokenStatus?.configured && !confirm(t('settings.radiodjTokenConfirm'))) return;
+    tokenError = '';
+    try {
+      const r = await api<ConnectorTokenCreated>('POST', '/api/settings/radiodj/token');
+      tokenStatus = r.status;
+      newToken = r.token;
+    } catch (err) {
+      tokenError = errorMessage(errorCode(err));
+    }
+  }
+
+  async function testRadiodj() {
+    if (!settings) return;
+    testing = true;
+    testResult = null;
+    try {
+      // Accès saisi, même s'il n'est pas encore enregistré.
+      testResult = await api<RadiodjTestResult>('POST', '/api/settings/radiodj/test', {
+        radiodj: settings.radiodj,
+      });
+    } catch (err) {
+      testResult = { ok: false, error: errorCode(err), songs: null };
+    } finally {
+      testing = false;
+    }
+  }
+
+  /** Erreur du connecteur : « code: détail technique » → message traduit + détail. */
+  function sourceError(raw: string): { text: string; detail: string } {
+    const m = /^(radiodj_[a-z_]+)(?::\s*(.*))?$/.exec(raw);
+    return m ? { text: errorMessage(m[1]!), detail: m[2] ?? '' } : { text: '', detail: raw };
+  }
+
   $effect(() => {
     api<Settings>('GET', '/api/settings')
       .then((s) => (settings = s))
       .catch((e) => (error = errorMessage(errorCode(e))));
     loadAir();
+    loadToken();
     fetch('/api/tls/root-ca.crt', { method: 'HEAD' })
       .then((r) => (hasRootCa = r.ok))
       .catch(() => {});
@@ -248,9 +309,102 @@
             time: new Date(air.state.source.updatedAt).toLocaleTimeString(),
           })}
         {/if}
-        {#if air.state.source.error}<br /><span class="mono">{air.state.source.error}</span>{/if}
+        {#if air.state.source.error}
+          {@const e = sourceError(air.state.source.error)}
+          {#if e.text}<br />{e.text}{/if}
+          {#if e.detail}<br /><span class="mono">{e.detail}</span>{/if}
+        {/if}
       </p>
     {/if}
+
+    {#if settings.automationSource === 'radiodj'}
+      <h3>{t('settings.radiodj')}</h3>
+      <p class="muted" style="margin: 0">{t('settings.radiodjIntro')}</p>
+      <div class="grid2">
+        <label>
+          {t('settings.radiodjHost')}
+          <input bind:value={settings.radiodj.host} maxlength="253" placeholder="192.168.1.30" />
+        </label>
+        <label>
+          {t('settings.radiodjPort')}
+          <input type="number" min="1" max="65535" bind:value={settings.radiodj.port} required />
+        </label>
+        <label>
+          {t('settings.radiodjDatabase')}
+          <input bind:value={settings.radiodj.database} required maxlength="64" />
+        </label>
+        <label>
+          {t('settings.radiodjUser')}
+          <input bind:value={settings.radiodj.user} required maxlength="80" />
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" onclick={testRadiodj} disabled={testing}
+          >{t('settings.radiodjTest')}</button
+        >
+        {#if testResult}
+          <span class="test-result" class:ok={testResult.ok} role="status">
+            {testResult.ok
+              ? t('settings.radiodjTestOk', { n: testResult.songs ?? 0 })
+              : errorMessage(testResult.error ?? 'radiodj_error')}
+          </span>
+        {/if}
+      </div>
+
+      <h3>{t('settings.radiodjPlugin')}</h3>
+      <p class="muted" style="margin: 0">{t('settings.radiodjPluginIntro')}</p>
+      {#if tokenStatus}
+        {#if !tokenStatus.httpPort}
+          <p class="warn-text">{t('settings.radiodjPortClosed')}</p>
+        {:else}
+          <p class="muted" style="margin: 0">{t('settings.radiodjSetup', { url: pluginUrl })}</p>
+        {/if}
+        <p style="margin: 0">
+          {tokenStatus.createdAt
+            ? t('settings.radiodjTokenSince', {
+                date: new Date(tokenStatus.createdAt).toLocaleString(),
+              })
+            : t('settings.radiodjTokenNone')}
+        </p>
+        {#if newToken}
+          <p class="warn-text" style="margin: 0">{t('settings.radiodjTokenShown')}</p>
+          <code class="token">{newToken}</code>
+        {/if}
+        <div>
+          <button type="button" onclick={generateToken}
+            >{tokenStatus.configured
+              ? t('settings.radiodjTokenRegenerate')
+              : t('settings.radiodjTokenGenerate')}</button
+          >
+        </div>
+        {#if tokenError}<p class="error" role="alert">{tokenError}</p>{/if}
+      {/if}
+    {/if}
+
+    <h2>{t('settings.trackAlert')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.trackAlertIntro')}</p>
+    <div class="grid2">
+      <label>
+        {t('settings.trackAlertSoon')}
+        <input
+          type="number"
+          min="2"
+          max={TRACK_ALERT_MAX_SECONDS}
+          bind:value={settings.trackAlert.soonSeconds}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.trackAlertNow')}
+        <input
+          type="number"
+          min="1"
+          max={settings.trackAlert.soonSeconds - 1}
+          bind:value={settings.trackAlert.nowSeconds}
+          required
+        />
+      </label>
+    </div>
 
     <h2>{t('settings.scripts')}</h2>
     <label>
@@ -403,6 +557,30 @@
 {/if}
 
 <style>
+  .grid2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+  }
+  .test-result {
+    color: #f7c1c1;
+  }
+  .test-result.ok {
+    color: var(--ok);
+  }
+  .warn-text {
+    color: var(--warn);
+    margin: 0;
+  }
+  .token {
+    display: block;
+    user-select: all;
+    word-break: break-all;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--surface-2);
+    font-size: 1.05rem;
+  }
   .source-state {
     margin: 0;
     color: var(--muted);

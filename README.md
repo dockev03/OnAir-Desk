@@ -55,6 +55,8 @@ Puis, dans _Environment variables_, renseigner au minimum `PUBLIC_ORIGIN` (voir 
 | `HOST_PORT`     | `443`                                         | Port publié sur la Debian.                                                    |
 | `TZ`            | `Europe/Paris`                                | Fuseau du conteneur.                                                          |
 
+Pour RadioDJ (facultatif), trois variables de plus : voir la section [RadioDJ](#6-radiodj-facultatif).
+
 _Deploy the stack_. La première construction prend quelques minutes.
 
 ### 3. Premier lancement
@@ -95,6 +97,39 @@ Sur l'écran, tout se fait à la souris : choisir un dossier puis un script ouvr
 
 L'écran est en **lecture seule**, à une exception près : il peut choisir le script affiché. Il peut être **révoqué** (déconnexion immédiate) ou recevoir un **nouveau jeton** depuis la même page.
 
+### 6. RadioDJ (facultatif)
+
+OnAir-Desk lit le titre en cours, le titre à venir et les repères (intro, point de mix) **dans la base de RadioDJ, en lecture seule**. Le plugin « Metadata Export » de RadioDJ le prévient à chaque nouveau titre ; sans lui, la base est relue toutes les 5 secondes. Constats techniques : [`docs/cadrage-radiodj.md`](docs/cadrage-radiodj.md).
+
+**Sur le PC RadioDJ (MariaDB)** :
+
+1. Créer un compte avec le **seul droit de lecture**, limité à l'adresse de la Debian :
+   ```sql
+   CREATE USER 'onairdesk'@'<ip-de-la-debian>' IDENTIFIED BY '<mot-de-passe-fort>';
+   GRANT SELECT ON radiodj.* TO 'onairdesk'@'<ip-de-la-debian>';
+   ```
+2. ⚠️ **Exposition réseau** : MariaDB doit accepter les connexions réseau (`bind-address`) et le pare-feu Windows doit ouvrir le port 3306 **à la seule adresse de la Debian**.
+3. Régler l'horloge du PC par **NTP** : l'heure de passage des titres vient de ce PC quand le signal du plugin manque.
+
+**Dans la stack Portainer** :
+
+| Variable              | Exemple        | Rôle                                                                                                                                                               |
+| --------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RADIODJ_DB_PASSWORD` | _(secret)_     | Mot de passe du compte ci-dessus. Jamais stocké dans OnAir-Desk ni renvoyé par l'interface.                                                                        |
+| `CONNECTOR_HTTP_PORT` | `8780`         | ⚠️ Ouvre le **port HTTP dédié aux connecteurs** (RadioDJ refuse le certificat HTTPS interne). Vide : fermé. Seule la route du signal y répond, protégée par jeton. |
+| `CONNECTOR_BIND`      | `192.168.1.20` | Adresse de la Debian sur laquelle publier ce port. Par défaut `127.0.0.1` : injoignable depuis le réseau.                                                          |
+
+**Dans OnAir-Desk** : _Administration_ → **Paramètres** → Source d'automation **RadioDJ** : renseigner le poste, la base et l'utilisateur, **Tester la connexion**, enregistrer, puis **Générer le jeton** du plugin (montré une seule fois).
+
+**Dans RadioDJ** : plugin **Metadata Export**, onglet **Web** :
+
+- URL : `http://<adresse-de-la-debian>:8780/api/connectors/radiodj` (rappelée dans les Paramètres) ;
+- Password : le jeton ; **Custom Data : vide** ; méthode **POST** ;
+- cocher la case _Enable_ de la ligne, l'ajouter (➕), cocher le _Enable_ du bas, puis **Save** ;
+- onglet **Filters** : laisser décochés _Sweeper_, _Voiceover_ et _Playlist Event_ (habillages joués par-dessus un titre, ou pas de son).
+
+Les intros non marquées dans RadioDJ n'ont pas de compte à rebours de talk-over : marquer les repères dans RadioDJ pour en profiter.
+
 ### Mise à jour
 
 Portainer → _Stacks_ → `onair-desk` → **Pull and redeploy**. Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
@@ -121,6 +156,7 @@ Le nom exact du volume est visible dans Portainer → _Volumes_. **La sauvegarde
 - Conteneur durci : utilisateur non-root, système de fichiers en lecture seule (sauf `/data`), aucune capacité Linux, `no-new-privileges`.
 - Journal des actions sensibles (connexions, comptes, écrans) dans la table `audit_log`.
 - L'afficheur en kiosk ouvre une session sans intervention : il doit rester dans le studio, sur un réseau maîtrisé.
+- RadioDJ (facultatif) : base lue avec un compte **SELECT seul** ; port HTTP dédié aux connecteurs **fermé par défaut**, limité à la route du signal (jeton stocké haché, limitation de débit). Son jeton circule en clair sur le réseau local : la requête n'est qu'un signal, la base fait foi.
 
 ---
 

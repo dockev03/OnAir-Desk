@@ -1,5 +1,6 @@
 import type { Db } from './database.js';
 import { AuditRepo } from './audit.js';
+import { ConnectorTokenRepo } from './connector-tokens.js';
 import { DeviceRepo } from './devices.js';
 import { FolderRepo } from './folders.js';
 import { LogoRepo } from './logo.js';
@@ -26,6 +27,7 @@ export interface Repos {
   templates: TemplateRepo;
   logo: LogoRepo;
   studios: StudioRepo;
+  connectorTokens: ConnectorTokenRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -43,6 +45,7 @@ export function createRepos(db: Db): Repos {
     templates: new TemplateRepo(db),
     logo: new LogoRepo(db),
     studios: new StudioRepo(db),
+    connectorTokens: new ConnectorTokenRepo(db),
   };
 }
 

@@ -82,12 +82,20 @@ export function trackProgress(track: TrackTiming, now: number): number {
 }
 
 /**
- * Heure de démarrage du titre suivant : heure actuelle + temps restant du titre en cours
- * (comme la maquette ; le cas d'un enchaînement en fondu est tranché à l'étape 7).
- * Null si aucun titre n'est en cours.
+ * Vrai si le titre a une heure de début et une durée : temps restant, progression et alerte
+ * ont un sens. Faux en mode dégradé (seul le nom du titre est connu).
+ */
+export function isTimed(track: TrackTiming): boolean {
+  return track.startedAt !== null && track.durationMs > 0;
+}
+
+/**
+ * Heure de démarrage du titre suivant : heure actuelle + temps restant du titre en cours.
+ * La durée d'un titre s'arrêtant au point de mix quand il est connu, un enchaînement en fondu
+ * est pris en compte. Null si aucun titre minuté n'est en cours.
  */
 export function nextStartAt(current: TrackTiming | null, now: number): number | null {
-  if (!current || current.startedAt === null) return null;
+  if (!current || !isTimed(current)) return null;
   return now + trackRemaining(current, now);
 }
 
@@ -99,14 +107,27 @@ export function introRemaining(track: TrackTiming, now: number): number | null {
 
 export type AlertLevel = 'none' | 'soon' | 'now';
 
+/** Seuils de l'alerte de fin de titre (secondes), paramétrables par la station. */
+export interface AlertThresholds {
+  soonSeconds: number;
+  nowSeconds: number;
+}
+
+/** Niveau d'alerte de fin du titre en cours ; jamais d'alerte sans titre minuté. */
+export function trackAlertLevel(
+  track: TrackTiming | null,
+  now: number,
+  thresholds: AlertThresholds,
+): AlertLevel {
+  if (!track || !isTimed(track)) return 'none';
+  return alertLevel(trackRemaining(track, now), thresholds);
+}
+
 /**
  * Niveau d'alerte d'un compte à rebours, selon le code couleur unique de l'écran :
  * orange = bientôt, rouge = maintenant. Seuils en secondes, bornes incluses.
  */
-export function alertLevel(
-  remainingMs: number,
-  thresholds: { soonSeconds: number; nowSeconds: number },
-): AlertLevel {
+export function alertLevel(remainingMs: number, thresholds: AlertThresholds): AlertLevel {
   if (remainingMs <= thresholds.nowSeconds * 1000) return 'now';
   if (remainingMs <= thresholds.soonSeconds * 1000) return 'soon';
   return 'none';

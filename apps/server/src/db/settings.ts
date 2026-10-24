@@ -21,6 +21,8 @@ export function defaultSettings(): Settings {
     itemTypes: DEFAULT_ITEM_TYPES,
     automationSource: 'none',
     simulatorSpeed: 1,
+    radiodj: { host: '', port: 3306, database: 'radiodj', user: 'onairdesk' },
+    trackAlert: { soonSeconds: 30, nowSeconds: 10 },
     logoHash: null,
   };
 }

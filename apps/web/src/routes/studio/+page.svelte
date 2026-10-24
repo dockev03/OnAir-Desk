@@ -269,6 +269,7 @@
         {now}
         {timezone}
         timeFormat={link.settings?.timeFormat ?? '24h'}
+        alert={link.settings?.trackAlert ?? { soonSeconds: 30, nowSeconds: 10 }}
       />
     {/if}
     <!-- Dans le bandeau : une coupure ne décale pas le texte en cours de lecture. -->

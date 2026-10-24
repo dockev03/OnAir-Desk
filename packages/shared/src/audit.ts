@@ -47,6 +47,7 @@ export const AUDIT_ACTIONS = {
   'automation.source_changed': 'antenne',
   'automation.error': 'antenne',
   'automation.recovered': 'antenne',
+  'connector.token_generated': 'securite',
 } as const satisfies Record<string, AuditCategory>;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 

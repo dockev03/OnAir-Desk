@@ -1,4 +1,5 @@
 import { buildApp } from './app.js';
+import { buildIngestServer } from './connectors/ingest.js';
 import { ConfigError, loadConfig, type Config } from './config.js';
 import { openDatabase } from './db/index.js';
 import {
@@ -84,8 +85,18 @@ async function main() {
     }, RENEW_CHECK_MS).unref();
   }
 
+  // Écoute HTTP dédiée aux connecteurs entrants : fermée tant que CONNECTOR_HTTP_PORT est absent.
+  const ingest = config.connectorHttpPort
+    ? await buildIngestServer({
+        tokens: ctx.repos.connectorTokens,
+        automation: ctx.automation,
+        logger: { level: config.logLevel },
+      })
+    : null;
+
   const shutdown = async (signal: string) => {
     app.log.info(`${signal} reçu, arrêt.`);
+    await ingest?.close();
     await app.close();
     db.close();
     process.exit(0);
@@ -94,6 +105,12 @@ async function main() {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   await app.listen({ host: config.host, port: config.port });
+  if (ingest && config.connectorHttpPort) {
+    await ingest.listen({ host: config.host, port: config.connectorHttpPort });
+    app.log.warn(
+      `Écoute HTTP des connecteurs ouverte sur le port ${config.connectorHttpPort} : réseau interne uniquement.`,
+    );
+  }
 }
 
 main().catch((err) => {

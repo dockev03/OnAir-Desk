@@ -42,6 +42,41 @@ export interface ApiError {
   message?: string;
 }
 
+// ---- Connecteurs ---------------------------------------------------------------
+
+/** État du jeton d'un connecteur entrant (plugin RadioDJ) et de l'écoute qui le reçoit. */
+export interface ConnectorTokenStatus {
+  /** Un jeton a été généré (il n'est jamais renvoyé ensuite). */
+  configured: boolean;
+  createdAt: string | null;
+  /** Port HTTP dédié aux connecteurs (CONNECTOR_HTTP_PORT) ; null : écoute fermée. */
+  httpPort: number | null;
+}
+
+/** Réponse à la génération d'un jeton de connecteur : montré une seule fois. */
+export interface ConnectorTokenCreated {
+  status: ConnectorTokenStatus;
+  token: string;
+}
+
+/** Résultat du bouton « Tester la connexion » à la base RadioDJ. */
+export interface RadiodjTestResult {
+  ok: boolean;
+  /** Code d'erreur stable (traduit côté interface) quand ok est faux. */
+  error: string | null;
+  /** Nombre de titres de la bibliothèque, pour confirmer la bonne base. */
+  songs: number | null;
+}
+
+/** Un titre de la bibliothèque RadioDJ (choix d'un titre dans un conducteur). */
+export interface RadiodjSong {
+  id: number;
+  artist: string;
+  title: string;
+  /** Durée jusqu'au point de mix si les repères le donnent. */
+  durationMs: number;
+}
+
 // ---- Bibliothèque ------------------------------------------------------------
 
 /** Un « dossier racine » de la bibliothèque : un compte, ou Commun (id null). */
