@@ -12,6 +12,7 @@ Documents liés :
 - `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
+- `docs/plan-etape-7.md` : plan de l'étape 7 (RadioDJ), **validé**, en cours de réalisation.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs) et 6 (socle antenne) réalisées ; étapes 7 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
