@@ -83,6 +83,12 @@ describe('validation', () => {
     expect(rundownItemsSchema.safeParse([item({ uid: 'A B' })]).success).toBe(false);
   });
 
+  it('liste trop longue refusée sans valider chaque élément (GHSA-mrhx-c7xc-m3w5)', () => {
+    const r = rundownItemsSchema.safeParse(Array(100_000).fill(1));
+    expect(r.success).toBe(false);
+    expect(r.error?.issues.length).toBe(1);
+  });
+
   it('conducteur complet', () => {
     const ok = createRundownSchema.safeParse({
       ownerId: null,
