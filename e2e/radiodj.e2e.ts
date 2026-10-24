@@ -35,8 +35,12 @@ test('talk-over : compte à rebours de l’intro, qui disparaît à la fin de l�
   expect(res.ok()).toBe(true);
   page = await browser.newPage({ baseURL: server.url });
   await page.goto(`/studio#token=${token}`);
+  const nowBlock = page.locator('section.now');
   await expect(page.getByTestId('intro-left')).toHaveText(/^Intro 0:\d{2}$/);
+  // Pendant l'intro, tout le bloc « Titre en cours » passe au bleu.
+  await expect(nowBlock).toHaveClass(/\btalkover\b/);
   await expect(page.getByTestId('intro-left')).toHaveCount(0, { timeout: 15_000 });
+  await expect(nowBlock).not.toHaveClass(/\btalkover\b/);
   // Repères intro et outro sur la barre de progression.
   await expect(page.locator('.bar .mark')).toHaveCount(2);
 });
