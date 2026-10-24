@@ -153,6 +153,59 @@ describe('connecteur RadioDJ', () => {
     c.stop();
   });
 
+  it('signal du titre à venir : affiché aussitôt, sans attendre la base', async () => {
+    const db = new FakeReader();
+    db.play(SANS_INTRO, '2026-10-24 16:19:16');
+    db.queue = [SUMMERTIME];
+    const c = new RadiodjConnector(db, 'Europe/Paris');
+    await c.start(ctx);
+
+    now = T0 + 5_000;
+    const signalAt = now;
+    c.signal(signalAt, 'Adamé, Lili Poli - Summertime');
+    // Synchrone : aucune lecture de la base n'a encore abouti.
+    expect(updates.at(-1)).toEqual({ nowPlaying: toTrack(SUMMERTIME, signalAt), next: null });
+
+    // Relecture avant l'écriture de l'historique (file pas encore vidée) : rien ne revient.
+    await flush();
+    expect(updates.at(-1)!.nowPlaying?.title).toBe('Summertime');
+    expect(updates.at(-1)!.next).toBeNull();
+
+    // La base confirme : même heure de début, aucune nouvelle diffusion inutile.
+    const count = updates.length;
+    now += 300;
+    db.queue = [];
+    db.play(SUMMERTIME, '2026-10-24 16:20:05');
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(updates).toHaveLength(count);
+    c.stop();
+  });
+
+  it('signal d’un autre titre que celui attendu : la base fait foi', async () => {
+    const db = new FakeReader();
+    db.play(SANS_INTRO, '2026-10-24 16:19:16');
+    db.queue = [SUMMERTIME];
+    const c = new RadiodjConnector(db, 'Europe/Paris');
+    await c.start(ctx);
+    c.signal(now, 'Quelqu’un - Autre chose');
+    expect(updates).toHaveLength(1);
+    c.stop();
+  });
+
+  it('titre signalé jamais inscrit dans l’historique : retour à la base', async () => {
+    const db = new FakeReader();
+    db.play(SANS_INTRO, '2026-10-24 16:19:16');
+    db.queue = [SUMMERTIME];
+    const c = new RadiodjConnector(db, 'Europe/Paris');
+    await c.start(ctx);
+    c.signal(now, 'Adamé;Lili Poli - Summertime');
+    expect(updates.at(-1)!.nowPlaying?.title).toBe('Summertime');
+    now += SIGNAL_WINDOW_MS + 1;
+    await vi.advanceTimersByTimeAsync(POLL_MS);
+    expect(updates.at(-1)!.nowPlaying?.title).toBe('Un Peu Plus Près Du Bonheur');
+    c.stop();
+  });
+
   it('signal trop ancien : heure du PC RadioDJ', async () => {
     const db = new FakeReader();
     const c = new RadiodjConnector(db, 'Europe/Paris');

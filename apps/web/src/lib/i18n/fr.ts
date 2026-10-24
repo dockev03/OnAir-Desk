@@ -412,7 +412,7 @@ export const fr = {
   'settings.radiodjTestOk': 'Connexion réussie : {n} titres dans la bibliothèque.',
   'settings.radiodjPlugin': 'Plugin Metadata Export',
   'settings.radiodjPluginIntro':
-    'RadioDJ prévient OnAir-Desk à chaque nouveau titre. Sans lui, la base est relue toutes les 5 secondes.',
+    'RadioDJ prévient OnAir-Desk à chaque nouveau titre. Sans lui, la base est relue chaque seconde (jusqu’à 1 s de retard).',
   'settings.radiodjPortClosed':
     'Écoute des connecteurs fermée : renseignez CONNECTOR_HTTP_PORT dans la stack pour recevoir le signal du plugin.',
   'settings.radiodjTokenNone': 'Aucun jeton généré.',
