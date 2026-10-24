@@ -1,6 +1,6 @@
 # Étape 7 — RadioDJ : plan
 
-> **Statut : plan validé, développement en cours.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §5 (bandeau supérieur, alertes), §6 (RadioDJ), §7 idée 1 (talk-over), §8 étape 7, §10 (connecteurs). Constats techniques : `docs/cadrage-radiodj.md`. Branche : `feature/etape-7-radiodj`.
 > 6 fonctionnalités. S'appuie sur le socle de l'étape 6 (état antenne, contrat des connecteurs, calculs de temps, journal).
 
@@ -82,3 +82,46 @@ Les 14 décisions sont **validées** ; la colonne « Alternative » garde trace 
   - jeton : génération, hachage, régénération (l'ancien refusé), admin seul ;
   - requêtes SQL contre MariaDB réel (job CI dédié).
 - **Bout en bout (Playwright)** : passage **orange puis rouge** de l'alerte de fin avec le simulateur accéléré ; compte à rebours d'intro ; signal du plugin refusé sans jeton.
+
+## Bilan de l'étape 7
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - source d'automation `radiodj` ; paramètres `radiodj` (hôte, port, base, utilisateur ; **aucun mot de passe** accepté) et `trackAlert` (seuils 1 à 120 s, « maintenant » < « bientôt », 30 s / 10 s par défaut) ;
+  - `isTimed` (titre minuté ou mode dégradé), `trackAlertLevel` (jamais d'alerte sans titre minuté) ; `nextStartAt` ignore un titre non minuté ;
+  - types d'API (jeton du connecteur, test de connexion, titre de la bibliothèque) ; action `connector.token_generated` au journal.
+- **Serveur** :
+  - `connectors/radiodj/` : analyse de `cue_times` et conversion en `Track` (durée jusqu'au point de mix, intro, outro, artistes associés « ; » → « , ») ; lecteur MariaDB `mysql2` (SELECT uniquement, dates rendues telles quelles) ; connecteur (relecture au signal puis à +0,5 / 1,5 / 3 s, et toutes les 5 s ; heure de début = signal reçu dans les 10 s, sinon `date_played` converti avec le fuseau de la station ; titre fini depuis plus de 30 s effacé ; mise à jour seulement si quelque chose change) ;
+  - gestionnaire : source `radiodj`, redémarrage si l'accès ou le fuseau change, signal transmis au connecteur, **mode dégradé** (titre brut, 10 minutes au plus) quand la base est en panne, erreurs explicites (`radiodj_not_configured`, `radiodj_no_password`…) ;
+  - **écoute dédiée aux connecteurs** (`connectors/ingest.ts`) : serveur Fastify séparé, démarré seulement si `CONNECTOR_HTTP_PORT` est défini, une seule route `POST /api/connectors/radiodj`, formulaire `xpwd` / `title`, 60 requêtes / minute, 4 Ko au plus ;
+  - **migration 7** : table `connector_tokens` (jeton haché) ; routes admin `GET/POST /api/settings/radiodj/token`, `POST /api/settings/radiodj/test` ; `GET /api/radiodj/songs` (comptes connectés, RadioDJ choisi comme source) ;
+  - configuration : `CONNECTOR_HTTP_PORT` (différent de `PORT`), `RADIODJ_DB_PASSWORD` (jamais journalisé ni renvoyé).
+- **Interface** :
+  - écran studio : alerte de fin de titre (bloc orange + « Bientôt à vous », puis rouge pulsé à ~1 Hz + « À vous dans N s », rouge fixe avec `prefers-reduced-motion`), compte à rebours **« Intro 0:07 »** en couleur neutre, repères intro / outro sur la barre de progression, mode dégradé (titre seul, sans temps restant) ;
+  - Paramètres : source RadioDJ, accès à la base + « Tester la connexion » (accès saisi, même non enregistré), jeton du plugin (générer / régénérer, montré une fois, réglage à recopier dans RadioDJ), seuils d'alerte ; erreurs du connecteur traduites ;
+  - conducteurs : bouton **« Choisir dans RadioDJ »** sur chaque élément (si RadioDJ est la source) : recherche artiste / titre, titre « Artiste - Titre », durée jusqu'au point de mix, type « Titre » s'il existe ;
+  - textes FR et EN.
+- **Installation** : `docker-compose.yml`, `.env.example` et README (section RadioDJ : compte SELECT seul, exposition de MariaDB, NTP, variables, réglage du plugin et des filtres).
+- **CI** : nouveau job `mariadb` (service MariaDB 11.4) pour les requêtes SQL.
+
+### Tests
+
+- 199 tests unitaires (dont 6 contre MariaDB, joués en CI ou si `MARIADB_TEST_URL` est défini), dont :
+  - repères réels relevés au cadrage (avec et sans intro, sans repère, repère hors du titre), conversion d'heure du PC RadioDJ (heure d'été / d'hiver) ;
+  - connecteur avec fausse base : habillage ignoré, signal avant l'écriture de la ligne, signal trop ancien, relecture périodique, même titre rejoué, RadioDJ arrêté, panne ;
+  - gestionnaire : accès incomplet sans ouverture de la base, redémarrage seulement si l'accès change, signal ignoré hors source RadioDJ, mode dégradé puis retour ;
+  - écoute dédiée : bon / mauvais / absent jeton, jeton dans l'adresse ignoré, aucune autre route, limite de débit ; jeton haché, régénérable, absent du journal ; test de connexion et recherche (mot de passe jamais renvoyé, erreurs codées) ;
+  - SQL réel : titre en cours hors habillages, file dans l'ordre, tables vides, recherche limitée à la musique, jokers `%` / `_` neutralisés, accents, mauvais mot de passe, base ou table absente.
+  - Vérifié aussi à la main : un compte MariaDB avec le seul droit `SELECT` suffit, et toute écriture lui est refusée.
+- **Bout en bout (Chromium)**, 3 nouveaux scénarios (7 au total) : compte à rebours d'intro puis disparition, repères sur la barre ; alerte rien → orange → rouge → rien ; écoute des connecteurs (jeton requis, interface absente de ce port, route absente du port principal).
+- **Poids de `/studio`** : +2,3 Ko gzip (mesure avant / après avec la même méthode), toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Port des connecteurs dans la stack** : le plan prévoyait une ligne commentée dans `docker-compose.yml`, mais une stack Portainer « Repository » ne se modifie pas sans changer le dépôt. Le port est donc piloté par des variables : publié par défaut sur `127.0.0.1` seulement (injoignable du réseau), et l'application ne l'écoute que si `CONNECTOR_HTTP_PORT` est renseigné ; `CONNECTOR_BIND` choisit l'adresse de publication.
+- Le compte à rebours de talk-over n'existe que pour les titres dont l'intro est marquée dans RadioDJ.
+- Pendant l'heure répétée du passage à l'heure d'hiver, l'heure de début tirée de `date_played` (sans signal) peut être décalée d'une heure.
+- Voicetracks non testés au cadrage : ignorés comme les sweepers.
+- La recherche de titres ouvre une connexion à chaque requête (saisie temporisée à 300 ms) : suffisant sur le réseau local.
+- Réglages faits sur une installation de test ; à vérifier au studio : délai réel entre le signal et l'écriture dans `history`, et comportement avec un voicetrack.

@@ -4,20 +4,24 @@
  * météo, messages…) y ajoute ses champs sans toucher au transport.
  */
 
-/** Sources d'automation disponibles (RadioDJ et AzuraCast s'ajouteront à la liste). */
-export const AUTOMATION_SOURCES = ['none', 'simulator'] as const;
+/** Sources d'automation disponibles (AzuraCast s'ajoutera à la liste). */
+export const AUTOMATION_SOURCES = ['none', 'simulator', 'radiodj'] as const;
 export type AutomationSource = (typeof AUTOMATION_SOURCES)[number];
 
 export const SIMULATOR_SPEED_MAX = 60;
 
-/** Un titre, tel que le décrit un connecteur d'automation. */
+/**
+ * Un titre, tel que le décrit un connecteur d'automation. Un titre sans durée ni heure de
+ * début (mode dégradé : seul son nom est connu) s'affiche sans temps restant ni alerte.
+ */
 export interface Track {
   title: string;
   artist: string;
+  /** Durée jusqu'au départ du titre suivant (point de mix s'il est connu). */
   durationMs: number;
   /** Heure de début, horloge serveur (ms) ; null pour le titre à venir. */
   startedAt: number | null;
-  /** Intro instrumentale et outro, si le connecteur les connaît. */
+  /** Intro instrumentale et outro (durées depuis le début / avant la fin), si connues. */
   introMs: number | null;
   outroMs: number | null;
 }

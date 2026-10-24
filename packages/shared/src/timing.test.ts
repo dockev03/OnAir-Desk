@@ -3,7 +3,9 @@ import {
   alertLevel,
   formatCountdown,
   introRemaining,
+  isTimed,
   nextStartAt,
+  trackAlertLevel,
   trackProgress,
   trackRemaining,
 } from './timing.js';
@@ -65,5 +67,23 @@ describe('alertes et affichage', () => {
     expect(formatCountdown(59_001)).toBe('1:00');
     expect(formatCountdown(125_000)).toBe('2:05');
     expect(formatCountdown(-5)).toBe('0:00');
+  });
+});
+
+describe('alerte de fin du titre en cours', () => {
+  const thresholds = { soonSeconds: 30, nowSeconds: 10 };
+  it('suit le temps restant du titre', () => {
+    expect(trackAlertLevel(track, START + 100_000, thresholds)).toBe('none');
+    expect(trackAlertLevel(track, START + 170_000, thresholds)).toBe('soon');
+    expect(trackAlertLevel(track, START + 190_000, thresholds)).toBe('now');
+  });
+  it('mode dégradé (ni durée ni heure de début) : jamais d’alerte ni d’heure du suivant', () => {
+    const untimed = { durationMs: 0, startedAt: null };
+    expect(isTimed(untimed)).toBe(false);
+    expect(isTimed({ durationMs: 0, startedAt: START })).toBe(false);
+    expect(isTimed(track)).toBe(true);
+    expect(trackAlertLevel(untimed, START, thresholds)).toBe('none');
+    expect(trackAlertLevel(null, START, thresholds)).toBe('none');
+    expect(nextStartAt({ durationMs: 0, startedAt: START }, START)).toBeNull();
   });
 });

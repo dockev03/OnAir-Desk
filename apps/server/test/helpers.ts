@@ -1,19 +1,28 @@
 import type { LightMyRequestResponse } from 'fastify';
 import { buildApp, type App } from '../src/app.js';
+import type { ConnectorDeps } from '../src/connectors/manager.js';
 import { loadConfig } from '../src/config.js';
 import { openMemoryDatabase } from '../src/db/index.js';
 
 export const ORIGIN = 'https://onair-desk.test';
 export const ADMIN_PASSWORD = 'mot-de-passe-admin-solide';
 
-export async function createTestApp(): Promise<App> {
+export async function createTestApp(
+  opts: { env?: Record<string, string>; connectorDeps?: ConnectorDeps } = {},
+): Promise<App> {
   const config = loadConfig({
     NODE_ENV: 'test',
     PUBLIC_ORIGIN: ORIGIN,
     DATA_DIR: '/nonexistent',
     WEB_DIR: '/nonexistent',
+    ...opts.env,
   });
-  const built = await buildApp({ config, db: openMemoryDatabase(), logger: false });
+  const built = await buildApp({
+    config,
+    db: openMemoryDatabase(),
+    logger: false,
+    connectorDeps: opts.connectorDeps,
+  });
   built.ctx.setup.ensure(true);
   return built;
 }

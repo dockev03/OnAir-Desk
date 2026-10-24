@@ -289,4 +289,11 @@ export const migrations: string[] = [
    WHERE actor_type = 'device';
   CREATE INDEX audit_log_category_at ON audit_log (category, at);
   `,
+  /* 7 — RadioDJ : jeton du plugin (connecteur entrant), stocké haché */ `
+  CREATE TABLE connector_tokens (
+    connector  TEXT PRIMARY KEY CHECK (connector IN ('radiodj')),
+    token_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  `,
 ];

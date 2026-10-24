@@ -25,6 +25,13 @@ const envSchema = z.object({
   TLS_CERT_FILE: z.string().optional(),
   TLS_KEY_FILE: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /** Port HTTP dédié aux connecteurs entrants (plugin RadioDJ) ; absent : écoute fermée. */
+  CONNECTOR_HTTP_PORT: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int().min(1).max(65535).optional(),
+  ),
+  /** Mot de passe du compte MariaDB (lecture seule) de RadioDJ. */
+  RADIODJ_DB_PASSWORD: z.string().optional(),
 });
 
 export interface TlsConfig {
@@ -47,6 +54,10 @@ export interface Config {
   tls: TlsConfig | null;
   secureCookies: boolean;
   logLevel: z.infer<typeof envSchema>['LOG_LEVEL'];
+  /** Port HTTP dédié aux connecteurs ; null : écoute fermée (défaut). */
+  connectorHttpPort: number | null;
+  /** Secret : jamais journalisé ni renvoyé par l'API. */
+  radiodjDbPassword: string | null;
 }
 
 export class ConfigError extends Error {}
@@ -83,6 +94,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowedOrigins = [`http://localhost:5173`, `http://localhost:${e.PORT}`];
   }
 
+  if (e.CONNECTOR_HTTP_PORT !== undefined && e.CONNECTOR_HTTP_PORT === e.PORT) {
+    throw new ConfigError('CONNECTOR_HTTP_PORT doit être différent de PORT.');
+  }
+
   if (Boolean(e.TLS_CERT_FILE) !== Boolean(e.TLS_KEY_FILE)) {
     throw new ConfigError('TLS_CERT_FILE et TLS_KEY_FILE doivent être renseignés ensemble.');
   }
@@ -113,5 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     tls,
     secureCookies: production,
     logLevel: e.LOG_LEVEL,
+    connectorHttpPort: e.CONNECTOR_HTTP_PORT ?? null,
+    radiodjDbPassword: e.RADIODJ_DB_PASSWORD || null,
   };
 }

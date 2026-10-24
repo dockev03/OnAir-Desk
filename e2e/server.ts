@@ -17,7 +17,11 @@ export class TestServer {
   private proc: ChildProcess | null = null;
   private setupCode = '';
 
-  constructor(readonly port = 3199) {
+  constructor(
+    readonly port = 3199,
+    /** Variables d'environnement en plus (ex. CONNECTOR_HTTP_PORT). */
+    private readonly env: Record<string, string> = {},
+  ) {
     this.url = `http://localhost:${port}`;
   }
 
@@ -31,6 +35,7 @@ export class TestServer {
         DATA_DIR: this.dataDir,
         WEB_DIR: path.join(ROOT, 'apps/web/build'),
         LOG_LEVEL: 'warn',
+        ...this.env,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });

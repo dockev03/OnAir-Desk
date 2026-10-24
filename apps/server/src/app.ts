@@ -5,7 +5,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyWebsocket from '@fastify/websocket';
 import { AirStateStore } from './air/state.js';
 import type { Config } from './config.js';
-import { AutomationManager } from './connectors/manager.js';
+import { AutomationManager, type ConnectorDeps } from './connectors/manager.js';
 import { DEFAULT_STUDIO_ID, createRepos, type Db } from './db/index.js';
 import { registerIdentity, type Identity } from './auth/identity.js';
 import { LoginThrottle } from './auth/throttle.js';
@@ -23,6 +23,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerDeviceRoutes } from './routes/devices.js';
 import { registerLibraryRoutes } from './routes/library.js';
 import { registerRundownRoutes } from './routes/rundowns.js';
+import { registerRadiodjRoutes } from './routes/radiodj.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
@@ -35,6 +36,8 @@ export interface AppOptions {
   https?: { key: string; cert: string } | null;
   rootCaPem?: () => string | null;
   logger?: FastifyServerOptions['logger'];
+  /** Accès aux sources des connecteurs (remplacés dans les tests). */
+  connectorDeps?: ConnectorDeps;
 }
 
 export interface App {
@@ -70,7 +73,10 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     rundowns,
     templates: new Templates(repos, library, rundowns),
     air,
-    automation: new AutomationManager(DEFAULT_STUDIO_ID, air, repos.audit),
+    automation: new AutomationManager(DEFAULT_STUDIO_ID, air, repos.audit, Date.now, {
+      radiodjPassword: config.radiodjDbPassword,
+      ...opts.connectorDeps,
+    }),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
     rootCaPem: opts.rootCaPem ?? (() => null),
@@ -120,6 +126,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerUserRoutes(app, ctx);
   registerDeviceRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);
+  registerRadiodjRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);

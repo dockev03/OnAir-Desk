@@ -10,13 +10,16 @@
     type ItemScriptInfo,
     type ItemType,
     type Library,
+    type RadiodjSong,
     type Script,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
   import { errorMessage, t } from '$lib/i18n/index.svelte.js';
   import { ownerKey, ownerName } from '$lib/library.js';
   import { newItemUid } from '$lib/rundowns.js';
+  import { stationSettings } from '$lib/settings.svelte.js';
   import { toEdit, type EditItem } from './items.js';
+  import SongPicker from './SongPicker.svelte';
 
   /**
    * Liste des éléments d'un conducteur ou d'un modèle : couleurs, heures de passage, durées,
@@ -50,6 +53,26 @@
   } = $props();
 
   const schedule = $derived(rundownSchedule(startTime, items));
+
+  // ---- Titre choisi dans la bibliothèque RadioDJ (si RadioDJ est la source) ------------
+
+  $effect(() => {
+    void stationSettings.load().catch(() => {});
+  });
+  const radiodj = $derived(stationSettings.value?.automationSource === 'radiodj');
+  /** Élément dont la recherche de titre est ouverte. */
+  let picking = $state<string | null>(null);
+
+  /** Titre, durée (jusqu'au point de mix) et type « titre » s'il existe. */
+  function pickSong(item: EditItem, song: RadiodjSong) {
+    item.title = `${song.artist} - ${song.title}`.slice(0, 120);
+    item.durationSeconds = Math.round(song.durationMs / 1000);
+    item.durationText = formatDuration(item.durationSeconds);
+    item.durationInvalid = false;
+    if (types.some((x) => x.id === 'titre')) item.typeId = 'titre';
+    picking = null;
+    onchange();
+  }
 
   function addItem() {
     if (items.length >= MAX_RUNDOWN_ITEMS) return;
@@ -242,6 +265,13 @@
                 >{t('rundowns.item.createScript')}</button
               >
             {/if}
+            {#if radiodj}
+              <button
+                type="button"
+                onclick={() => (picking = picking === item.uid ? null : item.uid)}
+                >{t('rundowns.item.pickSong')}</button
+              >
+            {/if}
             <input
               class="notes"
               aria-label={t('rundowns.item.notes')}
@@ -253,6 +283,9 @@
           </div>
           {#if item.durationInvalid}
             <span class="invalid">{t('rundowns.item.durationInvalid')}</span>
+          {/if}
+          {#if picking === item.uid}
+            <SongPicker onpick={(song) => pickSong(item, song)} onclose={() => (picking = null)} />
           {/if}
         </div>
         <div class="actions">

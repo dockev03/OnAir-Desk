@@ -26,6 +26,8 @@ describe('settingsSchema', () => {
     itemTypes: DEFAULT_ITEM_TYPES,
     automationSource: 'none',
     simulatorSpeed: 1,
+    radiodj: { host: '', port: 3306, database: 'radiodj', user: 'onairdesk' },
+    trackAlert: { soonSeconds: 30, nowSeconds: 10 },
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {
@@ -40,6 +42,26 @@ describe('settingsSchema', () => {
   });
   it('refuse une langue non prise en charge', () => {
     expect(settingsSchema.safeParse({ ...base, locale: 'de' }).success).toBe(false);
+  });
+  it('seuils d’alerte : « maintenant » plus court que « bientôt », bornés', () => {
+    const alert = (soonSeconds: number, nowSeconds: number) =>
+      settingsSchema.safeParse({ ...base, trackAlert: { soonSeconds, nowSeconds } }).success;
+    expect(alert(30, 10)).toBe(true);
+    expect(alert(10, 10)).toBe(false);
+    expect(alert(10, 30)).toBe(false);
+    expect(alert(121, 10)).toBe(false);
+    expect(alert(30, 0)).toBe(false);
+  });
+  it('accès RadioDJ : hôte, base et port validés, aucun mot de passe accepté', () => {
+    const radiodj = (over: object) =>
+      settingsSchema.safeParse({ ...base, radiodj: { ...base.radiodj, ...over } }).success;
+    expect(radiodj({ host: 'studio-pc.lan' })).toBe(true);
+    expect(radiodj({ host: '192.168.1.30' })).toBe(true);
+    expect(radiodj({ host: 'pc studio' })).toBe(false);
+    expect(radiodj({ host: 'pc;DROP' })).toBe(false);
+    expect(radiodj({ database: 'radio dj' })).toBe(false);
+    expect(radiodj({ port: 0 })).toBe(false);
+    expect(radiodj({ password: 'secret' })).toBe(false);
   });
 });
 

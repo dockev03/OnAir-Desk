@@ -25,4 +25,9 @@ export interface AutomationConnector {
   start(ctx: ConnectorContext): void | Promise<void>;
   /** Arrêt propre : plus aucun appel au contexte ensuite. */
   stop(): void;
+  /**
+   * Signal entrant de l'automation (« un titre démarre »), reçu à l'heure serveur indiquée.
+   * Facultatif : seuls les connecteurs alimentés par un signal (RadioDJ) l'implémentent.
+   */
+  signal?(receivedAt: number): void;
 }

@@ -47,6 +47,37 @@ export const PROMPTER_FONT_MAX = 120;
 
 export const speedWpmSchema = z.number().int().min(SPEED_WPM_MIN).max(SPEED_WPM_MAX);
 
+/** Seuils de l'alerte de fin de titre (secondes) : « maintenant » plus court que « bientôt ». */
+export const TRACK_ALERT_MAX_SECONDS = 120;
+export const trackAlertSchema = z
+  .object({
+    soonSeconds: z.number().int().min(1).max(TRACK_ALERT_MAX_SECONDS),
+    nowSeconds: z.number().int().min(1).max(TRACK_ALERT_MAX_SECONDS),
+  })
+  .strict()
+  .refine((t) => t.nowSeconds < t.soonSeconds, 'track_alert_order');
+
+/**
+ * Accès à la base RadioDJ (lecture seule). Le mot de passe n'est jamais stocké ici : il vient
+ * de la variable d'environnement RADIODJ_DB_PASSWORD.
+ */
+export const radiodjSettingsSchema = z
+  .object({
+    /** Nom DNS ou adresse IP du poste MariaDB ; vide : non configuré. */
+    host: z
+      .string()
+      .trim()
+      .max(253)
+      .regex(/^$|^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$|^\[?[0-9A-Fa-f:.]+\]?$/, 'host'),
+    port: z.number().int().min(1).max(65535),
+    database: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_$]{1,64}$/, 'database'),
+    user: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
 export const settingsSchema = z.object({
   stationName: z.string().trim().min(1).max(80),
   locale: localeSchema,
@@ -64,6 +95,10 @@ export const settingsSchema = z.object({
   automationSource: z.enum(AUTOMATION_SOURCES),
   /** Simulateur : accélération des durées (1 = temps réel), pour les démonstrations. */
   simulatorSpeed: z.number().int().min(1).max(SIMULATOR_SPEED_MAX),
+  /** RadioDJ : accès à sa base (titre en cours, à venir, repères). */
+  radiodj: radiodjSettingsSchema,
+  /** Seuils de l'alerte de fin de titre sur l'écran studio. */
+  trackAlert: trackAlertSchema,
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
@@ -234,6 +269,8 @@ export type Locale = z.infer<typeof localeSchema>;
 export type Role = z.infer<typeof roleSchema>;
 export type TimeFormat = z.infer<typeof timeFormatSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
+export type RadiodjSettings = z.infer<typeof radiodjSettingsSchema>;
+export type TrackAlertSettings = z.infer<typeof trackAlertSchema>;
 export type SetupInput = z.infer<typeof setupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

@@ -12,10 +12,10 @@ Documents liés :
 - `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
-- `docs/plan-etape-7.md` : plan de l'étape 7 (RadioDJ), **validé**, en cours de réalisation.
+- `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs) et 6 (socle antenne) réalisées ; étapes 7 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées ; étapes 8 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -80,6 +80,7 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e` (après le build).
 - Tests de bout en bout dans `e2e/` (`*.e2e.ts`, Playwright) : le serveur compilé y est lancé sur une base temporaire ; chaque étape ajoute ses scénarios.
 - Connecteurs d'automation dans `apps/server/src/connectors/` : implémenter `AutomationConnector` (`types.ts`) et l'ajouter au gestionnaire ; le simulateur sert de modèle. Toute nouvelle action journalisée s'ajoute au catalogue `packages/shared/src/audit.ts`.
+- Connecteurs entrants (signal envoyé par l'automation) : route sur l'écoute dédiée `connectors/ingest.ts`, jamais sur le serveur principal. Requêtes SQL RadioDJ testées contre un vrai MariaDB : job CI `mariadb`, ou en local avec `MARIADB_TEST_URL`.
 
 ## 4. Architecture
 
@@ -127,7 +128,7 @@ Thème sombre (lisibilité, pas d'éblouissement).
    - **Alerte fin de titre** : ≤ 30 s → **orange** + « Bientôt à vous » ; ≤ 10 s → **rouge pulsé** + « À vous dans N s ».
    - Seuils **paramétrables**. Pulsation lente (~1 Hz, pas de flash rapide). Respect de `prefers-reduced-motion` (rouge fixe).
 3. **Bloc « Titre à venir »** : titre, artiste, durée, intro, **heure de démarrage calculée**.
-   - ⚠️ À trancher à l'étape 7 (RadioDJ) : heure actuelle + temps restant (maquette), ou prise en compte du fondu/outro si RadioDJ enchaîne en mix.
+   - Tranché à l'étape 7 : heure actuelle + temps restant, la durée d'un titre s'arrêtant au **point de mix** quand il est connu (le fondu est donc pris en compte).
 
 ### Barre latérale gauche
 - « Aujourd'hui » (conducteurs du jour), puis **un dossier par animateur** (Conducteurs triés par date / Scripts, sous-dossiers possibles), plus un dossier **Commun** (météo, agenda…).
@@ -144,7 +145,7 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 
 ### RadioDJ — titre en cours
 - Plugin **Metadata Export** (ex « Now Playing Info »), onglet Web, en **POST** : il n'envoie que `Artiste - Titre` (Custom Data, variables et mot de passe ignorés en 3.0.0.5). Il sert donc de **signal** « un titre démarre » ; jeton d'authentification dans le champ **Password** du plugin (envoyé dans le corps, champ `xpwd`, si la Custom Data est vide).
-- RadioDJ **refuse le certificat HTTPS** d'OnAir-Desk : le signal arrive sur un **port HTTP dédié aux connecteurs** (désactivé par défaut, routes des connecteurs seulement, réseau interne). Changement à risque à détailler dans le plan de l'étape 7.
+- RadioDJ **refuse le certificat HTTPS** d'OnAir-Desk : le signal arrive sur un **port HTTP dédié aux connecteurs** (`CONNECTOR_HTTP_PORT`, fermé par défaut, route du signal seulement, réseau interne). Voir `docs/plan-etape-7.md`.
 - Données lues **en lecture seule** dans la base MySQL/MariaDB de RadioDJ (compte dédié `SELECT` seul) : table `history` (titre en cours, heure de début, type de piste). La base n'est plus un repli : elle est indispensable.
 
 ### RadioDJ — titre à venir, intro/outro
@@ -171,7 +172,7 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 ## 7. Idées complémentaires
 
 ### Validées (étapes 5 à 11 du plan)
-1. **Talk-over** : compte à rebours de l'intro du titre (parler jusqu'au chant). **À condition que les tables RadioDJ le permettent** (repères intro lisibles, vérifiés à l'étape 7) ; sinon abandonné.
+1. **Talk-over** : compte à rebours de l'intro du titre (parler jusqu'au chant). Repères intro lisibles dans RadioDJ (vérifié) : réalisé à l'étape 7, pour les titres dont l'intro est marquée.
 2. **Compte à rebours vers horaire fixe** : « Flash infos dans 4:12 », « Top horaire dans 1:05 ».
 3. **Avance / retard** sur le conducteur (ex. « +1:20 » en rouge).
 4. **Messages régie → animateur** affichés en grand. Le message doit pouvoir être **envoyé depuis un autre PC** (poste de la régie, connecté avec un compte).
@@ -220,7 +221,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. calculs de temps dans `packages/shared` ;
    5. journal d'audit commun (la table `audit_log` existe depuis l'étape 1 : la compléter et en faire la base de la main courante) ;
    6. tests de bout en bout de l'écran studio (mise en place et premiers scénarios).
-7. **RadioDJ** (6 fonctionnalités) :
+7. ✅ **RadioDJ** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-7.md` :
    1. titre en cours ;
    2. titre à venir et heure de démarrage calculée ;
    3. alerte fin de titre (orange / rouge pulsé, seuils paramétrables) ;
@@ -284,6 +285,8 @@ Pas d'étape ni de guide pour le matériel d'affichage : il est **hors spécific
 - Signaler les changements à risque (droits élevés, exposition réseau, suppression de données) avant de les détailler. Risques déjà identifiés :
   - **Port réseau** : le serveur ouvre un port sur le réseau interne (RadioDJ, afficheur, postes). Il ne doit pas être exposé sur Internet.
   - **Session automatique de l'afficheur** : le kiosk ouvre une session sans intervention ; l'afficheur doit rester physiquement dans le studio, sur un réseau maîtrisé.
+  - **Port HTTP des connecteurs** (étape 7) : fermé par défaut ; ouvert, il n'expose que la route du signal RadioDJ (jeton en clair sur le réseau local, la base faisant foi).
+  - **Base RadioDJ** : ouverte au réseau par la station, pour la seule adresse du serveur, avec un compte `SELECT` seul.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).
 - Aucun identifiant de modèle d'IA dans les commits, PR ou fichiers du dépôt.
 
