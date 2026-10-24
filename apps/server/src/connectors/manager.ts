@@ -127,7 +127,7 @@ export class AutomationManager {
     if (source !== this.source) return false;
     const at = this.now();
     this.lastSignal = { title, at };
-    if (this.connector && !this.failing) this.connector.signal?.(at);
+    if (this.connector && !this.failing) this.connector.signal?.(at, title);
     else this.showDegraded();
     return true;
   }

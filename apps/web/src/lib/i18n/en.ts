@@ -412,7 +412,7 @@ export const en: Record<MessageKey, string> = {
   'settings.radiodjTestOk': 'Connected: {n} tracks in the library.',
   'settings.radiodjPlugin': 'Metadata Export plugin',
   'settings.radiodjPluginIntro':
-    'RadioDJ notifies OnAir-Desk at each new track. Without it, the database is read every 5 seconds.',
+    'RadioDJ notifies OnAir-Desk at each new track. Without it, the database is read every second (up to 1 s late).',
   'settings.radiodjPortClosed':
     'Connector listener closed: set CONNECTOR_HTTP_PORT in the stack to receive the plugin signal.',
   'settings.radiodjTokenNone': 'No token generated.',
