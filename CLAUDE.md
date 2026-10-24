@@ -152,6 +152,9 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 - **File d'attente en base** (`queuelist`), vérifiée tenue à jour en temps réel, sans le titre en cours.
 - Repères **intro/outro (cue points)** : lisibles dans `songs.cue_times` (`int` = fin d'intro, `xta` = point de mix…) ; l'intro n'est pas toujours renseignée.
 
+### RadioDJ — limite acceptée : position de lecture
+- Avancer, reculer ou mettre en pause le titre en cours depuis RadioDJ **n'est pas répercuté** : ni la base (`queuelist.ETA` non recalculée) ni les plugins installés ne donnent la position. Temps restant, alertes, talk-over et heure du titre suivant restent faux jusqu'au titre suivant, qui recale tout. Détail : `docs/cadrage-radiodj.md` §4.
+
 ### AzuraCast — titre en cours hors direct (24 h/24)
 - AzuraCast fournit une **API « Now Playing »** (HTTP JSON, et notifications en temps réel / webhooks) : titre en cours, titre suivant, durée, temps écoulé.
 - Sert à afficher le titre en cours **sur l'écran de veille** et hors des émissions en direct.
@@ -197,6 +200,7 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 21. **Compteur de quotas de chanson francophone** (Arcom) depuis l'historique RadioDJ : obligations selon la catégorie de la radio, à vérifier.
 22. **Vigilance Météo-France** du département à côté de la météo (API Météo-France, compte + clé).
 23. **Voyants micros invités** (un par micro ouvert) : câblage matériel, comme le On Air.
+24. **Plugin RadioDJ maison** (C#, **projet à part**) : envoyer à OnAir-Desk la position de lecture et l'état lecture / pause, sur le port des connecteurs, pour lever la limite du §6. Préalable : vérifier qu'un kit de développement de plugins existe pour RadioDJ 3.0.0.5 et donne accès à la position du lecteur.
 
 ### Hors de cet outil (autres outils, plus tard)
 - **Alerte blanc d'antenne** (détection de silence) : peut-être dans un outil de **supervision** séparé, sous Docker.

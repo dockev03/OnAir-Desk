@@ -111,7 +111,7 @@ Chaîne de clés et de valeurs, en secondes depuis le début du fichier, par exe
 - Colonnes : `ID`, `songID`, `ETA`, `duration`, `artist`, `associated_artists`, `title`, `album`, `swID`, `swPlay`, `vtID`, `vtPlay`.
 - **Tenue à jour en temps réel** (la question ouverte du §6 est réglée) et **sans le titre en cours** : un titre sort de la table quand il démarre.
 - **Les `ID` sont renumérotés** à chaque réécriture : s'appuyer sur l'ordre et le `songID`, jamais sur `ID`.
-- `ETA` est calculée par RadioDJ et recalculée en continu. Elle s'est révélée exacte (15:10:01 annoncée, 15:10:01 dans `history`).
+- `ETA` est calculée par RadioDJ. Elle s'est révélée exacte en lecture normale (15:10:01 annoncée, 15:10:01 dans `history`), mais elle **n'est pas recalculée** quand on avance ou recule dans le titre en cours (constaté le 24/10/2026, voir § 4).
 - `swID` / `vtID` : ID (`songs.ID`) du sweeper ou du voicetrack posé par-dessus le titre. Vu : `swID = 50` (un jingle), `swPlay = -20` ; sans voicetrack, `vtID = 0` et `vtPlay = -100` ; sans sweeper, `swID = -100`. Le sens de `swPlay` n'est pas établi : avec `-20`, le sweeper est parti au **début** du titre.
 - La base ne prévient de rien : relire la file **à chaque signal** et **périodiquement** (quelques secondes), car l'animateur peut modifier la playlist sans changer de titre.
 
@@ -139,6 +139,11 @@ Heure de démarrage du titre suivant : la calculer dans `packages/shared` (heure
   À restreindre ensuite aux tables utiles (`history`, `songs`, `queuelist`). Mot de passe en variable d'environnement, jamais en dur.
 - **Port HTTP dédié aux connecteurs** (changement à risque) : voir « HTTPS : refusé par RadioDJ » plus haut.
 - **Jeton** : transmis dans le champ `xpwd`. Il ne doit apparaître ni dans les journaux ni dans les traces d'audit.
+- **Position de lecture inconnue** (limite acceptée, constatée le 24/10/2026) : si l'on avance, recule ou met en pause le titre en cours depuis RadioDJ, OnAir-Desk n'en est pas informé.
+  - La base ne contient pas la position de lecture, et `queuelist.ETA` n'est pas recalculée après un déplacement dans le titre (requête relancée avant et après une avance de 30 s : même valeur).
+  - Aucun plugin installé ne l'expose (liste en 5.0.0.0 : Aux Players, Folder Sync, History, Instant Players, Metadata Export, Playlist, Playlist Builder, Search, Song Details, Audio Processing, Tracks Manager, Utilities) : pas de serveur REST.
+  - Conséquence : temps restant, alerte de fin, talk-over et heure de démarrage du titre suivant sont faux **jusqu'au titre suivant**, où le signal et `history` recalent tout.
+  - Recalage manuel depuis la régie écarté (manipulation de plus en plein direct). Piste pour plus tard : un **plugin RadioDJ maison** (C#), dans un **projet à part**, qui enverrait position et état lecture / pause sur le port des connecteurs (idée non validée, `CLAUDE.md` §7).
 
 ## 5. Reste à vérifier
 
