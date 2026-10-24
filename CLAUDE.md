@@ -11,6 +11,7 @@ Documents liés :
 - `docs/plan-etape-4.md` : plan et **bilan** de l'étape 4 (conducteurs), réalisée.
 - `docs/plan-etape-5.md` : plan et **bilan** de l'étape 5 (compléments conducteurs), réalisée.
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
+- `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs) et 6 (socle antenne) réalisées ; étapes 7 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
@@ -138,15 +139,15 @@ Thème sombre (lisibilité, pas d'éblouissement).
 
 ## 6. Intégrations
 
+Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radiodj.md`.
+
 ### RadioDJ — titre en cours
-- Plugin **Now Playing Info** → export web (HTTP) vers le serveur à chaque changement (artiste, titre, durée).
-- Repli : lecture **en lecture seule** de la table d'historique MySQL/MariaDB de RadioDJ (compte dédié sans droit d'écriture).
-- ⚠️ Variables disponibles (durée notamment) **à vérifier** sur la version installée, avant de coder cette partie.
+- Plugin **Metadata Export** (ex « Now Playing Info »), onglet Web, en **POST** : il n'envoie que `Artiste - Titre` (Custom Data, variables et mot de passe ignorés en 3.0.0.5). Il sert donc de **signal** « un titre démarre » ; jeton d'authentification **dans le chemin** de l'URL.
+- Données lues **en lecture seule** dans la base MySQL/MariaDB de RadioDJ (compte dédié `SELECT` seul) : table `history` (titre en cours, heure de début, type de piste). La base n'est plus un repli : elle est indispensable.
 
 ### RadioDJ — titre à venir, intro/outro
-- Probablement via la **file d'attente en base** (table du type `queuelist`), en lecture seule.
-- Repères **intro/outro (cue points)** : RadioDJ les stocke ; lisibilité **à vérifier**.
-- ⚠️ Confirmer que la playlist est persistée en base et pas seulement dans le lecteur.
+- **File d'attente en base** (`queuelist`), vérifiée tenue à jour en temps réel, sans le titre en cours.
+- Repères **intro/outro (cue points)** : lisibles dans `songs.cue_times` (`int` = fin d'intro, `xta` = point de mix…) ; l'intro n'est pas toujours renseignée.
 
 ### AzuraCast — titre en cours hors direct (24 h/24)
 - AzuraCast fournit une **API « Now Playing »** (HTTP JSON, et notifications en temps réel / webhooks) : titre en cours, titre suivant, durée, temps écoulé.
