@@ -41,6 +41,8 @@
   const nextAt = $derived(nextStartAt(current, now));
   const level = $derived(trackAlertLevel(current, now, alert));
   const intro = $derived(current && timed ? introRemaining(current, now) : null);
+  /** Talk-over en cours ; l'alerte de fin de titre reste prioritaire (titre très court). */
+  const talkover = $derived(intro !== null && intro > 0 && level === 'none');
   /** Repères sur la barre : fin de l'intro, début de l'outro (fraction de la durée). */
   const marks = $derived.by(() => {
     if (!current || !timed) return [];
@@ -57,6 +59,7 @@
   class="card track now"
   class:soon={level === 'soon'}
   class:alert-now={level === 'now'}
+  class:talkover
   aria-label={t('studio.nowPlaying')}
   data-alert={level}
 >
@@ -215,6 +218,15 @@
     color: #85b7eb;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+  /* Talk-over : tout le bloc passe au bleu, repérable du coin de l'œil, sans pulsation
+     (la pulsation reste réservée à l'alerte rouge). */
+  .now.talkover {
+    border-color: #85b7eb;
+    background: #142638;
+  }
+  .now.talkover .intro {
+    font-size: 2.2rem;
   }
   /* Alerte de fin de titre : un seul code couleur pour tout l'écran. */
   .now.soon {
