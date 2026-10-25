@@ -19,7 +19,8 @@
     "format": "prettier --write .",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p e2e/tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "playwright test -c e2e/playwright.config.ts"
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "captures": "tsx scripts/captures.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
