@@ -78,6 +78,10 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - Contenu des scripts : liste blanche dans `packages/shared/src/content.ts` (validation serveur, nettoyage éditeur). L'affichage passe par `apps/web/src/lib/content/` : **jamais de `{@html}`**.
 - La page `/studio` (afficheur) ne doit pas importer l'éditeur TipTap : vérifier son poids après toute modification.
 - Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e` (après le build).
+- **README à jour, captures comprises** : toute fonctionnalité ou interface ajoutée ou modifiée met à jour le `README.md` dans la même branche (statut, liste des fonctionnalités, installation si besoin) et ses captures d'écran :
+  - relancer `npm run captures` (après le build) et vérifier les images de `docs/captures/` ;
+  - écran nouveau ou modifié visiblement : compléter les données de démonstration et les captures dans `scripts/captures.ts`, puis l'image et sa légende dans la section « Aperçu » du README ;
+  - captures sur la base de démonstration seulement : jamais de données réelles d'une station, ni de jeton ou d'adresse interne visibles.
 - Tests de bout en bout dans `e2e/` (`*.e2e.ts`, Playwright) : le serveur compilé y est lancé sur une base temporaire ; chaque étape ajoute ses scénarios.
 - Connecteurs d'automation dans `apps/server/src/connectors/` : implémenter `AutomationConnector` (`types.ts`) et l'ajouter au gestionnaire ; le simulateur sert de modèle. Toute nouvelle action journalisée s'ajoute au catalogue `packages/shared/src/audit.ts`.
 - Connecteurs entrants (signal envoyé par l'automation) : route sur l'écoute dédiée `connectors/ingest.ts`, jamais sur le serveur principal. Requêtes SQL RadioDJ testées contre un vrai MariaDB : job CI `mariadb`, ou en local avec `MARIADB_TEST_URL`.
