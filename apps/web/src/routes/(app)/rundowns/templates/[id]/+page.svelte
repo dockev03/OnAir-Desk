@@ -20,6 +20,7 @@
   import { ownerKey, ownerName } from '$lib/library.js';
   import { Autosave, type SaveStatus } from '$lib/rundown-editor/autosave.svelte.js';
   import ItemsEditor from '$lib/rundown-editor/ItemsEditor.svelte';
+  import RundownNotes from '$lib/rundown-editor/RundownNotes.svelte';
   import { toEdit, toInput, type EditItem } from '$lib/rundown-editor/items.js';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
   import { session } from '$lib/session.svelte.js';
@@ -41,6 +42,7 @@
   let validUntil = $state('');
   let active = $state(true);
   let exclusions = $state<TemplateExclusion[]>([]);
+  let notes = $state('');
   let items = $state<EditItem[]>([]);
   let version = 0;
 
@@ -57,6 +59,7 @@
     validUntil = x.validUntil ?? '';
     active = x.active;
     exclusions = x.exclusions.map((e) => ({ ...e }));
+    notes = x.notes;
     items = x.items.map(toEdit);
     version = x.version;
   }
@@ -92,6 +95,7 @@
         validUntil: validUntil || null,
         active,
         exclusions,
+        notes,
         items: items.map(toInput),
       });
       version = x.version;
@@ -376,6 +380,8 @@
     onchange={changed}
     onerror={(message) => (error = message)}
   />
+
+  <RundownNotes bind:notes {canWrite} onchange={changed} />
 
   {#if canWrite}
     <section class="card create">

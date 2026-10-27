@@ -1,12 +1,15 @@
 <script lang="ts">
   import {
+    MAX_INTRO_SECONDS,
     MAX_RUNDOWN_ITEMS,
+    MAX_TAGS_PER_ITEM,
     formatDuration,
     itemColors,
     itemSeconds,
     parseItemDuration,
     rundownSchedule,
     secondsToTime,
+    songNumbers,
     type ItemScriptInfo,
     type ItemType,
     type Library,
@@ -18,7 +21,7 @@
   import { ownerKey, ownerName } from '$lib/library.js';
   import { newItemUid } from '$lib/rundowns.js';
   import { stationSettings } from '$lib/settings.svelte.js';
-  import { toEdit, type EditItem } from './items.js';
+  import { hasDetails, parseYear, toEdit, type EditItem } from './items.js';
   import SongPicker from './SongPicker.svelte';
 
   /**
@@ -53,6 +56,12 @@
   } = $props();
 
   const schedule = $derived(rundownSchedule(startTime, items));
+  const numbers = $derived(songNumbers(items));
+  const tags = $derived(stationSettings.value?.itemTags ?? []);
+
+  /** Ligne « Détails » ouverte ou fermée à la main ; par défaut, ouverte s'il y a des détails. */
+  let expanded = $state<Record<string, boolean>>({});
+  const isOpen = (item: EditItem) => expanded[item.uid] ?? hasDetails(item);
 
   // ---- Titre choisi dans la bibliothèque RadioDJ (si RadioDJ est la source) ------------
 
@@ -63,12 +72,18 @@
   /** Élément dont la recherche de titre est ouverte. */
   let picking = $state<string | null>(null);
 
-  /** Titre, durée (jusqu'au point de mix) et type « titre » s'il existe. */
+  /** Titre, artiste, durée (jusqu'au point de mix), intro et type « titre » s'il existe. */
   function pickSong(item: EditItem, song: RadiodjSong) {
-    item.title = `${song.artist} - ${song.title}`.slice(0, 120);
+    item.title = song.title.slice(0, 120) || t('rundowns.newItemTitle');
+    item.artist = song.artist.slice(0, 120);
     item.durationSeconds = Math.round(song.durationMs / 1000);
     item.durationText = formatDuration(item.durationSeconds);
     item.durationInvalid = false;
+    if (song.introMs !== null) {
+      item.introSeconds = Math.min(MAX_INTRO_SECONDS, Math.round(song.introMs / 1000));
+      item.introText = formatDuration(item.introSeconds);
+      item.introInvalid = false;
+    }
     if (types.some((x) => x.id === 'titre')) item.typeId = 'titre';
     picking = null;
     onchange();
@@ -85,6 +100,11 @@
         notes: '',
         scriptId: null,
         script: null,
+        artist: '',
+        year: null,
+        introSeconds: null,
+        tags: [],
+        cuttable: false,
       }),
     );
     onchange();
@@ -110,6 +130,42 @@
     item.durationSeconds = seconds;
     onchange();
   }
+
+  /** Intro : comme la durée, 10 minutes au plus. */
+  function typeIntro(item: EditItem) {
+    const seconds = parseItemDuration(item.introText);
+    if (seconds === undefined || (seconds !== null && seconds > MAX_INTRO_SECONDS)) return;
+    item.introInvalid = false;
+    item.introSeconds = seconds;
+    onchange();
+  }
+
+  function checkIntro(item: EditItem) {
+    const seconds = parseItemDuration(item.introText);
+    item.introInvalid = seconds === undefined || (seconds !== null && seconds > MAX_INTRO_SECONDS);
+  }
+
+  function typeYear(item: EditItem) {
+    const year = parseYear(item.yearText);
+    if (year === undefined) return;
+    item.yearInvalid = false;
+    item.year = year;
+    onchange();
+  }
+
+  function toggleTag(item: EditItem, tagId: string) {
+    if (item.tags.includes(tagId)) item.tags = item.tags.filter((x) => x !== tagId);
+    else if (item.tags.length < MAX_TAGS_PER_ITEM) item.tags = [...item.tags, tagId];
+    onchange();
+  }
+
+  /** Étiquettes affichées : celles des paramètres, plus les anciennes encore posées. */
+  const itemTags = (item: EditItem) => [
+    ...tags,
+    ...item.tags
+      .filter((id) => !tags.some((x) => x.id === id))
+      .map((id) => ({ id, label: id, color: '#3A3B3F' as const })),
+  ];
 
   const scriptInfo = (s: Script | Library['scripts'][number]): ItemScriptInfo => ({
     title: s.title,
@@ -202,7 +258,11 @@
           onpointercancel={dragEnd}>⠿</button
         >
       {/if}
-      <span class="time mono">{secondsToTime(schedule.starts[i] ?? 0)}</span>
+      <span class="num" title={t('rundowns.item.songNumber')}>{numbers[i] ?? ''}</span>
+      <span class="when">
+        <span class="time mono">{secondsToTime(schedule.starts[i] ?? 0)}</span>
+        <span class="offset mono">+{formatDuration(schedule.offsets[i] ?? 0)}</span>
+      </span>
 
       {#if canWrite}
         <div class="fields">
@@ -272,6 +332,12 @@
                 >{t('rundowns.item.pickSong')}</button
               >
             {/if}
+            <button
+              type="button"
+              aria-expanded={isOpen(item)}
+              onclick={() => (expanded[item.uid] = !isOpen(item))}
+              >{t('rundowns.item.details')} {isOpen(item) ? '▾' : '▸'}</button
+            >
             <input
               class="notes"
               aria-label={t('rundowns.item.notes')}
@@ -281,8 +347,64 @@
               oninput={onchange}
             />
           </div>
+          {#if isOpen(item)}
+            <div class="line details">
+              <input
+                class="artist"
+                aria-label={t('rundowns.item.artist')}
+                placeholder={t('rundowns.item.artist')}
+                bind:value={item.artist}
+                maxlength="120"
+                oninput={onchange}
+              />
+              <input
+                class="year mono"
+                aria-label={t('rundowns.item.year')}
+                placeholder={t('rundowns.item.year')}
+                inputmode="numeric"
+                maxlength="4"
+                aria-invalid={item.yearInvalid}
+                bind:value={item.yearText}
+                oninput={() => typeYear(item)}
+                onchange={() => (item.yearInvalid = parseYear(item.yearText) === undefined)}
+              />
+              <input
+                class="intro mono"
+                aria-label={t('rundowns.item.intro')}
+                title={t('rundowns.item.introHint')}
+                placeholder={t('rundowns.item.intro')}
+                aria-invalid={item.introInvalid}
+                bind:value={item.introText}
+                oninput={() => typeIntro(item)}
+                onchange={() => checkIntro(item)}
+              />
+              {#each itemTags(item) as tag (tag.id)}
+                {@const on = item.tags.includes(tag.id)}
+                <button
+                  type="button"
+                  class="tag"
+                  class:on
+                  aria-pressed={on}
+                  style:background-color={on ? tag.color : undefined}
+                  style:color={on ? itemColors(tags, tag.id).fg : undefined}
+                  disabled={!on && item.tags.length >= MAX_TAGS_PER_ITEM}
+                  onclick={() => toggleTag(item, tag.id)}>{tag.label}</button
+                >
+              {/each}
+              <label class="cut">
+                <input type="checkbox" bind:checked={item.cuttable} {onchange} />
+                ✂ {t('rundowns.item.cuttable')}
+              </label>
+            </div>
+          {/if}
           {#if item.durationInvalid}
             <span class="invalid">{t('rundowns.item.durationInvalid')}</span>
+          {/if}
+          {#if item.introInvalid}
+            <span class="invalid">{t('rundowns.item.introInvalid')}</span>
+          {/if}
+          {#if item.yearInvalid}
+            <span class="invalid">{t('rundowns.item.yearInvalid')}</span>
           {/if}
           {#if picking === item.uid}
             <SongPicker onpick={(song) => pickSong(item, song)} onclose={() => (picking = null)} />
@@ -315,7 +437,31 @@
           <span class="ro-title">
             {item.title}
             {#if item.scriptId !== null}<a class="open" href="/scripts/{item.scriptId}">📄</a>{/if}
+            {#if item.cuttable}<span title={t('rundowns.item.cuttable')}>✂</span>{/if}
           </span>
+          {#if item.artist || item.year !== null || item.introSeconds !== null}
+            <span class="ro-notes">
+              {[
+                item.artist,
+                item.year,
+                item.introSeconds !== null
+                  ? `${t('rundowns.item.intro')} ${formatDuration(item.introSeconds)}`
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          {/if}
+          {#if item.tags.length > 0}
+            <span class="line">
+              {#each item.tags as tagId (tagId)}
+                {@const c = itemColors(tags, tagId)}
+                <span class="chip" style:background-color={c.bg} style:color={c.fg}
+                  >{tags.find((x) => x.id === tagId)?.label ?? tagId}</span
+                >
+              {/each}
+            </span>
+          {/if}
           {#if item.notes}<span class="ro-notes">{item.notes}</span>{/if}
         </div>
         <span class="mono">{formatDuration(itemSeconds(item))}</span>
@@ -371,9 +517,23 @@
   .item.dragging .handle {
     cursor: grabbing;
   }
-  .time {
+  .num {
+    width: 1.6rem;
+    flex-shrink: 0;
+    text-align: right;
+    font-weight: 700;
+    font-size: 1.1rem;
+    opacity: 0.85;
+  }
+  .when {
     width: 5.2rem;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .offset {
+    font-size: 0.8rem;
+    opacity: 0.7;
   }
   .fields {
     flex: 1;
@@ -425,6 +585,50 @@
   .open {
     color: inherit;
     font-size: 0.9rem;
+  }
+  .artist {
+    flex: 1;
+    min-width: 10rem;
+  }
+  .year {
+    width: 4.5rem;
+  }
+  .intro {
+    width: 5.5rem;
+  }
+  .year[aria-invalid='true'],
+  .intro[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+  .tag {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: inherit;
+  }
+  .tag.on {
+    border-color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+  }
+  .cut {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .cut input {
+    width: auto;
+    margin: 0;
+  }
+  .chip {
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
   }
   .invalid {
     font-size: 0.85rem;

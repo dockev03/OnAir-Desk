@@ -9,7 +9,8 @@
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
 - Écran studio : navigation dans les dossiers à la souris, mode lecture avec bande de lecture, défilement molette ou automatique, Précédent / Suivant.
-- Conducteurs : éléments colorés, heures de passage, glisser-déposer, lien prompteur, duplication, modèles d'émission récurrente, impression / PDF.
+- Conducteurs : éléments colorés, heures de passage et position depuis le début, glisser-déposer, lien prompteur, duplication, modèles d'émission récurrente, impression / PDF en tableau coloré.
+- Conducteur enrichi : titres musicaux numérotés avec artiste, année et intro (talk-up, reprise des repères RadioDJ), étiquettes paramétrables (ex. FR), élément « à couper si ça déborde », notes générales du conducteur.
 - Logo de la station (interface, connexion, écran studio, impressions).
 - Socle antenne : titre en cours / à venir sur l'écran studio (simulateur d'automation en attendant RadioDJ et AzuraCast), journal d'audit consultable, tests de bout en bout (`npm run test:e2e`).
 
@@ -19,11 +20,13 @@ Les autres intégrations (AzuraCast, On Air, météo) arrivent aux étapes suiva
 
 ### Aperçu
 
-| Écran studio : conducteur du jour                                                                                                                          | Écran studio : navigation                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| ![Conducteur sur l'écran studio : éléments colorés par type, heures de passage et durées](docs/captures/studio-conducteur.png)                             | ![Navigation de l'écran studio : conducteurs du jour, dossier Commun, un dossier par animateur](docs/captures/studio-navigation.png) |
-| **Éditeur de script**                                                                                                                                      | **Montage d'un conducteur**                                                                                                          |
-| ![Éditeur de script : texte enrichi, couleurs, surlignage, repères JINGLE / PAUSE / LANCER TITRE, vitesse de défilement](docs/captures/editeur-script.png) | ![Édition d'un conducteur : types colorés, scripts attachés, heures de passage calculées](docs/captures/conducteur.png)              |
+| Écran studio : conducteur du jour                                                                                                                                                              | Écran studio : navigation                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Conducteur sur l'écran studio : éléments colorés par type, titres numérotés avec artiste, étiquettes, intro, heures de passage et durées](docs/captures/studio-conducteur.png)               | ![Navigation de l'écran studio : conducteurs du jour, dossier Commun, un dossier par animateur](docs/captures/studio-navigation.png)                                                      |
+| **Éditeur de script**                                                                                                                                                                          | **Montage d'un conducteur**                                                                                                                                                               |
+| ![Éditeur de script : texte enrichi, couleurs, surlignage, repères JINGLE / PAUSE / LANCER TITRE, vitesse de défilement](docs/captures/editeur-script.png)                                     | ![Édition d'un conducteur : types colorés, scripts attachés, heures de passage calculées, détails d'un titre (artiste, année, intro, étiquettes, à couper)](docs/captures/conducteur.png) |
+| **Impression / PDF du conducteur**                                                                                                                                                             |                                                                                                                                                                                           |
+| ![Conducteur imprimé : lignes teintées par type, numéro des titres, heure et position, artiste, année, étiquettes, intro, légende et notes générales](docs/captures/conducteur-impression.png) |                                                                                                                                                                                           |
 
 Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 

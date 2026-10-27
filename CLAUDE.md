@@ -13,9 +13,10 @@ Documents liés :
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
+- `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées ; étapes 8 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 8 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -236,6 +237,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. repères intro / outro ;
    5. talk-over, si les tables RadioDJ le permettent (§7) ;
    6. titres musicaux remplis automatiquement dans les conducteurs.
+   - ✅ **Conducteur enrichi** (évolution hors étape, avant l'étape 8, AzuraCast n'étant pas encore disponible) : titres numérotés avec artiste, année et intro, étiquettes paramétrables, élément à couper, notes générales, tableau coloré à l'écran et à l'impression. → `docs/plan-conducteur-enrichi.md`. Durée cible, écart et part de chansons francophones restent à l'étape 11.
 8. **AzuraCast et écran de veille** (6 fonctionnalités) :
    1. connecteur AzuraCast (titre en cours / à venir) ;
    2. bascule de source : RadioDJ en direct, AzuraCast le reste du temps ;

@@ -39,19 +39,24 @@ export function secondsToTime(total: number): string {
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
-/** Heure de passage de chaque élément (secondes depuis minuit) et fin du conducteur. */
+/**
+ * Heure de passage de chaque élément (secondes depuis minuit), position depuis le début de
+ * l'émission (« +12:30 »), fin du conducteur et durée totale.
+ */
 export function rundownSchedule(
   startTime: string,
   items: ItemTiming[],
-): { starts: number[]; end: number; total: number } {
+): { starts: number[]; offsets: number[]; end: number; total: number } {
   const start = timeToSeconds(startTime);
   const starts: number[] = [];
+  const offsets: number[] = [];
   let t = start;
   for (const item of items) {
     starts.push(t);
+    offsets.push(t - start);
     t += itemSeconds(item);
   }
-  return { starts, end: t, total: t - start };
+  return { starts, offsets, end: t, total: t - start };
 }
 
 // ---- Titre en cours / à venir ------------------------------------------------------

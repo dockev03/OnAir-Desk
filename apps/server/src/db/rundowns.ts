@@ -22,6 +22,7 @@ interface RundownRow {
   updated_at: string;
   deleted_at: string | null;
   template_id: number | null;
+  notes: string;
   updated_by_name: string | null;
 }
 
@@ -33,6 +34,11 @@ interface ItemRow {
   duration_seconds: number | null;
   notes: string;
   script_id: number | null;
+  artist: string;
+  year: number | null;
+  intro_seconds: number | null;
+  tags: string;
+  cuttable: number;
   script_title: string | null;
   word_count: number | null;
   speed_wpm: number | null;
@@ -41,6 +47,7 @@ interface ItemRow {
 }
 
 export interface RundownRecord extends RundownSummary {
+  notes: string;
   items: RundownItem[];
   version: number;
   updatedBy: number | null;
@@ -51,6 +58,7 @@ export interface RundownHeader {
   title: string;
   airDate: string;
   startTime: string;
+  notes: string;
 }
 
 /** Lien d'un conducteur vers le modèle qui l'a créé, et la date d'origine. */
@@ -98,8 +106,9 @@ export function writeItems(
   db.prepare(`DELETE FROM ${table} WHERE ${parentColumn} = ?`).run(parentId);
   const insert = db.prepare(
     `INSERT INTO ${table} (${parentColumn}, uid, position, type_id, title, duration_seconds,
-                           notes, script_id)
-     VALUES (@parentId, @uid, @position, @typeId, @title, @durationSeconds, @notes, @scriptId)`,
+                           notes, script_id, artist, year, intro_seconds, tags, cuttable)
+     VALUES (@parentId, @uid, @position, @typeId, @title, @durationSeconds, @notes, @scriptId,
+             @artist, @year, @introSeconds, @tags, @cuttable)`,
   );
   items.forEach((item, position) =>
     insert.run({
@@ -111,6 +120,11 @@ export function writeItems(
       durationSeconds: item.durationSeconds,
       notes: item.notes,
       scriptId: item.scriptId,
+      artist: item.artist,
+      year: item.year,
+      introSeconds: item.introSeconds,
+      tags: JSON.stringify(item.tags),
+      cuttable: item.cuttable ? 1 : 0,
     }),
   );
 }
@@ -132,7 +146,22 @@ const toItem = (r: ItemRow): RundownItem => ({
           deleted: r.script_deleted_at !== null,
         }
       : null,
+  artist: r.artist,
+  year: r.year,
+  introSeconds: r.intro_seconds,
+  tags: parseTags(r.tags),
+  cuttable: r.cuttable === 1,
 });
+
+/** Étiquettes enregistrées (tableau JSON) ; valeur illisible : aucune. */
+function parseTags(raw: string): string[] {
+  try {
+    const v: unknown = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
   return {
@@ -141,6 +170,7 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
     title: r.title,
     airDate: r.air_date,
     startTime: r.start_time,
+    notes: r.notes,
     itemCount: items.length,
     totalSeconds: rundownSchedule(r.start_time, items).total,
     updatedAt: r.updated_at,
@@ -154,6 +184,7 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
 }
 
 const toSummary = ({
+  notes: _n,
   items: _i,
   version: _v,
   updatedBy: _u,
@@ -216,9 +247,9 @@ export class RundownRepo {
     return this.db.transaction(() => {
       const info = this.db
         .prepare(
-          `INSERT INTO rundowns (owner_id, title, air_date, start_time, created_by, updated_by,
-                                 template_id, template_date)
-           VALUES (@ownerId, @title, @airDate, @startTime, @userId, @userId,
+          `INSERT INTO rundowns (owner_id, title, air_date, start_time, notes, created_by,
+                                 updated_by, template_id, template_date)
+           VALUES (@ownerId, @title, @airDate, @startTime, @notes, @userId, @userId,
                    @templateId, @templateDate)`,
         )
         .run({
@@ -243,7 +274,7 @@ export class RundownRepo {
       this.db
         .prepare(
           `UPDATE rundowns SET title = @title, air_date = @airDate, start_time = @startTime,
-                  version = version + 1, updated_by = @userId, updated_at = @now
+                  notes = @notes, version = version + 1, updated_by = @userId, updated_at = @now
             WHERE id = @id`,
         )
         .run({
@@ -252,6 +283,7 @@ export class RundownRepo {
           title: patch.title ?? current.title,
           airDate: patch.airDate ?? current.airDate,
           startTime: patch.startTime ?? current.startTime,
+          notes: patch.notes ?? current.notes,
           now: nowIso(),
         });
       if (patch.items) this.writeItems(id, patch.items);

@@ -66,6 +66,11 @@ const item = (uid: string, over: Partial<RundownItemInput> = {}): RundownItemInp
   durationSeconds: 10,
   notes: '',
   scriptId: null,
+  artist: '',
+  year: null,
+  introSeconds: null,
+  tags: [],
+  cuttable: false,
   ...over,
 });
 
@@ -168,6 +173,112 @@ describe('conducteurs : contenu et durées', () => {
     await c('DELETE', `/api/trash/${s.id}`);
     const after = (await c('GET', `/api/rundowns/${r.id}`)).json() as Rundown;
     expect(after.items[0]).toMatchObject({ uid: 'a', scriptId: null, script: null });
+  });
+});
+
+describe('conducteurs : détails des éléments et notes générales', () => {
+  it('enregistre artiste, année, intro, étiquettes, élément à couper et notes', async () => {
+    const r = await newRundown(jean.cookie, jean.id, [item('a')]);
+    // Champs facultatifs à la création : valeurs par défaut.
+    expect(r.notes).toBe('');
+    expect(r.items[0]).toMatchObject({
+      artist: '',
+      year: null,
+      introSeconds: null,
+      tags: [],
+      cuttable: false,
+    });
+    const res = await client(built.app, jean.cookie)('PATCH', `/api/rundowns/${r.id}`, {
+      version: r.version,
+      notes: 'Prises d’antenne entre 45 s et 1 min.',
+      items: [
+        item('a', {
+          title: 'One More Time',
+          artist: 'Daft Punk',
+          year: 2000,
+          introSeconds: 12,
+          tags: ['fr'],
+          cuttable: true,
+        }),
+      ],
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const saved = (await client(built.app, jean.cookie)('GET', `/api/rundowns/${r.id}`)).json();
+    expect(saved.notes).toBe('Prises d’antenne entre 45 s et 1 min.');
+    expect(saved.items[0]).toMatchObject({
+      artist: 'Daft Punk',
+      year: 2000,
+      introSeconds: 12,
+      tags: ['fr'],
+      cuttable: true,
+    });
+  });
+
+  it('refuse une étiquette inconnue ; une étiquette retirée depuis reste acceptée', async () => {
+    const c = client(built.app, jean.cookie);
+    const base = { ownerId: jean.id, title: 'T', airDate: '2026-10-22', startTime: '07:00' };
+    const bad = await c('POST', '/api/rundowns', { ...base, items: [item('a', { tags: ['x'] })] });
+    expect(bad.json().error).toBe('unknown_item_tag');
+
+    const r = await newRundown(jean.cookie, jean.id, [item('a', { tags: ['fr'] })]);
+    await client(built.app, admin)('PUT', '/api/settings', { itemTags: [] });
+    const kept = await c('PATCH', `/api/rundowns/${r.id}`, {
+      version: r.version,
+      items: [item('a', { tags: ['fr'] }), item('b')],
+    });
+    expect(kept.statusCode, kept.body).toBe(200);
+  });
+
+  it('la duplication reprend les détails et les notes', async () => {
+    const c = client(built.app, jean.cookie);
+    const r = await newRundown(jean.cookie, jean.id, [
+      item('a', { artist: 'Gala', cuttable: true }),
+    ]);
+    await c('PATCH', `/api/rundowns/${r.id}`, { version: r.version, notes: 'Règles' });
+    const copy = await c('POST', `/api/rundowns/${r.id}/duplicate`, {
+      ownerId: jean.id,
+      airDate: '2026-10-29',
+    });
+    expect(copy.statusCode, copy.body).toBe(201);
+    expect(copy.json()).toMatchObject({ notes: 'Règles' });
+    expect(copy.json().items[0]).toMatchObject({ artist: 'Gala', cuttable: true });
+  });
+
+  it('copie de l’écran studio antérieure aux détails : champs complétés', async () => {
+    const r = await newRundown(jean.cookie, jean.id, [item('a')]);
+    await client(built.app, jean.cookie)('POST', '/api/prompter', {
+      rundownId: r.id,
+      itemUid: 'a',
+    });
+    const old = {
+      id: r.id,
+      ownerId: jean.id,
+      title: r.title,
+      airDate: r.airDate,
+      startTime: r.startTime,
+      items: [
+        {
+          uid: 'a',
+          typeId: 'jingle',
+          title: 'Ancien',
+          durationSeconds: 10,
+          notes: '',
+          scriptId: null,
+          script: null,
+        },
+      ],
+    };
+    built.ctx.repos.db
+      .prepare('UPDATE prompter_state SET rundown_snapshot = ?')
+      .run(JSON.stringify(old));
+    expect((await state()).rundown?.items[0]).toMatchObject({
+      title: 'Ancien',
+      artist: '',
+      year: null,
+      introSeconds: null,
+      tags: [],
+      cuttable: false,
+    });
   });
 });
 

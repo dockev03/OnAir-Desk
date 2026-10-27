@@ -296,4 +296,19 @@ export const migrations: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW}
   );
   `,
+  /* 8 — conducteur enrichi : artiste, année, intro, étiquettes, élément à couper ; notes */ `
+  -- Étiquettes : tableau JSON d'identifiants des paramètres.
+  ALTER TABLE rundown_items ADD COLUMN artist TEXT NOT NULL DEFAULT '';
+  ALTER TABLE rundown_items ADD COLUMN year INTEGER;
+  ALTER TABLE rundown_items ADD COLUMN intro_seconds INTEGER;
+  ALTER TABLE rundown_items ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE rundown_items ADD COLUMN cuttable INTEGER NOT NULL DEFAULT 0 CHECK (cuttable IN (0, 1));
+  ALTER TABLE rundown_template_items ADD COLUMN artist TEXT NOT NULL DEFAULT '';
+  ALTER TABLE rundown_template_items ADD COLUMN year INTEGER;
+  ALTER TABLE rundown_template_items ADD COLUMN intro_seconds INTEGER;
+  ALTER TABLE rundown_template_items ADD COLUMN tags TEXT NOT NULL DEFAULT '[]';
+  ALTER TABLE rundown_template_items ADD COLUMN cuttable INTEGER NOT NULL DEFAULT 0 CHECK (cuttable IN (0, 1));
+  ALTER TABLE rundowns ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+  ALTER TABLE rundown_templates ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+  `,
 ];

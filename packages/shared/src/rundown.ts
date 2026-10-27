@@ -25,6 +25,13 @@ export const MAX_RUNDOWN_ITEMS = 200;
 /** Durée maximale d'un élément : 4 heures. */
 export const MAX_ITEM_SECONDS = 4 * 3600;
 export const MAX_ITEM_NOTES = 500;
+export const MAX_ITEM_TAGS = 20;
+/** Étiquettes posées sur un même élément. */
+export const MAX_TAGS_PER_ITEM = 5;
+/** Intro d'un titre (talk-up) : 10 minutes au plus. */
+export const MAX_INTRO_SECONDS = 600;
+/** Notes générales d'un conducteur ou d'un modèle. */
+export const MAX_RUNDOWN_NOTES = 2000;
 
 const typeIdSchema = z.string().regex(/^[a-z0-9-]{1,32}$/);
 
@@ -54,7 +61,22 @@ export const DEFAULT_ITEM_TYPES: ItemType[] = [
   { id: 'autre', label: 'Autre', color: '#3A3B3F' },
 ];
 
-/** Couleurs d'affichage d'un type ; type inconnu (retiré des paramètres) : gris neutre. */
+/**
+ * Étiquettes d'éléments (« FR », « Pépite »…) : paramétrables comme les types, avec les mêmes
+ * couleurs. Liste éventuellement vide.
+ */
+export const itemTagsSchema = z
+  .array(itemTypeSchema)
+  .max(MAX_ITEM_TAGS)
+  .refine((tags) => new Set(tags.map((t) => t.id)).size === tags.length, 'duplicate_tag');
+export type ItemTag = ItemType;
+
+export const DEFAULT_ITEM_TAGS: ItemTag[] = [{ id: 'fr', label: 'FR', color: '#0C447C' }];
+
+/**
+ * Couleurs d'affichage d'un type (ou d'une étiquette) ; inconnu (retiré des paramètres) :
+ * gris neutre.
+ */
 export function itemColors(types: ItemType[], typeId: string): { bg: string; fg: string } {
   const bg = types.find((t) => t.id === typeId)?.color ?? '#3A3B3F';
   return { bg, fg: ITEM_COLORS[bg] };
@@ -74,6 +96,19 @@ export const rundownItemInputSchema = z
     durationSeconds: z.number().int().min(0).max(MAX_ITEM_SECONDS).nullable(),
     notes: z.string().max(MAX_ITEM_NOTES),
     scriptId: z.number().int().positive().nullable(),
+    /** Artiste d'un titre musical ; un élément avec un artiste est numéroté comme titre. */
+    artist: z.string().trim().max(120).default(''),
+    year: z.number().int().min(1000).max(2999).nullable().default(null),
+    /** Intro d'un titre : temps de parole jusqu'au chant (talk-up). */
+    introSeconds: z.number().int().min(0).max(MAX_INTRO_SECONDS).nullable().default(null),
+    /** Étiquettes des paramètres (identifiants). */
+    tags: z
+      .array(typeIdSchema)
+      .max(MAX_TAGS_PER_ITEM)
+      .refine((tags) => new Set(tags).size === tags.length, 'duplicate_tag')
+      .default([]),
+    /** Élément à couper si l'émission déborde. */
+    cuttable: z.boolean().default(false),
   })
   .strict();
 export type RundownItemInput = z.infer<typeof rundownItemInputSchema>;
@@ -82,6 +117,18 @@ export const rundownItemsSchema = z
   .array(rundownItemInputSchema)
   .max(MAX_RUNDOWN_ITEMS)
   .refine((items) => new Set(items.map((i) => i.uid)).size === items.length, 'duplicate_item');
+
+/** Notes générales d'un conducteur (consignes, règles de jeu), en texte simple. */
+export const rundownNotesSchema = z.string().max(MAX_RUNDOWN_NOTES);
+
+/**
+ * Numéro de chaque titre musical (élément avec un artiste) dans l'ordre du conducteur ;
+ * null pour les autres éléments.
+ */
+export function songNumbers(items: { artist: string }[]): (number | null)[] {
+  let n = 0;
+  return items.map((i) => (i.artist.trim() ? ++n : null));
+}
 
 export const airDateSchema = z
   .string()

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { airDateSchema, rundownItemsSchema, startTimeSchema } from './rundown.js';
+import {
+  airDateSchema,
+  rundownItemsSchema,
+  rundownNotesSchema,
+  startTimeSchema,
+} from './rundown.js';
 
 /**
  * Modèles d'émission récurrente : jours de diffusion, période de validité, exclusions, et
@@ -72,6 +77,7 @@ const templateFields = {
   /** Modèle suspendu : aucune création possible. */
   active: z.boolean(),
   exclusions: z.array(templateExclusionSchema).max(MAX_TEMPLATE_EXCLUSIONS),
+  notes: rundownNotesSchema,
   items: rundownItemsSchema,
 };
 
@@ -88,6 +94,7 @@ export const createTemplateSchema = z
     validUntil: templateFields.validUntil.default(null),
     active: templateFields.active.default(true),
     exclusions: templateFields.exclusions.default([]),
+    notes: templateFields.notes.default(''),
     items: templateFields.items.default([]),
   })
   .refine(validPeriod, { message: 'valid_period', path: ['validUntil'] });
@@ -103,6 +110,7 @@ export const updateTemplateSchema = z
     validUntil: templateFields.validUntil.optional(),
     active: templateFields.active.optional(),
     exclusions: templateFields.exclusions.optional(),
+    notes: templateFields.notes.optional(),
     items: templateFields.items.optional(),
   })
   .refine((v) => Object.keys(v).length > 1, 'empty')

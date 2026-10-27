@@ -49,7 +49,9 @@ export class PrompterRepo {
       scriptId: r.script_id,
       rundownId: r.rundown_id,
       script: r.snapshot ? (JSON.parse(r.snapshot) as PrompterScript) : null,
-      rundown: r.rundown_snapshot ? (JSON.parse(r.rundown_snapshot) as PrompterRundown) : null,
+      rundown: r.rundown_snapshot
+        ? withItemDefaults(JSON.parse(r.rundown_snapshot) as PrompterRundown)
+        : null,
       itemUid: r.item_uid,
       deleted: r.deleted === 1,
       sentAt: r.sent_at,
@@ -101,4 +103,19 @@ export class PrompterRepo {
       .prepare('UPDATE prompter_state SET snapshot = ?, deleted = ? WHERE studio_id = ?')
       .run(JSON.stringify(script), deleted ? 1 : 0, studioId);
   }
+}
+
+/** Copie antérieure au conducteur enrichi : champs manquants des éléments complétés. */
+function withItemDefaults(rundown: PrompterRundown): PrompterRundown {
+  return {
+    ...rundown,
+    items: rundown.items.map((i) => ({
+      ...i,
+      artist: i.artist ?? '',
+      year: i.year ?? null,
+      introSeconds: i.introSeconds ?? null,
+      tags: i.tags ?? [],
+      cuttable: i.cuttable ?? false,
+    })),
+  };
 }
