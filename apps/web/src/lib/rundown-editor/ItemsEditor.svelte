@@ -72,10 +72,15 @@
   /** Élément dont la recherche de titre est ouverte. */
   let picking = $state<string | null>(null);
 
-  /** Titre, artiste, durée (jusqu'au point de mix), intro et type « titre » s'il existe. */
+  /** Titre, artiste, année, durée (jusqu'au point de mix), intro et type « titre » s'il existe. */
   function pickSong(item: EditItem, song: RadiodjSong) {
     item.title = song.title.slice(0, 120) || t('rundowns.newItemTitle');
     item.artist = song.artist.slice(0, 120);
+    if (song.year !== null) {
+      item.year = song.year;
+      item.yearText = String(song.year);
+      item.yearInvalid = false;
+    }
     item.durationSeconds = Math.round(song.durationMs / 1000);
     item.durationText = formatDuration(item.durationSeconds);
     item.durationInvalid = false;

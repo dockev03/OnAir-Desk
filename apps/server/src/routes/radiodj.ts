@@ -9,7 +9,7 @@ import {
 } from '@onair-desk/shared';
 import { requireAdmin, requireUser } from '../auth/identity.js';
 import { hashToken, randomToken } from '../auth/tokens.js';
-import { songTiming, displayArtist } from '../connectors/radiodj/cues.js';
+import { songTiming, songYear, displayArtist } from '../connectors/radiodj/cues.js';
 import { radiodjErrorCode, type RadiodjReader } from '../connectors/radiodj/reader.js';
 import { HttpError, badRequest } from '../lib/errors.js';
 import { parse } from '../lib/validate.js';
@@ -117,6 +117,7 @@ export function registerRadiodjRoutes(app: FastifyInstance, ctx: RouteContext) {
           id: r.id,
           artist: displayArtist(r.artist),
           title: r.title,
+          year: songYear(r.year),
           durationMs: Math.round(timing.durationSec * 1000),
           introMs: timing.introSec === null ? null : Math.round(timing.introSec * 1000),
         };

@@ -73,6 +73,8 @@ export interface RadiodjSong {
   id: number;
   artist: string;
   title: string;
+  /** Année, si elle est renseignée dans RadioDJ. */
+  year: number | null;
   /** Durée jusqu'au point de mix si les repères le donnent. */
   durationMs: number;
   /** Intro (repère « int »), si elle est marquée. */
