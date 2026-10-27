@@ -6,6 +6,7 @@ import {
   itemTypesSchema,
   parseItemDuration,
   rundownItemsSchema,
+  songNumbers,
   startTimeSchema,
   type RundownItemInput,
 } from './rundown.js';
@@ -19,6 +20,11 @@ const item = (over: Partial<RundownItemInput> = {}): RundownItemInput => ({
   durationSeconds: 10,
   notes: '',
   scriptId: null,
+  artist: '',
+  year: null,
+  introSeconds: null,
+  tags: [],
+  cuttable: false,
   ...over,
 });
 
@@ -38,6 +44,7 @@ describe('durées et heures de passage', () => {
       { durationSeconds: 248 },
     ]);
     expect(r.starts.map(secondsToTime)).toEqual(['07:00:00', '07:00:10', '07:02:22']);
+    expect(r.offsets).toEqual([0, 10, 142]);
     expect(secondsToTime(r.end)).toBe('07:06:30');
     expect(r.total).toBe(390);
   });
@@ -117,5 +124,42 @@ describe('validation', () => {
     expect(prompterSendSchema.safeParse({ scriptId: 1, rundownId: 1, itemUid: 'a' }).success).toBe(
       false,
     );
+  });
+});
+
+describe('détails des éléments', () => {
+  it('numérote les seuls titres musicaux (éléments avec un artiste)', () => {
+    expect(
+      songNumbers([{ artist: '' }, { artist: 'Daft Punk' }, { artist: ' ' }, { artist: 'Gala' }]),
+    ).toEqual([null, 1, null, 2]);
+  });
+
+  it('valeurs par défaut des détails ; limites de l’intro, de l’année et des étiquettes', () => {
+    const base = {
+      uid: 'a',
+      typeId: 'titre',
+      title: 'T',
+      durationSeconds: 200,
+      notes: '',
+      scriptId: null,
+    };
+    const parsed = rundownItemsSchema.parse([base]);
+    expect(parsed[0]).toMatchObject({
+      artist: '',
+      year: null,
+      introSeconds: null,
+      tags: [],
+      cuttable: false,
+    });
+    for (const bad of [
+      { introSeconds: 601 },
+      { introSeconds: -1 },
+      { year: 99 },
+      { tags: ['fr', 'fr'] },
+      { tags: ['a', 'b', 'c', 'd', 'e', 'f'] },
+      { tags: ['Pas valide'] },
+    ]) {
+      expect(rundownItemsSchema.safeParse([{ ...base, ...bad }]).success).toBe(false);
+    }
   });
 });

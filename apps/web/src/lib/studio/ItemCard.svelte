@@ -47,9 +47,16 @@
       <span class="pos mono">{position}</span>
     </div>
     <div class="title">{item.title}</div>
+    {#if item.artist || item.year !== null}
+      <div class="artist">{[item.artist, item.year].filter(Boolean).join(' · ')}</div>
+    {/if}
     <div class="facts mono">
       <span>{t('studio.startsAt', { time: startsAt })}</span>
       <span>{formatDuration(itemSeconds(item))}</span>
+      {#if item.introSeconds !== null}
+        <span>{t('studio.introTime', { time: formatDuration(item.introSeconds) })}</span>
+      {/if}
+      {#if item.cuttable}<span>✂ {t('rundowns.item.cuttable')}</span>{/if}
     </div>
     {#if item.notes}<p class="notes">{item.notes}</p>{/if}
     <p class="hint">
@@ -97,9 +104,14 @@
     font-weight: 600;
     line-height: 1.15;
   }
+  .artist {
+    font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+    opacity: 0.85;
+  }
   .facts {
     display: flex;
-    gap: 2rem;
+    gap: 0.5rem 2rem;
+    flex-wrap: wrap;
     font-size: 1.5rem;
   }
   .notes {

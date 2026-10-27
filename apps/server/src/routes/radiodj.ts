@@ -111,12 +111,16 @@ export function registerRadiodjRoutes(app: FastifyInstance, ctx: RouteContext) {
         () => ctx.automation.openRadiodj(settings.radiodj),
         (r) => r.searchSongs(q, SONG_SEARCH_LIMIT),
       );
-      return rows.map((r) => ({
-        id: r.id,
-        artist: displayArtist(r.artist),
-        title: r.title,
-        durationMs: Math.round(songTiming(r).durationSec * 1000),
-      }));
+      return rows.map((r) => {
+        const timing = songTiming(r);
+        return {
+          id: r.id,
+          artist: displayArtist(r.artist),
+          title: r.title,
+          durationMs: Math.round(timing.durationSec * 1000),
+          introMs: timing.introSec === null ? null : Math.round(timing.introSec * 1000),
+        };
+      });
     } catch (err) {
       const code = errorCode(err);
       req.log.warn({ code, err: (err as Error)?.message }, 'Recherche RadioDJ en échec.');

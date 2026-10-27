@@ -213,7 +213,13 @@ describe('test de connexion et recherche dans la bibliothèque RadioDJ', () => {
 
     const songs = (await search('Summer')).json() as RadiodjSong[];
     expect(songs).toEqual([
-      { id: 1, artist: 'Adamé, Lili Poli', title: 'Summertime', durationMs: 163989 },
+      {
+        id: 1,
+        artist: 'Adamé, Lili Poli',
+        title: 'Summertime',
+        durationMs: 163989,
+        introMs: 4038,
+      },
     ]);
     expect(db.searches.at(-1)).toEqual({ query: 'Summer', limit: 20 });
     expect((await search('S')).statusCode).toBe(400);

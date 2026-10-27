@@ -114,6 +114,7 @@ async function main(): Promise<void> {
     durationSeconds: number | null,
     scriptId: number | null = null,
     notes = '',
+    details: object = {},
   ) => ({
     uid,
     typeId,
@@ -121,6 +122,7 @@ async function main(): Promise<void> {
     durationSeconds,
     notes,
     scriptId,
+    ...details,
   });
   const rundown = await ok(
     await api.post('/api/rundowns', {
@@ -129,11 +131,23 @@ async function main(): Promise<void> {
         title: 'La Matinale',
         airDate: today,
         startTime: '07:00',
+        notes:
+          'Prises d’antenne de 45 secondes à 1 minute.\nSi ça déborde : couper le titre marqué ✂.',
         items: [
           item('ouverture', 'chronique', 'Ouverture', null, edito.id),
-          item('t1', 'titre', 'Titre d’ouverture', 210),
+          item('t1', 'titre', 'Lumière du matin', 210, null, 'Talk-up sur l’intro', {
+            artist: 'Les Ondes Courtes',
+            year: 1987,
+            introSeconds: 14,
+            tags: ['fr'],
+          }),
           item('meteo', 'meteo', 'Météo locale', 90),
-          item('t2', 'titre', 'Titre', 195),
+          item('t2', 'titre', 'Northern Lights', 195, null, '', {
+            artist: 'The Paper Kites Orchestra',
+            year: 2011,
+            introSeconds: 9,
+            cuttable: true,
+          }),
           item('pub1', 'pub', 'Écran pub', 120),
           item('flash', 'flash', 'Flash infos', 180),
           item('agenda', 'chronique', 'Agenda du week-end', 120, agenda.id),
@@ -189,6 +203,9 @@ async function main(): Promise<void> {
   await shot(ui, 'editeur-script');
   await ui.goto(`/rundowns/${rundown.id}`);
   await shot(ui, 'conducteur');
+  await ui.goto(`/rundowns/${rundown.id}/print`);
+  await ui.getByText('Lumière du matin').waitFor();
+  await shot(ui, 'conducteur-impression');
 
   await browser.close();
   await api.dispose();

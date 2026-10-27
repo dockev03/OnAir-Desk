@@ -31,6 +31,11 @@ const item = (uid: string, over: Partial<RundownItemInput> = {}): RundownItemInp
   durationSeconds: 10,
   notes: '',
   scriptId: null,
+  artist: '',
+  year: null,
+  introSeconds: null,
+  tags: [],
+  cuttable: false,
   ...over,
 });
 
@@ -219,6 +224,27 @@ describe('modèles : création des conducteurs', () => {
       templateId: t.id,
       template: { id: t.id, title: 'La matinale', deleted: false },
       totalSeconds: 130,
+    });
+  });
+
+  it('les conducteurs créés reprennent les notes et les détails des éléments', async () => {
+    const t = await newTemplate(jean.cookie, jean.id, {
+      notes: 'Avant l’émission : recaler les durées.',
+      items: [item('a', { artist: 'Indochine', year: 1982, tags: ['fr'], introSeconds: 8 })],
+    });
+    expect(t.notes).toBe('Avant l’émission : recaler les durées.');
+    const r = (
+      await createRundowns(jean.cookie, t.id, '2026-10-26', '2026-10-26')
+    ).json() as CreateFromTemplateResult;
+    const created = (
+      await client(built.app, jean.cookie)('GET', `/api/rundowns/${r.created[0]!.rundownId}`)
+    ).json();
+    expect(created.notes).toBe('Avant l’émission : recaler les durées.');
+    expect(created.items[0]).toMatchObject({
+      artist: 'Indochine',
+      year: 1982,
+      tags: ['fr'],
+      introSeconds: 8,
     });
   });
 

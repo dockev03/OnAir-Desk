@@ -63,17 +63,24 @@ export class Rundowns {
   }
 
   /**
-   * Types connus des paramètres, scripts existants et hors corbeille. Ce qui était déjà dans
-   * le conducteur reste accepté (type retiré des paramètres, script mis à la corbeille depuis) :
-   * un conducteur ancien doit toujours pouvoir être enregistré.
+   * Types et étiquettes connus des paramètres, scripts existants et hors corbeille. Ce qui
+   * était déjà dans le conducteur reste accepté (type ou étiquette retiré des paramètres,
+   * script mis à la corbeille depuis) : un conducteur ancien doit toujours pouvoir être
+   * enregistré.
    */
   checkItems(items: RundownItemInput[], current?: { items: RundownItemInput[] }): void {
-    const types = new Set(this.repos.settings.get().itemTypes.map((t) => t.id));
+    const settings = this.repos.settings.get();
+    const types = new Set(settings.itemTypes.map((t) => t.id));
+    const tags = new Set(settings.itemTags.map((t) => t.id));
     const keptTypes = new Set(current?.items.map((i) => i.typeId));
+    const keptTags = new Set(current?.items.flatMap((i) => i.tags));
     const keptScripts = new Set(current?.items.map((i) => i.scriptId));
     for (const item of items) {
       if (!types.has(item.typeId) && !keptTypes.has(item.typeId)) {
         throw badRequest('unknown_item_type');
+      }
+      if (item.tags.some((tag) => !tags.has(tag) && !keptTags.has(tag))) {
+        throw badRequest('unknown_item_tag');
       }
       if (item.scriptId !== null && !keptScripts.has(item.scriptId)) {
         const script = this.repos.scripts.findById(item.scriptId);
@@ -92,6 +99,7 @@ export class Rundowns {
         title: input.title,
         airDate: input.airDate,
         startTime: input.startTime,
+        notes: input.notes,
         userId: user.id,
       },
       items,
@@ -125,6 +133,7 @@ export class Rundowns {
         title: input.title ?? source.title,
         airDate: input.airDate,
         startTime: source.startTime,
+        notes: source.notes,
         userId: user.id,
       },
       source.items.map(toItemInput),
@@ -132,8 +141,8 @@ export class Rundowns {
   }
 
   /**
-   * « Réappliquer le modèle » : le conducteur reprend le titre, l'heure de début et les
-   * éléments de son modèle d'origine ; sa date ne change pas.
+   * « Réappliquer le modèle » : le conducteur reprend le titre, l'heure de début, les notes
+   * et les éléments de son modèle d'origine ; sa date ne change pas.
    */
   reapplyTemplate(user: User, id: number, version: number): RundownRecord {
     const updated = this.repos.db.transaction(() => {
@@ -146,6 +155,7 @@ export class Rundowns {
       return this.repos.rundowns.update(id, user.id, {
         title: template.title,
         startTime: template.startTime,
+        notes: template.notes,
         items: template.items.map(toItemInput),
       });
     })();

@@ -75,6 +75,8 @@ export interface RadiodjSong {
   title: string;
   /** Durée jusqu'au point de mix si les repères le donnent. */
   durationMs: number;
+  /** Intro (repère « int »), si elle est marquée. */
+  introMs: number | null;
 }
 
 // ---- Bibliothèque ------------------------------------------------------------
@@ -181,9 +183,19 @@ export interface RundownItem {
   scriptId: number | null;
   /** Script attaché (sans son contenu) ; null si aucun ou supprimé définitivement. */
   script: ItemScriptInfo | null;
+  /** Titre musical : artiste (vide sinon), année, intro (talk-up) en secondes. */
+  artist: string;
+  year: number | null;
+  introSeconds: number | null;
+  /** Étiquettes (identifiants des paramètres). */
+  tags: string[];
+  /** À couper si l'émission déborde. */
+  cuttable: boolean;
 }
 
 export interface Rundown extends RundownSummary {
+  /** Notes générales (consignes, règles de jeu). */
+  notes: string;
   items: RundownItem[];
   version: number;
   canWrite: boolean;
@@ -211,6 +223,7 @@ export interface TemplateSummary {
 
 export interface Template extends TemplateSummary {
   exclusions: TemplateExclusion[];
+  notes: string;
   items: RundownItem[];
   version: number;
   canWrite: boolean;
