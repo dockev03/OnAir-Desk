@@ -10,7 +10,7 @@
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
 - Écran studio : navigation dans les dossiers à la souris, mode lecture avec bande de lecture, défilement molette ou automatique, Précédent / Suivant.
 - Conducteurs : éléments colorés, heures de passage et position depuis le début, glisser-déposer, lien prompteur, duplication, modèles d'émission récurrente, impression / PDF en tableau coloré.
-- Conducteur enrichi : titres musicaux numérotés avec artiste, année et intro (talk-up, reprise des repères RadioDJ), étiquettes paramétrables (ex. FR), élément « à couper si ça déborde », notes générales du conducteur.
+- Conducteur enrichi : titres musicaux numérotés avec artiste, année et intro (talk-up), repris de RadioDJ au choix d'un titre, étiquettes paramétrables (ex. FR), élément « à couper si ça déborde », notes générales du conducteur.
 - Logo de la station (interface, connexion, écran studio, impressions).
 - Socle antenne : titre en cours / à venir sur l'écran studio (simulateur d'automation en attendant RadioDJ et AzuraCast), journal d'audit consultable, tests de bout en bout (`npm run test:e2e`).
 

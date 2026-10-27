@@ -11,6 +11,7 @@ import {
   displayArtist,
   parseCueTimes,
   songTiming,
+  songYear,
   toTrack,
 } from '../src/connectors/radiodj/cues.js';
 import { radiodjErrorCode } from '../src/connectors/radiodj/reader.js';
@@ -67,6 +68,16 @@ describe('repères RadioDJ', () => {
     expect(radiodjErrorCode({ code: 'ECONNREFUSED' })).toBe('radiodj_unreachable');
     expect(radiodjErrorCode({ code: 'ER_NO_SUCH_TABLE' })).toBe('radiodj_bad_schema');
     expect(radiodjErrorCode(new Error('x'))).toBe('radiodj_error');
+  });
+});
+
+describe('année d’un titre RadioDJ', () => {
+  it('lit l’année ; vide, illisible ou 1900 (défaut de RadioDJ) : inconnue', () => {
+    expect(songYear('1987')).toBe(1987);
+    expect(songYear(' 2011 ')).toBe(2011);
+    for (const v of ['1900', '', '0', '87', 'abcd', null, undefined]) {
+      expect(songYear(v)).toBeNull();
+    }
   });
 });
 

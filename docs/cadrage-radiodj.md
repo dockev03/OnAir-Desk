@@ -106,6 +106,10 @@ Chaîne de clés et de valeurs, en secondes depuis le début du fichier, par exe
 - L'alerte de fin doit viser `xta` et non la durée totale (jusqu'à 1,2 s d'écart constaté).
 - Lien avec les autres tables : `history.trackID` = `queuelist.songID` = `songs.ID`.
 
+### `songs.year` : année
+
+- Vérifié sur la base de la station : `varchar(4)`, `NOT NULL`, **défaut `1900`**. `1900` veut donc dire « non renseignée » : l'année n'est reprise dans un conducteur que si elle est lisible et postérieure à 1900.
+
 ### `queuelist` : titres à venir
 
 - Colonnes : `ID`, `songID`, `ETA`, `duration`, `artist`, `associated_artists`, `title`, `album`, `swID`, `swPlay`, `vtID`, `vtPlay`.

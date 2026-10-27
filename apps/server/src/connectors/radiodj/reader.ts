@@ -20,6 +20,8 @@ export interface HistoryRow extends SongRow {
 /** Titre de la bibliothèque (`songs`). */
 export interface LibraryRow extends SongRow {
   id: number;
+  /** `songs.year`, varchar(4) ; « 1900 » (défaut de RadioDJ) quand elle n'est pas renseignée. */
+  year: string | null;
 }
 
 /**
@@ -111,13 +113,17 @@ export class MysqlRadiodjReader implements RadiodjReader {
   async searchSongs(query: string, limit: number): Promise<LibraryRow[]> {
     const pattern = likePattern(query);
     const [rows] = await this.pool.query<RowDataPacket[]>(
-      `SELECT ID AS id, artist, title, duration, cue_times
+      `SELECT ID AS id, artist, title, duration, cue_times, year
          FROM songs
         WHERE song_type = ? AND (artist LIKE ? OR title LIKE ?)
         ORDER BY artist, title LIMIT ?`,
       [MUSIC_TYPE, pattern, pattern, limit],
     );
-    return rows.map((r) => ({ ...toSong(r), id: Number(r.id) }));
+    return rows.map((r) => ({
+      ...toSong(r),
+      id: Number(r.id),
+      year: r.year === null || r.year === undefined ? null : String(r.year),
+    }));
   }
 
   async close(): Promise<void> {
