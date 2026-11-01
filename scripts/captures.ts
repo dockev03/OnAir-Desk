@@ -181,6 +181,10 @@ async function main(): Promise<void> {
   // Écran studio (kiosk).
   const studio = await browser.newPage({ baseURL: server.url, ...context });
   await studio.goto(`/studio#token=${token}`);
+  // Hors émission (la Matinale est à 7 h) : l'écran est en veille ; un clic la quitte.
+  await studio.getByTestId('standby-track').waitFor();
+  await shot(studio, 'studio-veille');
+  await studio.getByTestId('standby').click();
   await studio.getByTestId('now-title').filter({ hasText: /./ }).waitFor();
   await shot(studio, 'studio-navigation');
   await studio.getByText('La Matinale').click();

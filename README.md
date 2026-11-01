@@ -4,7 +4,7 @@
 
 ![Écran studio en mode lecture : horloge, titre en cours avec compte à rebours d'intro, titre à venir, prompteur avec repères colorés et bande de lecture](docs/captures/studio-lecture.png)
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées.**
 
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
@@ -15,8 +15,10 @@
 - Socle antenne : titre en cours / à venir sur l'écran studio (simulateur d'automation en attendant RadioDJ et AzuraCast), journal d'audit consultable, tests de bout en bout (`npm run test:e2e`).
 
 - RadioDJ : titre en cours et à venir, heure de démarrage, alerte de fin de titre, repères intro / outro, talk-over, titres musicaux dans les conducteurs.
+- AzuraCast : titre en cours et à venir 24 h/24 ; bascule automatique ou forcée entre la source du direct (RadioDJ) et AzuraCast.
+- Écran studio hors émission : écran de veille (horloge, On Air, titre en cours, prochaine émission), protection contre l'usure, dispositions toutes prêtes (Animateur seul, Émission avec régie, Interview), indicateur de connexion discret.
 
-Les autres intégrations (AzuraCast, On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+Les autres intégrations (On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
 
 ### Aperçu
 
@@ -25,13 +27,13 @@ Les autres intégrations (AzuraCast, On Air, météo) arrivent aux étapes suiva
 | ![Conducteur sur l'écran studio : éléments colorés par type, titres numérotés avec artiste, étiquettes, intro, heures de passage et durées](docs/captures/studio-conducteur.png)               | ![Navigation de l'écran studio : conducteurs du jour, dossier Commun, un dossier par animateur](docs/captures/studio-navigation.png)                                                      |
 | **Éditeur de script**                                                                                                                                                                          | **Montage d'un conducteur**                                                                                                                                                               |
 | ![Éditeur de script : texte enrichi, couleurs, surlignage, repères JINGLE / PAUSE / LANCER TITRE, vitesse de défilement](docs/captures/editeur-script.png)                                     | ![Édition d'un conducteur : types colorés, scripts attachés, heures de passage calculées, détails d'un titre (artiste, année, intro, étiquettes, à couper)](docs/captures/conducteur.png) |
-| **Impression / PDF du conducteur**                                                                                                                                                             |                                                                                                                                                                                           |
-| ![Conducteur imprimé : lignes teintées par type, numéro des titres, heure et position, artiste, année, étiquettes, intro, légende et notes générales](docs/captures/conducteur-impression.png) |                                                                                                                                                                                           |
+| **Impression / PDF du conducteur**                                                                                                                                                             | **Écran studio : veille hors émission**                                                                                                                                                   |
+| ![Conducteur imprimé : lignes teintées par type, numéro des titres, heure et position, artiste, année, étiquettes, intro, légende et notes générales](docs/captures/conducteur-impression.png) | ![Écran de veille : horloge en grand, voyant On Air, titre en cours, prochaine émission](docs/captures/studio-veille.png)                                                                 |
 
 Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md) : plans et bilans des étapes.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---
