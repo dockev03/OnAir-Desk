@@ -14,9 +14,10 @@ Documents liés :
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
 - `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
+- `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 8 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 9 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -51,7 +52,7 @@ Outil web, hébergé en interne, destiné aux animateurs et journalistes d'une r
 Questions **encore ouvertes** :
 1. Déclenchement du **On Air** : **à définir plus tard** (voir §6). La route HTTP et le bouton manuel sont prévus d'office.
 2. **Licence** (MIT / AGPL) : voir §11.
-3. **Bascule RadioDJ / AzuraCast** : comment savoir quelle source est à l'antenne (indicateur « live » d'AzuraCast si le direct RadioDJ passe par lui, horaires des émissions, bascule manuelle) ? À trancher à l'étape 8.
+3. ~~Bascule RadioDJ / AzuraCast~~ : tranchée à l'étape 8 (indicateur « live » d'AzuraCast, le direct RadioDJ y arrivant en DJ / streamer, et forçage manuel). À confirmer par une capture pendant un direct (`docs/plan-etape-8.md`).
 
 ## 3. Choix techniques
 
@@ -163,7 +164,7 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 ### AzuraCast — titre en cours hors direct (24 h/24)
 - AzuraCast fournit une **API « Now Playing »** (HTTP JSON, et notifications en temps réel / webhooks) : titre en cours, titre suivant, durée, temps écoulé.
 - Sert à afficher le titre en cours **sur l'écran de veille** et hors des émissions en direct.
-- ⚠️ À vérifier avant de coder : version d'AzuraCast, accès réseau depuis le serveur, besoin d'une clé API (variable d'environnement), et si le direct RadioDJ passe par AzuraCast (DJ « live ») : ce serait alors un moyen simple de savoir quelle source est à l'antenne.
+- Constats (étape 8) : AzuraCast Rolling sur un VPS distant, station publique, certificat auto-signé ; le direct RadioDJ passe par AzuraCast en DJ / streamer. Connexions **sortantes** seulement (flux SSE + relecture toutes les 30 s), certificat toujours vérifié (`AZURACAST_CA_FILE` ou Let's Encrypt), clé API facultative (`AZURACAST_API_KEY`, compte sans droit d'administration). Voir `docs/plan-etape-8.md`.
 
 ### On Air — déclenchement à définir plus tard
 - Route prévue : `POST /api/onair` avec `{"state":"on"}` / `{"state":"off"}`.
@@ -238,7 +239,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    5. talk-over, si les tables RadioDJ le permettent (§7) ;
    6. titres musicaux remplis automatiquement dans les conducteurs.
    - ✅ **Conducteur enrichi** (évolution hors étape, avant l'étape 8, AzuraCast n'étant pas encore disponible) : titres numérotés avec artiste, année et intro, étiquettes paramétrables, élément à couper, notes générales, tableau coloré à l'écran et à l'impression. → `docs/plan-conducteur-enrichi.md`. Durée cible, écart et part de chansons francophones restent à l'étape 11.
-8. **AzuraCast et écran de veille** (6 fonctionnalités) :
+8. ✅ **AzuraCast et écran de veille** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-8.md` :
    1. connecteur AzuraCast (titre en cours / à venir) ;
    2. bascule de source : RadioDJ en direct, AzuraCast le reste du temps ;
    3. écran de veille hors émission ;
@@ -297,6 +298,7 @@ Pas d'étape ni de guide pour le matériel d'affichage : il est **hors spécific
   - **Session automatique de l'afficheur** : le kiosk ouvre une session sans intervention ; l'afficheur doit rester physiquement dans le studio, sur un réseau maîtrisé.
   - **Port HTTP des connecteurs** (étape 7) : fermé par défaut ; ouvert, il n'expose que la route du signal RadioDJ (jeton en clair sur le réseau local, la base faisant foi).
   - **Base RadioDJ** : ouverte au réseau par la station, pour la seule adresse du serveur, avec un compte `SELECT` seul.
+  - **AzuraCast** (étape 8) : connexion **sortante** du serveur vers le VPS AzuraCast (HTTPS, certificat toujours vérifié) ; clé API éventuelle liée à un compte AzuraCast **sans droit d'administration**.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).
 - Aucun identifiant de modèle d'IA dans les commits, PR ou fichiers du dépôt.
 

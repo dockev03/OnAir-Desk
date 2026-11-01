@@ -316,5 +316,6 @@ const toPrompterRundown = (r: RundownRecord): PrompterRundown => ({
   title: r.title,
   airDate: r.airDate,
   startTime: r.startTime,
+  layout: r.layout,
   items: r.items,
 });

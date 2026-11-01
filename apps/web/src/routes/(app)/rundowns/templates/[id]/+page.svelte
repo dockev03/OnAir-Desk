@@ -2,6 +2,7 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
+    LAYOUTS,
     MAX_CREATE_DAYS,
     MAX_TEMPLATE_EXCLUSIONS,
     daysBetween,
@@ -10,6 +11,7 @@
     secondsToTime,
     templateDates,
     type CreateFromTemplateResult,
+    type Layout,
     type Library,
     type RundownList,
     type Template,
@@ -41,6 +43,8 @@
   let validFrom = $state('');
   let validUntil = $state('');
   let active = $state(true);
+  /** Disposition de l'écran studio, copiée dans les conducteurs créés. */
+  let layout = $state<Layout | null>(null);
   let exclusions = $state<TemplateExclusion[]>([]);
   let notes = $state('');
   let items = $state<EditItem[]>([]);
@@ -58,6 +62,7 @@
     validFrom = x.validFrom ?? '';
     validUntil = x.validUntil ?? '';
     active = x.active;
+    layout = x.layout;
     exclusions = x.exclusions.map((e) => ({ ...e }));
     notes = x.notes;
     items = x.items.map(toEdit);
@@ -94,6 +99,7 @@
         validFrom: validFrom || null,
         validUntil: validUntil || null,
         active,
+        layout,
         exclusions,
         notes,
         items: items.map(toInput),
@@ -275,6 +281,13 @@
       <label>
         {t('rundowns.field.startTime')}
         <input type="time" step="1" bind:value={startTime} required onchange={changed} />
+      </label>
+      <label>
+        {t('field.layout')}
+        <select bind:value={layout} onchange={changed}>
+          <option value={null}>{t('layout.default')}</option>
+          {#each LAYOUTS as l (l)}<option value={l}>{t(`layout.${l}`)}</option>{/each}
+        </select>
       </label>
     </div>
 

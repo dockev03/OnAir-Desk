@@ -375,3 +375,54 @@ describe('modèles : création des conducteurs', () => {
     ).toMatchObject({ ownerId: paul.id, days: [1, 4] });
   });
 });
+
+describe('dispositions de l’écran studio', () => {
+  it('choisie sur le modèle, copiée dans les conducteurs créés, modifiable ensuite', async () => {
+    const t = await newTemplate(jean.cookie, jean.id, { layout: 'interview' });
+    expect(t.layout).toBe('interview');
+    await createRundowns(jean.cookie, t.id, '2026-10-26', '2026-10-26');
+    const [summary] = await rundownsOf(jean.cookie);
+    expect(summary!.layout).toBe('interview');
+
+    const api = client(built.app, jean.cookie);
+    const rundown = (await api('GET', `/api/rundowns/${summary!.id}`)).json() as Rundown;
+    const res = await api('PATCH', `/api/rundowns/${rundown.id}`, {
+      version: rundown.version,
+      layout: 'regie',
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    expect((res.json() as Rundown).layout).toBe('regie');
+    // Retour à la disposition par défaut.
+    const back = await api('PATCH', `/api/rundowns/${rundown.id}`, {
+      version: rundown.version + 1,
+      layout: null,
+    });
+    expect((back.json() as Rundown).layout).toBeNull();
+    // Valeur inconnue refusée ; un modèle sans choix laisse null.
+    expect(
+      (await api('PATCH', `/api/rundowns/${rundown.id}`, { version: 3, layout: 'plein-ecran' }))
+        .statusCode,
+    ).toBe(400);
+    expect((await newTemplate(jean.cookie, jean.id)).layout).toBeNull();
+  });
+
+  it('suit la duplication et l’enregistrement comme modèle', async () => {
+    const api = client(built.app, jean.cookie);
+    const created = await api('POST', '/api/rundowns', {
+      ownerId: jean.id,
+      title: 'Interview',
+      airDate: '2026-11-02',
+      startTime: '18:00',
+      layout: 'interview',
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const id = (created.json() as Rundown).id;
+    const copy = await api('POST', `/api/rundowns/${id}/duplicate`, {
+      ownerId: jean.id,
+      airDate: '2026-11-09',
+    });
+    expect((copy.json() as Rundown).layout).toBe('interview');
+    const saved = await api('POST', `/api/rundowns/${id}/save-as-template`, { ownerId: jean.id });
+    expect((saved.json() as Template).layout).toBe('interview');
+  });
+});

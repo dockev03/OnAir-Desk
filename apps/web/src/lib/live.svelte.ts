@@ -32,6 +32,10 @@ export class LiveLink {
   air = $state<AirSnapshot | null>(null);
   /** Décalage (ms) à ajouter à Date.now() pour obtenir l'heure serveur. */
   offset = $state(0);
+  /** Dernier message reçu du serveur (heure serveur estimée) ; null : jamais. */
+  syncedAt = $state<number | null>(null);
+  /** Début de la coupure en cours (heure serveur estimée) ; null : liaison établie. */
+  offlineSince = $state<number | null>(null);
 
   private ws: WebSocket | null = null;
   private samples: { rtt: number; offset: number }[] = [];
@@ -88,6 +92,7 @@ export class LiveLink {
       }
       if (msg.type === 'hello') {
         this.state = 'online';
+        this.offlineSince = null;
         this.settings = msg.settings;
         this.prompter = msg.prompter;
         this.studio = msg.studio;
@@ -107,6 +112,7 @@ export class LiveLink {
         this.samples = [...this.samples, sample].slice(-SAMPLES);
         this.offset = this.samples.reduce((a, b) => (b.rtt < a.rtt ? b : a)).offset;
       }
+      this.syncedAt = this.now();
     };
 
     ws.onclose = (ev) => {
@@ -122,6 +128,8 @@ export class LiveLink {
         return;
       }
       this.state = 'offline';
+      // Une coupure dure tant que la liaison n'est pas rétablie (essais successifs compris).
+      this.offlineSince ??= this.now();
       this.retryTimer = setTimeout(() => this.connect(), this.backoff);
       this.backoff = Math.min(this.backoff * 2, MAX_BACKOFF_MS);
     };

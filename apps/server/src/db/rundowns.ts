@@ -1,5 +1,6 @@
 import {
   rundownSchedule,
+  type Layout,
   type RundownItem,
   type RundownItemInput,
   type RundownSummary,
@@ -23,6 +24,7 @@ interface RundownRow {
   deleted_at: string | null;
   template_id: number | null;
   notes: string;
+  layout: Layout | null;
   updated_by_name: string | null;
 }
 
@@ -59,6 +61,8 @@ export interface RundownHeader {
   airDate: string;
   startTime: string;
   notes: string;
+  /** Disposition de l'écran studio ; null : celle des paramètres. */
+  layout: Layout | null;
 }
 
 /** Lien d'un conducteur vers le modèle qui l'a créé, et la date d'origine. */
@@ -176,6 +180,7 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
     updatedAt: r.updated_at,
     updatedByName: r.updated_by_name,
     templateId: r.template_id,
+    layout: r.layout,
     items,
     version: r.version,
     updatedBy: r.updated_by,
@@ -247,9 +252,9 @@ export class RundownRepo {
     return this.db.transaction(() => {
       const info = this.db
         .prepare(
-          `INSERT INTO rundowns (owner_id, title, air_date, start_time, notes, created_by,
-                                 updated_by, template_id, template_date)
-           VALUES (@ownerId, @title, @airDate, @startTime, @notes, @userId, @userId,
+          `INSERT INTO rundowns (owner_id, title, air_date, start_time, notes, layout,
+                                 created_by, updated_by, template_id, template_date)
+           VALUES (@ownerId, @title, @airDate, @startTime, @notes, @layout, @userId, @userId,
                    @templateId, @templateDate)`,
         )
         .run({
@@ -274,7 +279,8 @@ export class RundownRepo {
       this.db
         .prepare(
           `UPDATE rundowns SET title = @title, air_date = @airDate, start_time = @startTime,
-                  notes = @notes, version = version + 1, updated_by = @userId, updated_at = @now
+                  notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
+                  updated_at = @now
             WHERE id = @id`,
         )
         .run({
@@ -284,6 +290,7 @@ export class RundownRepo {
           airDate: patch.airDate ?? current.airDate,
           startTime: patch.startTime ?? current.startTime,
           notes: patch.notes ?? current.notes,
+          layout: patch.layout !== undefined ? patch.layout : current.layout,
           now: nowIso(),
         });
       if (patch.items) this.writeItems(id, patch.items);

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
@@ -32,6 +33,10 @@ const envSchema = z.object({
   ),
   /** Mot de passe du compte MariaDB (lecture seule) de RadioDJ. */
   RADIODJ_DB_PASSWORD: z.string().optional(),
+  /** Clé API AzuraCast (station non publique) : compte dédié, sans droit d'administration. */
+  AZURACAST_API_KEY: z.string().optional(),
+  /** Certificat (PEM) à accepter pour AzuraCast, en plus des autorités publiques. */
+  AZURACAST_CA_FILE: z.string().optional(),
 });
 
 export interface TlsConfig {
@@ -58,6 +63,10 @@ export interface Config {
   connectorHttpPort: number | null;
   /** Secret : jamais journalisé ni renvoyé par l'API. */
   radiodjDbPassword: string | null;
+  /** Secret : jamais journalisé ni renvoyé par l'API. */
+  azuracastApiKey: string | null;
+  /** Contenu PEM du certificat à accepter pour AzuraCast (auto-signé) ; null : aucun. */
+  azuracastCa: string | null;
 }
 
 export class ConfigError extends Error {}
@@ -102,6 +111,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError('TLS_CERT_FILE et TLS_KEY_FILE doivent être renseignés ensemble.');
   }
 
+  let azuracastCa: string | null = null;
+  if (e.AZURACAST_CA_FILE) {
+    try {
+      azuracastCa = fs.readFileSync(e.AZURACAST_CA_FILE, 'utf8');
+    } catch {
+      throw new ConfigError(`AZURACAST_CA_FILE illisible : « ${e.AZURACAST_CA_FILE} ».`);
+    }
+    if (!azuracastCa.includes('-----BEGIN CERTIFICATE-----')) {
+      throw new ConfigError('AZURACAST_CA_FILE doit contenir un certificat au format PEM.');
+    }
+  }
+
   let tls: TlsConfig | null = null;
   if (production) {
     if (allowedOrigins.some((o) => o.startsWith('http:'))) {
@@ -130,5 +151,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: e.LOG_LEVEL,
     connectorHttpPort: e.CONNECTOR_HTTP_PORT ?? null,
     radiodjDbPassword: e.RADIODJ_DB_PASSWORD || null,
+    azuracastApiKey: e.AZURACAST_API_KEY?.trim() || null,
+    azuracastCa,
   };
 }

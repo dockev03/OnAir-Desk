@@ -4,9 +4,12 @@
  * météo, messages…) y ajoute ses champs sans toucher au transport.
  */
 
-/** Sources d'automation disponibles (AzuraCast s'ajoutera à la liste). */
-export const AUTOMATION_SOURCES = ['none', 'simulator', 'radiodj'] as const;
+/** Sources d'automation disponibles. */
+export const AUTOMATION_SOURCES = ['none', 'simulator', 'radiodj', 'azuracast'] as const;
 export type AutomationSource = (typeof AUTOMATION_SOURCES)[number];
+/** Sources réelles (tout sauf « aucune ») : celles que la bascule direct / hors direct accepte. */
+export const CONNECTED_SOURCES = ['simulator', 'radiodj', 'azuracast'] as const;
+export type ConnectedSource = (typeof CONNECTED_SOURCES)[number];
 
 export const SIMULATOR_SPEED_MAX = 60;
 
@@ -37,10 +40,26 @@ export interface SourceStatus {
   error: string | null;
 }
 
+/**
+ * Bascule direct / hors direct (voir docs/plan-etape-8.md, décisions 7 à 9) : quelle source est
+ * à l'antenne, et pourquoi. Absent (null) en mode « source unique ».
+ */
+export interface LiveState {
+  /** Vrai : la source du direct est à l'antenne. */
+  active: boolean;
+  /** Bascule forcée par l'admin (sinon automatique). */
+  forced: boolean;
+  /** État de chacune des deux sources. */
+  liveSource: SourceStatus;
+  offAirSource: SourceStatus;
+}
+
 export interface AirState {
   nowPlaying: Track | null;
   next: Track | null;
+  /** Source dont les titres sont affichés. */
   source: SourceStatus;
+  live: LiveState | null;
 }
 
 export interface Studio {
@@ -66,6 +85,7 @@ export const emptyAirState = (source: AutomationSource = 'none'): AirState => ({
   nowPlaying: null,
   next: null,
   source: { id: source, state: 'stopped', updatedAt: null, error: null },
+  live: null,
 });
 
 /**

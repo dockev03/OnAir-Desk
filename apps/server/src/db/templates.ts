@@ -2,6 +2,7 @@ import {
   daysToMask,
   maskToDays,
   rundownSchedule,
+  type Layout,
   type RundownItem,
   type RundownItemInput,
   type TemplateExclusion,
@@ -25,6 +26,7 @@ interface TemplateRow {
   valid_until: string | null;
   active: number;
   notes: string;
+  layout: Layout | null;
   version: number;
   updated_by: number | null;
   updated_at: string;
@@ -50,6 +52,8 @@ export interface TemplateHeader {
   active: boolean;
   exclusions: TemplateExclusion[];
   notes: string;
+  /** Disposition de l'écran studio ; null : celle des paramètres. */
+  layout: Layout | null;
 }
 
 const SELECT = `SELECT t.*, u.display_name AS updated_by_name
@@ -78,6 +82,7 @@ export class TemplateRepo {
       validFrom: r.valid_from,
       validUntil: r.valid_until,
       active: r.active === 1,
+      layout: r.layout,
       itemCount: items.length,
       totalSeconds: rundownSchedule(r.start_time, items).total,
       updatedAt: r.updated_at,
@@ -130,9 +135,10 @@ export class TemplateRepo {
       const info = this.db
         .prepare(
           `INSERT INTO rundown_templates (owner_id, title, start_time, days, valid_from,
-                                          valid_until, active, notes, created_by, updated_by)
+                                          valid_until, active, notes, layout, created_by,
+                                          updated_by)
            VALUES (@ownerId, @title, @startTime, @days, @validFrom, @validUntil, @active,
-                   @notes, @userId, @userId)`,
+                   @notes, @layout, @userId, @userId)`,
         )
         .run({
           ownerId: header.ownerId,
@@ -143,6 +149,7 @@ export class TemplateRepo {
           validUntil: header.validUntil,
           active: header.active ? 1 : 0,
           notes: header.notes,
+          layout: header.layout,
           userId: header.userId,
         });
       const id = Number(info.lastInsertRowid);
@@ -166,7 +173,8 @@ export class TemplateRepo {
           `UPDATE rundown_templates
               SET title = @title, start_time = @startTime, days = @days,
                   valid_from = @validFrom, valid_until = @validUntil, active = @active,
-                  notes = @notes, version = version + 1, updated_by = @userId, updated_at = @now
+                  notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
+                  updated_at = @now
             WHERE id = @id`,
         )
         .run({
@@ -179,6 +187,7 @@ export class TemplateRepo {
           validUntil: next.validUntil,
           active: next.active ? 1 : 0,
           notes: next.notes,
+          layout: next.layout,
           now: nowIso(),
         });
       if (patch.exclusions) this.writeExclusions(id, patch.exclusions);

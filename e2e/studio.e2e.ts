@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { TestServer } from './server.js';
+import { TestServer, createShowNow } from './server.js';
 
 /**
  * Écran studio, de bout en bout : appairage, titre en cours (simulateur accéléré), coupure du
@@ -31,6 +31,8 @@ test.beforeAll(async () => {
     },
   });
   scriptId = (await script.json()).id;
+  // Émission en cours : sinon l'écran est en veille.
+  await createShowNow(api);
   token = (await (await api.post('/api/devices', { data: { name: 'Afficheur' } })).json()).token;
 });
 
@@ -62,18 +64,29 @@ test('le titre en cours change à la fin du titre', async () => {
 });
 
 test('coupure du serveur : l’affichage reste, puis la liaison revient seule', async () => {
+  // La coupure prolongée (30 s) est affichée en grand : le scénario dure plus d'une minute.
+  test.setTimeout(120_000);
   await api.post('/api/prompter', { data: { scriptId } });
   await expect(page.getByText('Bonjour à tous.')).toBeVisible();
+  await expect(page.getByTestId('last-sync')).toHaveText(/^synchro \d{2}:\d{2}:\d{2}$/);
 
   await server.stop();
-  await expect(page.locator('.offline-line')).toBeVisible({ timeout: 10_000 });
+  // Indicateur discret d'abord : point orange, pas de bandeau.
+  await expect(page.locator('.link.online')).toHaveCount(0, { timeout: 10_000 });
+  await expect(page.getByTestId('offline-banner')).toHaveCount(0);
   // Jamais d'écran blanc : texte et titres restent affichés pendant la coupure.
   await expect(page.getByText('Bonjour à tous.')).toBeVisible();
   await expect(page.getByTestId('now-title')).not.toBeEmpty();
+  // Coupure prolongée : affichée en grand, dans le bandeau.
+  await expect(page.getByTestId('offline-banner')).toHaveText(/^Connexion perdue depuis 0:3\d$/, {
+    timeout: 40_000,
+  });
+  await expect(page.getByText('Bonjour à tous.')).toBeVisible();
 
   await server.start();
-  await expect(page.locator('.link.online')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('.offline-line')).toHaveCount(0);
+  // Après 30 s de coupure, les essais de reconnexion sont espacés de 30 s au plus.
+  await expect(page.locator('.link.online')).toBeVisible({ timeout: 35_000 });
+  await expect(page.getByTestId('offline-banner')).toHaveCount(0);
   // État antenne resynchronisé : le simulateur a redémarré au premier titre et avance.
   const after = await page.getByTestId('now-title').textContent();
   await expect(page.getByTestId('now-title')).not.toHaveText(after!, { timeout: 10_000 });

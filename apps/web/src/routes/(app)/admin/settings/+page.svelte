@@ -1,7 +1,10 @@
 <script lang="ts">
   import {
+    AIR_FORCES,
     AUTOMATION_SOURCES,
+    CONNECTED_SOURCES,
     ITEM_COLORS,
+    LAYOUTS,
     LOCALES,
     LOGO_TYPES,
     MAX_LOGO_BYTES,
@@ -13,14 +16,18 @@
     SPEED_WPM_MAX,
     SIMULATOR_SPEED_MAX,
     SPEED_WPM_MIN,
+    STREAM_DELAY_MAX_SECONDS,
     TEXT_COLORS,
     TIME_FORMATS,
     TRACK_ALERT_MAX_SECONDS,
+    sourcesInUse,
     type AirSnapshot,
+    type AzuracastTestResult,
     type ConnectorTokenCreated,
     type ConnectorTokenStatus,
     type RadiodjTestResult,
     type Settings,
+    type SourceStatus,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
   import { errorMessage, t } from '$lib/i18n/index.svelte.js';
@@ -90,9 +97,41 @@
     }
   }
 
+  /** Sources en service (source unique, ou les deux de la bascule). */
+  const inUse = $derived(settings ? sourcesInUse(settings) : []);
+
+  // ---- AzuraCast : test de la connexion --------------------------------------------------
+
+  let azTest = $state<AzuracastTestResult | null>(null);
+  let azTesting = $state(false);
+
+  async function testAzuracast() {
+    if (!settings) return;
+    azTesting = true;
+    azTest = null;
+    try {
+      // Accès saisi, même s'il n'est pas encore enregistré.
+      azTest = await api<AzuracastTestResult>('POST', '/api/settings/azuracast/test', {
+        azuracast: settings.azuracast,
+      });
+    } catch (err) {
+      azTest = {
+        ok: false,
+        error: errorCode(err),
+        auth: null,
+        keyConfigured: false,
+        stationName: null,
+        nowPlaying: null,
+        live: null,
+      };
+    } finally {
+      azTesting = false;
+    }
+  }
+
   /** Erreur du connecteur : « code: détail technique » → message traduit + détail. */
   function sourceError(raw: string): { text: string; detail: string } {
-    const m = /^(radiodj_[a-z_]+)(?::\s*(.*))?$/.exec(raw);
+    const m = /^((?:radiodj|azuracast)_[a-z_]+)(?::\s*(.*))?$/.exec(raw);
     return m ? { text: errorMessage(m[1]!), detail: m[2] ?? '' } : { text: '', detail: raw };
   }
 
@@ -238,6 +277,22 @@
   }
 </script>
 
+{#snippet sourceLine(source: SourceStatus)}
+  <p class="source-state {source.state}" role="status">
+    {t(`automation.${source.id}`)} · {t(`automation.state.${source.state}`)}
+    {#if source.updatedAt}
+      · {t('settings.automationUpdated', {
+        time: new Date(source.updatedAt).toLocaleTimeString(),
+      })}
+    {/if}
+    {#if source.error}
+      {@const e = sourceError(source.error)}
+      {#if e.text}<br />{e.text}{/if}
+      {#if e.detail}<br /><span class="mono">{e.detail}</span>{/if}
+    {/if}
+  </p>
+{/snippet}
+
 <h1>{t('settings.title')}</h1>
 
 {#if settings}
@@ -295,14 +350,56 @@
     <h2>{t('settings.automation')}</h2>
     <p class="muted" style="margin: 0">{t('settings.automationIntro')}</p>
     <label>
-      {t('settings.automationSource')}
-      <select bind:value={settings.automationSource}>
-        {#each AUTOMATION_SOURCES as source (source)}
-          <option value={source}>{t(`automation.${source}`)}</option>
-        {/each}
+      {t('settings.airMode')}
+      <select bind:value={settings.airSwitch.enabled}>
+        <option value={false}>{t('settings.airMode.single')}</option>
+        <option value={true}>{t('settings.airMode.switch')}</option>
       </select>
     </label>
-    {#if settings.automationSource === 'simulator'}
+    <p class="muted" style="margin: 0">{t('settings.airModeIntro')}</p>
+    {#if settings.airSwitch.enabled}
+      <div class="grid2">
+        <label>
+          {t('settings.liveSource')}
+          <select bind:value={settings.airSwitch.liveSource}>
+            {#each CONNECTED_SOURCES as source (source)}
+              <option value={source}>{t(`automation.${source}`)}</option>
+            {/each}
+          </select>
+        </label>
+        <label>
+          {t('settings.offAirSource')}
+          <select bind:value={settings.airSwitch.offAirSource}>
+            {#each CONNECTED_SOURCES as source (source)}
+              <option value={source}>{t(`automation.${source}`)}</option>
+            {/each}
+          </select>
+        </label>
+      </div>
+      <label>
+        {t('settings.airForce')}
+        <select bind:value={settings.airSwitch.force}>
+          {#each AIR_FORCES as force (force)}
+            <option value={force}>{t(`airForce.${force}`)}</option>
+          {/each}
+        </select>
+      </label>
+      <p class="muted" style="margin: 0">
+        {settings.airSwitch.offAirSource === 'azuracast'
+          ? t('settings.airForceAuto')
+          : t('settings.airForceManualOnly')}
+      </p>
+    {:else}
+      <label>
+        {t('settings.automationSource')}
+        <select bind:value={settings.automationSource}>
+          {#each AUTOMATION_SOURCES as source (source)}
+            <option value={source}>{t(`automation.${source}`)}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
+    {#if inUse.includes('simulator')}
       <label>
         {t('settings.simulatorSpeed')}
         <input
@@ -314,23 +411,21 @@
         />
       </label>
     {/if}
-    {#if air && air.state.source.id !== 'none'}
-      <p class="source-state {air.state.source.state}" role="status">
-        {t(`automation.state.${air.state.source.state}`)}
-        {#if air.state.source.updatedAt}
-          · {t('settings.automationUpdated', {
-            time: new Date(air.state.source.updatedAt).toLocaleTimeString(),
-          })}
-        {/if}
-        {#if air.state.source.error}
-          {@const e = sourceError(air.state.source.error)}
-          {#if e.text}<br />{e.text}{/if}
-          {#if e.detail}<br /><span class="mono">{e.detail}</span>{/if}
-        {/if}
+    {#if air?.state.live}
+      {@const live = air.state.live}
+      <p class="source-state ok" role="status" data-testid="air-side">
+        {t('settings.airState', {
+          side: t(live.active ? 'settings.airSide.live' : 'settings.airSide.offair'),
+          source: t(`automation.${air.state.source.id}`),
+        })}{live.forced ? ` · ${t('settings.airForced')}` : ''}
       </p>
+      {@render sourceLine(live.liveSource)}
+      {@render sourceLine(live.offAirSource)}
+    {:else if air && air.state.source.id !== 'none'}
+      {@render sourceLine(air.state.source)}
     {/if}
 
-    {#if settings.automationSource === 'radiodj'}
+    {#if inUse.includes('radiodj')}
       <h3>{t('settings.radiodj')}</h3>
       <p class="muted" style="margin: 0">{t('settings.radiodjIntro')}</p>
       <div class="grid2">
@@ -393,6 +488,76 @@
         {#if tokenError}<p class="error" role="alert">{tokenError}</p>{/if}
       {/if}
     {/if}
+
+    {#if inUse.includes('azuracast')}
+      <h3>{t('settings.azuracast')}</h3>
+      <p class="muted" style="margin: 0">{t('settings.azuracastIntro')}</p>
+      <div class="grid2">
+        <label>
+          {t('settings.azuracastUrl')}
+          <input
+            type="url"
+            bind:value={settings.azuracast.url}
+            maxlength="200"
+            placeholder="https://radio.example.org"
+            pattern="https://.*"
+          />
+        </label>
+        <label>
+          {t('settings.azuracastStation')}
+          <input
+            bind:value={settings.azuracast.station}
+            maxlength="64"
+            pattern="[A-Za-z0-9_\-]*"
+            placeholder="ma_radio"
+          />
+        </label>
+        <label>
+          {t('settings.azuracastDelay')}
+          <input
+            type="number"
+            min={-STREAM_DELAY_MAX_SECONDS}
+            max={STREAM_DELAY_MAX_SECONDS}
+            bind:value={settings.azuracast.streamDelaySeconds}
+            required
+          />
+          <span class="muted small">{t('settings.azuracastDelayHelp')}</span>
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" onclick={testAzuracast} disabled={azTesting}
+          >{t('settings.azuracastTest')}</button
+        >
+        {#if azTest}
+          <span class="test-result" class:ok={azTest.ok} role="status">
+            {azTest.ok
+              ? t('settings.azuracastTestOk', { station: azTest.stationName ?? '' })
+              : errorMessage(azTest.error ?? 'azuracast_error')}
+            {#if azTest.nowPlaying}<br />{t('settings.azuracastTestNow', {
+                title: azTest.nowPlaying,
+              })}{/if}
+            {#if azTest.live}<br />{t('settings.azuracastTestLive')}{/if}
+            {#if azTest.auth}<br />{t(`settings.azuracastAuth.${azTest.auth}`)}{/if}
+          </span>
+        {/if}
+      </div>
+    {/if}
+
+    <h2>{t('settings.display')}</h2>
+    <label>
+      {t('settings.defaultLayout')}
+      <select bind:value={settings.defaultLayout}>
+        {#each LAYOUTS as layout (layout)}
+          <option value={layout}>{t(`layout.${layout}`)}</option>
+        {/each}
+      </select>
+      <span class="muted small">{t('settings.defaultLayoutHelp')}</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" bind:checked={settings.burnInProtection} />
+      {t('settings.burnIn')}
+    </label>
+    <p class="muted small" style="margin: 0">{t('settings.burnInHelp')}</p>
 
     <h2>{t('settings.trackAlert')}</h2>
     <p class="muted" style="margin: 0">{t('settings.trackAlertIntro')}</p>
@@ -635,6 +800,14 @@
   }
   .test-result {
     color: #f7c1c1;
+  }
+  .small {
+    font-size: 0.85rem;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   .test-result.ok {
     color: var(--ok);

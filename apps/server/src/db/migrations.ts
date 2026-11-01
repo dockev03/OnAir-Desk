@@ -311,4 +311,10 @@ export const migrations: string[] = [
   ALTER TABLE rundowns ADD COLUMN notes TEXT NOT NULL DEFAULT '';
   ALTER TABLE rundown_templates ADD COLUMN notes TEXT NOT NULL DEFAULT '';
   `,
+  /* 9 — dispositions de l'écran studio, par conducteur et par modèle (null : par défaut) */ `
+  ALTER TABLE rundowns ADD COLUMN layout TEXT
+    CHECK (layout IS NULL OR layout IN ('solo', 'regie', 'interview'));
+  ALTER TABLE rundown_templates ADD COLUMN layout TEXT
+    CHECK (layout IS NULL OR layout IN ('solo', 'regie', 'interview'));
+  `,
 ];

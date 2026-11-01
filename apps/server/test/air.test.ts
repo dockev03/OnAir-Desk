@@ -11,6 +11,7 @@ import type { App } from '../src/app.js';
 import { AirStateStore } from '../src/air/state.js';
 import { AutomationManager, RETRY_MS } from '../src/connectors/manager.js';
 import { SIMULATOR_PLAYLIST } from '../src/connectors/simulator.js';
+import { defaultSettings } from '../src/db/settings.js';
 import type { AutomationConnector, ConnectorContext } from '../src/connectors/types.js';
 import type { Hub } from '../src/ws/hub.js';
 import { ORIGIN, client, cookieFrom, createTestApp, setupAdmin } from './helpers.js';
@@ -29,8 +30,12 @@ const auditStub = () => {
   return { audit: { write: (_a: unknown, action: string) => writes.push(action) }, writes };
 };
 
-const settings = (over: Partial<Settings> = {}) =>
-  ({ automationSource: 'simulator', simulatorSpeed: 10, ...over }) as Settings;
+const settings = (over: Partial<Settings> = {}): Settings => ({
+  ...defaultSettings(),
+  automationSource: 'simulator',
+  simulatorSpeed: 10,
+  ...over,
+});
 
 describe('état antenne central', () => {
   it('versionne et ne diffuse que les champs modifiés, studio par studio', () => {

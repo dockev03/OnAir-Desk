@@ -4,6 +4,11 @@ import type { Track } from '@onair-desk/shared';
 export interface AutomationUpdate {
   nowPlaying: Track | null;
   next: Track | null;
+  /**
+   * La source indique que l'antenne est en direct (AzuraCast : un DJ / streamer est connecté).
+   * Absent : la source ne le sait pas. Sert à la bascule automatique direct / hors direct.
+   */
+  live?: boolean;
 }
 
 /** Ce que le cœur fournit à un connecteur. */

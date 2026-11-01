@@ -24,6 +24,10 @@ services:
       CONNECTOR_HTTP_PORT: ${CONNECTOR_HTTP_PORT:-}
       # Secret : mot de passe du compte MariaDB (lecture seule) de RadioDJ.
       RADIODJ_DB_PASSWORD: ${RADIODJ_DB_PASSWORD:-}
+      # Secret : clé API d'un compte AzuraCast dédié, sans droit d'administration (facultatif).
+      AZURACAST_API_KEY: ${AZURACAST_API_KEY:-}
+      # Certificat auto-signé d'AzuraCast (facultatif) : décommenter aussi le volume plus bas.
+      AZURACAST_CA_FILE: ${AZURACAST_CA_FILE:-}
       # Certificat fourni par la station (facultatif) : décommenter aussi le volume plus bas.
       # TLS_CERT_FILE: /certs/onair-desk.crt
       # TLS_KEY_FILE: /certs/onair-desk.key
