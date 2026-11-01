@@ -13,10 +13,11 @@ Documents liés :
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
+- `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées ; étapes 9 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 9 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -79,6 +80,10 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 - Contenu des scripts : liste blanche dans `packages/shared/src/content.ts` (validation serveur, nettoyage éditeur). L'affichage passe par `apps/web/src/lib/content/` : **jamais de `{@html}`**.
 - La page `/studio` (afficheur) ne doit pas importer l'éditeur TipTap : vérifier son poids après toute modification.
 - Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:e2e` (après le build).
+- **README à jour, captures comprises** : toute fonctionnalité ou interface ajoutée ou modifiée met à jour le `README.md` dans la même branche (statut, liste des fonctionnalités, installation si besoin) et ses captures d'écran :
+  - relancer `npm run captures` (après le build) et vérifier les images de `docs/captures/` ;
+  - écran nouveau ou modifié visiblement : compléter les données de démonstration et les captures dans `scripts/captures.ts`, puis l'image et sa légende dans la section « Aperçu » du README ;
+  - captures sur la base de démonstration seulement : jamais de données réelles d'une station, ni de jeton ou d'adresse interne visibles.
 - Tests de bout en bout dans `e2e/` (`*.e2e.ts`, Playwright) : le serveur compilé y est lancé sur une base temporaire ; chaque étape ajoute ses scénarios.
 - Connecteurs d'automation dans `apps/server/src/connectors/` : implémenter `AutomationConnector` (`types.ts`) et l'ajouter au gestionnaire ; le simulateur sert de modèle. Toute nouvelle action journalisée s'ajoute au catalogue `packages/shared/src/audit.ts`.
 - Connecteurs entrants (signal envoyé par l'automation) : route sur l'écoute dédiée `connectors/ingest.ts`, jamais sur le serveur principal. Requêtes SQL RadioDJ testées contre un vrai MariaDB : job CI `mariadb`, ou en local avec `MARIADB_TEST_URL`.
@@ -153,6 +158,9 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 - **File d'attente en base** (`queuelist`), vérifiée tenue à jour en temps réel, sans le titre en cours.
 - Repères **intro/outro (cue points)** : lisibles dans `songs.cue_times` (`int` = fin d'intro, `xta` = point de mix…) ; l'intro n'est pas toujours renseignée.
 
+### RadioDJ — limite acceptée : position de lecture
+- Avancer, reculer ou mettre en pause le titre en cours depuis RadioDJ **n'est pas répercuté** : ni la base (`queuelist.ETA` non recalculée) ni les plugins installés ne donnent la position. Temps restant, alertes, talk-over et heure du titre suivant restent faux jusqu'au titre suivant, qui recale tout. Détail : `docs/cadrage-radiodj.md` §4.
+
 ### AzuraCast — titre en cours hors direct (24 h/24)
 - AzuraCast fournit une **API « Now Playing »** (HTTP JSON, et notifications en temps réel / webhooks) : titre en cours, titre suivant, durée, temps écoulé.
 - Sert à afficher le titre en cours **sur l'écran de veille** et hors des émissions en direct.
@@ -198,6 +206,7 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 21. **Compteur de quotas de chanson francophone** (Arcom) depuis l'historique RadioDJ : obligations selon la catégorie de la radio, à vérifier.
 22. **Vigilance Météo-France** du département à côté de la météo (API Météo-France, compte + clé).
 23. **Voyants micros invités** (un par micro ouvert) : câblage matériel, comme le On Air.
+24. **Plugin RadioDJ maison** (C#, **projet à part**) : envoyer à OnAir-Desk la position de lecture et l'état lecture / pause, sur le port des connecteurs, pour lever la limite du §6. Préalable : vérifier qu'un kit de développement de plugins existe pour RadioDJ 3.0.0.5 et donne accès à la position du lecteur.
 
 ### Hors de cet outil (autres outils, plus tard)
 - **Alerte blanc d'antenne** (détection de silence) : peut-être dans un outil de **supervision** séparé, sous Docker.
@@ -229,6 +238,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. repères intro / outro ;
    5. talk-over, si les tables RadioDJ le permettent (§7) ;
    6. titres musicaux remplis automatiquement dans les conducteurs.
+   - ✅ **Conducteur enrichi** (évolution hors étape, avant l'étape 8, AzuraCast n'étant pas encore disponible) : titres numérotés avec artiste, année et intro, étiquettes paramétrables, élément à couper, notes générales, tableau coloré à l'écran et à l'impression. → `docs/plan-conducteur-enrichi.md`. Durée cible, écart et part de chansons francophones restent à l'étape 11.
 8. ✅ **AzuraCast et écran de veille** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-8.md` :
    1. connecteur AzuraCast (titre en cours / à venir) ;
    2. bascule de source : RadioDJ en direct, AzuraCast le reste du temps ;

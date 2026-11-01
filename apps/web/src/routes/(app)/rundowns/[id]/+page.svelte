@@ -17,6 +17,7 @@
   import { Autosave, type SaveStatus } from '$lib/rundown-editor/autosave.svelte.js';
   import ItemsEditor from '$lib/rundown-editor/ItemsEditor.svelte';
   import { toEdit, toInput, type EditItem } from '$lib/rundown-editor/items.js';
+  import RundownNotes from '$lib/rundown-editor/RundownNotes.svelte';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
   import { session } from '$lib/session.svelte.js';
   import { stationSettings } from '$lib/settings.svelte.js';
@@ -31,6 +32,7 @@
   let title = $state('');
   let airDate = $state('');
   let startTime = $state('07:00:00');
+  let notes = $state('');
   /** Disposition de l'écran studio ; null : celle des paramètres. */
   let layout = $state<Layout | null>(null);
   let items = $state<EditItem[]>([]);
@@ -45,6 +47,7 @@
     title = r.title;
     airDate = r.airDate;
     startTime = r.startTime;
+    notes = r.notes;
     layout = r.layout;
     items = r.items.map(toEdit);
     version = r.version;
@@ -74,6 +77,7 @@
         title: title.trim() || rundown!.title,
         airDate,
         startTime,
+        notes,
         layout,
         items: items.map(toInput),
       });
@@ -271,6 +275,8 @@
     onsend={(item) => void send(item)}
     onerror={(message) => (error = message)}
   />
+
+  <RundownNotes bind:notes {canWrite} onchange={changed} />
 {:else if !error}
   <p class="muted">{t('common.loading')}</p>
 {/if}

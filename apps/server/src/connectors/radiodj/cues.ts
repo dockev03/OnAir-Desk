@@ -70,6 +70,17 @@ export function songTiming(row: Pick<SongRow, 'duration' | 'cueTimes'>): {
   };
 }
 
+/**
+ * Année d'un titre (`songs.year`, texte) : null si vide, illisible, hors bornes, ou égale à
+ * 1900, valeur par défaut de RadioDJ pour « non renseignée ».
+ */
+export function songYear(raw: string | null | undefined): number | null {
+  const v = raw?.trim() ?? '';
+  if (!/^\d{4}$/.test(v)) return null;
+  const year = Number(v);
+  return year > 1900 && year <= 2999 ? year : null;
+}
+
 const ms = (seconds: number) => Math.round(seconds * 1000);
 
 /** Titre de l'état antenne à partir d'une ligne de la base. */

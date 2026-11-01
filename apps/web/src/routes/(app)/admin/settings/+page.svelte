@@ -9,6 +9,7 @@
     LOGO_TYPES,
     MAX_LOGO_BYTES,
     MAX_CUES,
+    MAX_ITEM_TAGS,
     MAX_ITEM_TYPES,
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
@@ -193,6 +194,18 @@
         settings.itemTypes.map((x) => x.id),
       ),
       label: t('rundowns.newItemTitle'),
+      color: itemColorList[0]!,
+    });
+  }
+
+  function addItemTag() {
+    if (!settings || settings.itemTags.length >= MAX_ITEM_TAGS) return;
+    settings.itemTags.push({
+      id: cueId(
+        'tag',
+        settings.itemTags.map((x) => x.id),
+      ),
+      label: t('settings.newTag'),
       color: itemColorList[0]!,
     });
   }
@@ -704,6 +717,64 @@
         type="button"
         onclick={addItemType}
         disabled={settings.itemTypes.length >= MAX_ITEM_TYPES}>{t('settings.addItemType')}</button
+      >
+    </div>
+
+    <h2>{t('settings.itemTags')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.itemTagsIntro')}</p>
+    <div class="cues">
+      {#each settings.itemTags as tag, i (tag.id)}
+        <div class="cue-row">
+          <span
+            class="preview type-preview"
+            style:background-color={tag.color}
+            style:color={ITEM_COLORS[tag.color]}>{tag.label}</span
+          >
+          <input
+            aria-label={t('settings.tagLabel')}
+            bind:value={tag.label}
+            required
+            maxlength="40"
+          />
+          <div class="row colors" role="radiogroup" aria-label={t('settings.cueColor')}>
+            {#each itemColorList as c (c)}
+              <button
+                type="button"
+                class="swatch"
+                class:on={tag.color === c}
+                style:background-color={c}
+                role="radio"
+                aria-checked={tag.color === c}
+                aria-label={c}
+                onclick={() => (tag.color = c)}
+              ></button>
+            {/each}
+          </div>
+          <div class="row">
+            <button
+              type="button"
+              aria-label={t('settings.moveUp')}
+              disabled={i === 0}
+              onclick={() => swap(settings!.itemTags, i, i - 1)}>↑</button
+            >
+            <button
+              type="button"
+              aria-label={t('settings.moveDown')}
+              disabled={i === settings.itemTags.length - 1}
+              onclick={() => swap(settings!.itemTags, i, i + 1)}>↓</button
+            >
+            <button type="button" class="danger" onclick={() => settings!.itemTags.splice(i, 1)}
+              >{t('settings.removeCue')}</button
+            >
+          </div>
+        </div>
+      {/each}
+    </div>
+    <div>
+      <button
+        type="button"
+        onclick={addItemTag}
+        disabled={settings.itemTags.length >= MAX_ITEM_TAGS}>{t('settings.addItemTag')}</button
       >
     </div>
 

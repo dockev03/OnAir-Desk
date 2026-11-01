@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { layoutSchema } from './layout.js';
-import { airDateSchema, rundownItemsSchema, startTimeSchema } from './rundown.js';
+import {
+  airDateSchema,
+  rundownItemsSchema,
+  rundownNotesSchema,
+  startTimeSchema,
+} from './rundown.js';
 import { addDays } from './time.js';
 
 /**
@@ -67,6 +72,7 @@ const templateFields = {
   /** Modèle suspendu : aucune création possible. */
   active: z.boolean(),
   exclusions: z.array(templateExclusionSchema).max(MAX_TEMPLATE_EXCLUSIONS),
+  notes: rundownNotesSchema,
   /** Disposition de l'écran studio, copiée dans les conducteurs créés ; null : par défaut. */
   layout: layoutSchema.nullable(),
   items: rundownItemsSchema,
@@ -85,6 +91,7 @@ export const createTemplateSchema = z
     validUntil: templateFields.validUntil.default(null),
     active: templateFields.active.default(true),
     exclusions: templateFields.exclusions.default([]),
+    notes: templateFields.notes.default(''),
     layout: templateFields.layout.default(null),
     items: templateFields.items.default([]),
   })
@@ -101,6 +108,7 @@ export const updateTemplateSchema = z
     validUntil: templateFields.validUntil.optional(),
     active: templateFields.active.optional(),
     exclusions: templateFields.exclusions.optional(),
+    notes: templateFields.notes.optional(),
     layout: templateFields.layout.optional(),
     items: templateFields.items.optional(),
   })

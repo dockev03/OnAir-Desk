@@ -25,6 +25,7 @@ interface TemplateRow {
   valid_from: string | null;
   valid_until: string | null;
   active: number;
+  notes: string;
   layout: Layout | null;
   version: number;
   updated_by: number | null;
@@ -35,6 +36,7 @@ interface TemplateRow {
 
 export interface TemplateRecord extends TemplateSummary {
   exclusions: TemplateExclusion[];
+  notes: string;
   items: RundownItem[];
   version: number;
   deletedAt: string | null;
@@ -49,6 +51,7 @@ export interface TemplateHeader {
   validUntil: string | null;
   active: boolean;
   exclusions: TemplateExclusion[];
+  notes: string;
   /** Disposition de l'écran studio ; null : celle des paramètres. */
   layout: Layout | null;
 }
@@ -85,6 +88,7 @@ export class TemplateRepo {
       updatedAt: r.updated_at,
       updatedByName: r.updated_by_name,
       exclusions,
+      notes: r.notes,
       items,
       version: r.version,
       deletedAt: r.deleted_at,
@@ -105,6 +109,7 @@ export class TemplateRepo {
     return rows.map((r) => {
       const {
         exclusions: _e,
+        notes: _n,
         items: _i,
         version: _v,
         deletedAt: _d,
@@ -130,9 +135,10 @@ export class TemplateRepo {
       const info = this.db
         .prepare(
           `INSERT INTO rundown_templates (owner_id, title, start_time, days, valid_from,
-                                          valid_until, active, layout, created_by, updated_by)
+                                          valid_until, active, notes, layout, created_by,
+                                          updated_by)
            VALUES (@ownerId, @title, @startTime, @days, @validFrom, @validUntil, @active,
-                   @layout, @userId, @userId)`,
+                   @notes, @layout, @userId, @userId)`,
         )
         .run({
           ownerId: header.ownerId,
@@ -142,6 +148,7 @@ export class TemplateRepo {
           validFrom: header.validFrom,
           validUntil: header.validUntil,
           active: header.active ? 1 : 0,
+          notes: header.notes,
           layout: header.layout,
           userId: header.userId,
         });
@@ -166,7 +173,8 @@ export class TemplateRepo {
           `UPDATE rundown_templates
               SET title = @title, start_time = @startTime, days = @days,
                   valid_from = @validFrom, valid_until = @validUntil, active = @active,
-                  layout = @layout, version = version + 1, updated_by = @userId, updated_at = @now
+                  notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
+                  updated_at = @now
             WHERE id = @id`,
         )
         .run({
@@ -178,6 +186,7 @@ export class TemplateRepo {
           validFrom: next.validFrom,
           validUntil: next.validUntil,
           active: next.active ? 1 : 0,
+          notes: next.notes,
           layout: next.layout,
           now: nowIso(),
         });

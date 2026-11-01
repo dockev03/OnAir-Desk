@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CUES } from './content.js';
-import { DEFAULT_ITEM_TYPES } from './rundown.js';
+import { DEFAULT_ITEM_TAGS, DEFAULT_ITEM_TYPES } from './rundown.js';
 import { setupSchema, updateUserSchema, usernameSchema, settingsSchema } from './schemas.js';
 
 describe('usernameSchema', () => {
@@ -24,6 +24,7 @@ describe('settingsSchema', () => {
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
     itemTypes: DEFAULT_ITEM_TYPES,
+    itemTags: DEFAULT_ITEM_TAGS,
     automationSource: 'none',
     simulatorSpeed: 1,
     radiodj: { host: '', port: 3306, database: 'radiodj', user: 'onairdesk' },

@@ -197,7 +197,7 @@ class SourceSlot {
   signal(title: string): void {
     const at = this.host.now();
     this.lastSignal = { title, at };
-    if (this.connector && !this.failing) this.connector.signal?.(at);
+    if (this.connector && !this.failing) this.connector.signal?.(at, title);
     else this.host.changed();
   }
 

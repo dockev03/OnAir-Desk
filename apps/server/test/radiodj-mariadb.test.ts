@@ -23,6 +23,7 @@ CREATE TABLE songs (
   title varchar(250) NOT NULL,
   duration decimal(11,5) NOT NULL DEFAULT 0,
   cue_times varchar(255) NOT NULL DEFAULT '&sta=0',
+  year varchar(4) NOT NULL DEFAULT '1900',
   KEY song_type (song_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE history (
@@ -62,6 +63,7 @@ INSERT INTO songs (ID, song_type, artist, title, duration, cue_times) VALUES
   (20, 0, '100% Fun', 'Taux_de_rire', 120, '&sta=0'),
   (50, 2, 'Station', 'Jingle Chanté 01', 6.2, '&sta=0&end=6.2'),
   (60, 4, 'Annonceur', 'Pub Summer', 30, '&sta=0&end=30');
+UPDATE songs SET year = '2019' WHERE ID = 1;
 INSERT INTO history (trackID, date_played, song_type, duration, artist, title) VALUES
   (1, '2026-10-24 16:19:16', 0, 163.98907, 'Adamé;Lili Poli', 'Summertime'),
   (50, '2026-10-24 16:19:16', 2, 6.2, 'Station', 'Jingle Chanté 01'),
@@ -133,7 +135,13 @@ describe.skipIf(!url)('lecture de la base RadioDJ (MariaDB réel)', () => {
     const summer = await reader.searchSongs('summer', 20);
     // La pub « Pub Summer » n'est pas de la musique.
     expect(summer.map((s) => s.id)).toEqual([1]);
-    expect(summer[0]).toMatchObject({ artist: 'Adamé;Lili Poli', title: 'Summertime' });
+    expect(summer[0]).toMatchObject({
+      artist: 'Adamé;Lili Poli',
+      title: 'Summertime',
+      year: '2019',
+    });
+    // Année non renseignée : défaut de RadioDJ.
+    expect((await reader.searchSongs('andéol', 20))[0]?.year).toBe('1900');
     // « _ » et « % » sont cherchés tels quels.
     expect((await reader.searchSongs('x_de', 20)).map((s) => s.id)).toEqual([20]);
     expect((await reader.searchSongs('100%', 20)).map((s) => s.id)).toEqual([20]);

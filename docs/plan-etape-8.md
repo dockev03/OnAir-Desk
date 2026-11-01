@@ -64,7 +64,7 @@ Les 16 décisions sont **validées** ; la colonne « Alternative » garde trace 
   - le signal RadioDJ est transmis au connecteur RadioDJ même s'il n'est pas la source active.
 - **État antenne** : nouveau champ `live` (direct ou non, cause auto / forcé). La veille n'y figure pas : l'écran la déduit des conducteurs et de `live` (décision 10).
 - **Paramètres** : `automationSource` accepte `azuracast` ; nouveaux champs `azuracast` (URL, nom court, retard du flux), `airMode` (source unique / direct + hors direct, sources, forçage), `defaultLayout`, `burnInProtection` ; `POST /api/settings/azuracast/test`.
-- **Migration 8** (nouvelle entrée) : colonne `layout` sur `rundowns` et `rundown_templates` (null = disposition par défaut).
+- **Migration 9** (nouvelle entrée) : colonne `layout` sur `rundowns` et `rundown_templates` (null = disposition par défaut).
 - **Conducteurs** : prochain conducteur (aujourd'hui ou demain) exposé à l'écran studio pour la veille.
 - **Journal** : nouvelle action `automation.switched` au catalogue ; changement du mode d'antenne et forçage tracés (`settings`).
 - **Configuration** : `AZURACAST_API_KEY`, `AZURACAST_CA_FILE` dans `.env.example` (sans valeur), README (section AzuraCast : Let's Encrypt ou certificat à monter, station publique ou clé API, réglage du retard du flux).
@@ -103,7 +103,7 @@ Les 16 décisions sont **validées** ; la colonne « Alternative » garde trace 
   - analyse de la réponse réelle capturée, champs absents ou vides, `song.text` seul, conversion en `Track` avec retard du flux ;
   - connecteur contre le faux serveur : SSE puis coupure SSE (relecture seule), panne puis retour, certificat inconnu refusé (et clé **jamais envoyée** dans ce cas), autorité `AZURACAST_CA_FILE` acceptée, clé API dans l'en-tête seulement si définie, sur la lecture comme sur le SSE, jamais journalisée ni renvoyée ; réponses 401 / 403 → `azuracast_unauthorized` ;
   - gestionnaire : bascule auto direct ↔ hors direct, forçage manuel, secours si RadioDJ en panne, journal des bascules, signal RadioDJ transmis en hors direct ;
-  - migration 8 et disposition copiée du modèle au conducteur.
+  - migration 9 et disposition copiée du modèle au conducteur.
 - **Bout en bout (Playwright)** : veille affichée sans conducteur puis quittée au démarrage d'une émission ; clic pour quitter la veille ; disposition « Interview » appliquée ; bandeau « Connexion perdue » après coupure prolongée puis retour ; bascule de source visible à l'écran (faux serveur AzuraCast passant en direct).
 
 ## Bilan de l'étape 8
@@ -120,7 +120,7 @@ Les 16 décisions sont **validées** ; la colonne « Alternative » garde trace 
   - `connectors/azuracast/` : client HTTPS sans dépendance (module `https`, autorité `AZURACAST_CA_FILE` ajoutée aux autorités publiques, clé `AZURACAST_API_KEY` dans l'en-tête `X-API-Key`, délai 5 s, codes d'erreur stables), flux SSE Centrifugo (reconnexion de 1 à 60 s, silence de plus de 75 s = reconnexion), lecture tolérante de la réponse « Now Playing », connecteur (relecture au démarrage puis toutes les 30 s, publications SSE, titre fini depuis plus de 2 min effacé) ;
   - **gestionnaire réécrit** : une « source en service » par connecteur (état, panne, nouvel essai, mode dégradé RadioDJ), source unique ou **deux sources simultanées** ; bascule automatique sur l'indicateur « en direct » de la source hors direct (on reste où l'on est si elle ne répond pas), forçage sans redémarrage, **secours** (RadioDJ en panne en direct : titre relayé par AzuraCast, sinon titre signalé) ; chaque bascule journalisée (système, ou l'admin qui a forcé) ; le signal RadioDJ est transmis que RadioDJ soit à l'antenne ou non ;
   - route admin `POST /api/settings/azuracast/test` (station, titre en cours, direct, sort de la clé : non nécessaire / acceptée / refusée / requise) ; recherche de titres RadioDJ ouverte aussi en mode bascule ;
-  - **migration 8** : colonne `layout` sur `rundowns` et `rundown_templates` ; disposition copiée du modèle aux conducteurs créés, à la duplication, à l'enregistrement comme modèle et à « Réappliquer le modèle » ;
+  - **migration 9** (la 8 est celle du conducteur enrichi) : colonne `layout` sur `rundowns` et `rundown_templates` ; disposition copiée du modèle aux conducteurs créés, à la duplication, à l'enregistrement comme modèle et à « Réappliquer le modèle » ;
   - configuration : `AZURACAST_API_KEY`, `AZURACAST_CA_FILE` (lu et vérifié au démarrage).
 - **Interface** :
   - écran studio : **veille** (horloge, voyant On Air gris, titre en cours de la source active, prochaine émission ; un clic la quitte pour 10 min) ; **dispositions** (« Interview » : bandeau réduit et barre latérale réduite d'office ; « Émission avec régie » : zone régie fixe réservée) ; **anti-usure** (bandeau, zone régie et barre latérale décalés de ±4 px toutes les 2 min ; dérive de la veille toutes les minutes ; sans transition avec `prefers-reduced-motion`) ; **indicateur de connexion** (point vert / orange + heure de dernière synchronisation ; bandeau « Connexion perdue depuis m:ss » au-delà de 30 s, dans le bandeau supérieur) ;

@@ -2,19 +2,36 @@
 
 Écran studio pour radios, affiché dans un navigateur en mode kiosk, sur l'afficheur de votre choix : prompteur, conducteurs d'émission colorés, horloge à la seconde, titre en cours et à venir (depuis l'automation, RadioDJ en premier), météo et voyant On Air.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs) et 6 (socle antenne) réalisées.**
+![Écran studio en mode lecture : horloge, titre en cours avec compte à rebours d'intro, titre à venir, prompteur avec repères colorés et bande de lecture](docs/captures/studio-lecture.png)
+
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées.**
 
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
 - Écran studio : navigation dans les dossiers à la souris, mode lecture avec bande de lecture, défilement molette ou automatique, Précédent / Suivant.
-- Conducteurs : éléments colorés, heures de passage, glisser-déposer, lien prompteur, duplication, modèles d'émission récurrente, impression / PDF.
+- Conducteurs : éléments colorés, heures de passage et position depuis le début, glisser-déposer, lien prompteur, duplication, modèles d'émission récurrente, impression / PDF en tableau coloré.
+- Conducteur enrichi : titres musicaux numérotés avec artiste, année et intro (talk-up), repris de RadioDJ au choix d'un titre, étiquettes paramétrables (ex. FR), élément « à couper si ça déborde », notes générales du conducteur.
 - Logo de la station (interface, connexion, écran studio, impressions).
 - Socle antenne : titre en cours / à venir sur l'écran studio (simulateur d'automation en attendant RadioDJ et AzuraCast), journal d'audit consultable, tests de bout en bout (`npm run test:e2e`).
 
-Les intégrations (RadioDJ, AzuraCast, On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+- RadioDJ : titre en cours et à venir, heure de démarrage, alerte de fin de titre, repères intro / outro, talk-over, titres musicaux dans les conducteurs.
+
+Les autres intégrations (AzuraCast, On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+
+### Aperçu
+
+| Écran studio : conducteur du jour                                                                                                                                                              | Écran studio : navigation                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Conducteur sur l'écran studio : éléments colorés par type, titres numérotés avec artiste, étiquettes, intro, heures de passage et durées](docs/captures/studio-conducteur.png)               | ![Navigation de l'écran studio : conducteurs du jour, dossier Commun, un dossier par animateur](docs/captures/studio-navigation.png)                                                      |
+| **Éditeur de script**                                                                                                                                                                          | **Montage d'un conducteur**                                                                                                                                                               |
+| ![Éditeur de script : texte enrichi, couleurs, surlignage, repères JINGLE / PAUSE / LANCER TITRE, vitesse de défilement](docs/captures/editeur-script.png)                                     | ![Édition d'un conducteur : types colorés, scripts attachés, heures de passage calculées, détails d'un titre (artiste, année, intro, étiquettes, à couper)](docs/captures/conducteur.png) |
+| **Impression / PDF du conducteur**                                                                                                                                                             |                                                                                                                                                                                           |
+| ![Conducteur imprimé : lignes teintées par type, numéro des titres, heure et position, artiste, année, étiquettes, intro, légende et notes générales](docs/captures/conducteur-impression.png) |                                                                                                                                                                                           |
+
+Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md) : plans et bilans des étapes.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---
@@ -213,6 +230,8 @@ Le code d'installation s'affiche dans le terminal du serveur.
 | `npm run typecheck` | TypeScript (serveur, interface, paquet partagé) |
 | `npm test`          | Tests (Vitest)                                  |
 | `npm run build`     | Construction de l'interface puis du serveur     |
+| `npm run test:e2e`  | Tests de bout en bout (après le build)          |
+| `npm run captures`  | Captures d'écran du README (après le build)     |
 
 ### Organisation
 

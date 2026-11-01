@@ -1,5 +1,6 @@
 import {
   DEFAULT_CUES,
+  DEFAULT_ITEM_TAGS,
   DEFAULT_ITEM_TYPES,
   DEFAULT_SPEED_WPM,
   settingsSchema,
@@ -19,6 +20,7 @@ export function defaultSettings(): Settings {
     prompterFontSize: 48,
     cues: DEFAULT_CUES,
     itemTypes: DEFAULT_ITEM_TYPES,
+    itemTags: DEFAULT_ITEM_TAGS,
     automationSource: 'none',
     simulatorSpeed: 1,
     radiodj: { host: '', port: 3306, database: 'radiodj', user: 'onairdesk' },

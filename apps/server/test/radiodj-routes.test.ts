@@ -195,7 +195,7 @@ describe('test de connexion et recherche dans la bibliothèque RadioDJ', () => {
 
   it('recherche : animateur, titres musicaux, durée jusqu’au point de mix', async () => {
     const db = new FakeReader();
-    db.library = [{ ...SUMMERTIME, id: 1 }];
+    db.library = [{ ...SUMMERTIME, id: 1, year: '2019' }];
     const s = await start(db);
     built = s.built;
     const anim = await createUser(built, s.admin, 'anim');
@@ -213,7 +213,14 @@ describe('test de connexion et recherche dans la bibliothèque RadioDJ', () => {
 
     const songs = (await search('Summer')).json() as RadiodjSong[];
     expect(songs).toEqual([
-      { id: 1, artist: 'Adamé, Lili Poli', title: 'Summertime', durationMs: 163989 },
+      {
+        id: 1,
+        artist: 'Adamé, Lili Poli',
+        title: 'Summertime',
+        year: 2019,
+        durationMs: 163989,
+        introMs: 4038,
+      },
     ]);
     expect(db.searches.at(-1)).toEqual({ query: 'Summer', limit: 20 });
     expect((await search('S')).statusCode).toBe(400);

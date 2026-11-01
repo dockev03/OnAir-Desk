@@ -6,6 +6,7 @@
     itemSeconds,
     rundownSchedule,
     secondsToTime,
+    songNumbers,
     type Rundown,
     type Script,
   } from '@onair-desk/shared';
@@ -79,6 +80,16 @@
   });
 
   const typeLabel = (typeId: string) => types.find((x) => x.id === typeId)?.label ?? typeId;
+  const tags = $derived(settings?.itemTags ?? []);
+  const tagLabel = (tagId: string) => tags.find((x) => x.id === tagId)?.label ?? tagId;
+  const numbers = $derived(rundown ? songNumbers(rundown.items) : []);
+  // Colonnes facultatives : imprimées seulement si un élément les renseigne.
+  const showYear = $derived(rundown?.items.some((i) => i.year !== null) ?? false);
+  const showTags = $derived(rundown?.items.some((i) => i.tags.length > 0) ?? false);
+  const showIntro = $derived(rundown?.items.some((i) => i.introSeconds !== null) ?? false);
+  const anyCut = $derived(rundown?.items.some((i) => i.cuttable) ?? false);
+  /** Types présents dans le conducteur, pour la légende. */
+  const usedTypes = $derived([...new Set(rundown?.items.map((i) => i.typeId) ?? [])]);
   /** Éléments dont le texte du script suit le tableau (un script attaché plusieurs fois : une fois). */
   const withText = $derived(
     rundown?.items.filter(
@@ -131,36 +142,78 @@
       <table class="items">
         <thead>
           <tr>
+            <th class="num">{t('print.col.number')}</th>
             <th>{t('print.col.time')}</th>
             <th>{t('rundowns.item.type')}</th>
-            <th>{t('rundowns.item.title')}</th>
+            <th>{t('print.col.element')}</th>
+            {#if showYear}<th>{t('print.col.year')}</th>{/if}
+            {#if showTags}<th>{t('print.col.tags')}</th>{/if}
             <th class="num">{t('rundowns.item.duration')}</th>
+            {#if showIntro}<th class="num">{t('print.col.intro')}</th>{/if}
             <th>{t('rundowns.item.notes')}</th>
-            <th>{t('rundowns.item.script')}</th>
           </tr>
         </thead>
         <tbody>
           {#each rundown.items as item, i (item.uid)}
-            <tr>
-              <td class="mono">{secondsToTime(schedule.starts[i] ?? 0)}</td>
+            {@const c = itemColors(types, item.typeId)}
+            <tr style:--type-color={c.bg}>
+              <td class="num no">{numbers[i] ?? ''}{item.cuttable ? ' ✂' : ''}</td>
+              <td class="mono">
+                {secondsToTime(schedule.starts[i] ?? 0)}
+                <div class="offset">+{formatDuration(schedule.offsets[i] ?? 0)}</div>
+              </td>
               <td class="type">
-                <span class="dot" style:background-color={itemColors(types, item.typeId).bg}></span>
+                <span class="dot" style:background-color={c.bg}></span>
                 {typeLabel(item.typeId)}
               </td>
-              <td class="title">{item.title}</td>
-              <td class="mono num">{formatDuration(itemSeconds(item))}</td>
-              <td class="notes">{item.notes}</td>
               <td>
+                <div class="title">{item.title}</div>
+                {#if item.artist}<div class="artist">{item.artist}</div>{/if}
+              </td>
+              {#if showYear}<td class="mono">{item.year ?? ''}</td>{/if}
+              {#if showTags}
+                <td class="tags">
+                  {#each item.tags as tagId (tagId)}<span class="tag">{tagLabel(tagId)}</span
+                    >{/each}
+                </td>
+              {/if}
+              <td class="mono num">{formatDuration(itemSeconds(item))}</td>
+              {#if showIntro}
+                <td class="mono num">
+                  {item.introSeconds === null ? '' : formatDuration(item.introSeconds)}
+                </td>
+              {/if}
+              <td class="notes">
+                {item.notes}
                 {#if item.script}
-                  {item.script.title}{item.script.deleted
-                    ? ` (${t('rundowns.item.scriptDeleted')})`
-                    : ''}
+                  <div class="script">
+                    {t('rundowns.item.script')} : {item.script.title}{item.script.deleted
+                      ? ` (${t('rundowns.item.scriptDeleted')})`
+                      : ''}
+                  </div>
                 {/if}
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
+
+      <p class="legend">
+        {#each usedTypes as typeId (typeId)}
+          <span
+            ><span class="dot" style:background-color={itemColors(types, typeId).bg}
+            ></span>{typeLabel(typeId)}</span
+          >
+        {/each}
+        {#if anyCut}<span>{t('print.cutLegend')}</span>{/if}
+      </p>
+    {/if}
+
+    {#if rundown.notes.trim()}
+      <section class="general-notes">
+        <h2>{t('rundowns.field.notes')}</h2>
+        <p>{rundown.notes}</p>
+      </section>
     {/if}
 
     {#if withScripts}
@@ -201,8 +254,8 @@
     color: #000;
     padding: 14mm 12mm;
     border-radius: 4px;
-    font-size: 10.5pt;
-    line-height: 1.35;
+    font-size: 10pt;
+    line-height: 1.3;
   }
   .head {
     display: flex;
@@ -247,8 +300,59 @@
     font-size: 9pt;
     text-transform: uppercase;
   }
-  .items tr {
+  /* Une ligne teintée de la couleur du type, avec un filet à gauche. */
+  .items tbody tr {
     break-inside: avoid;
+    background: color-mix(in srgb, var(--type-color) 14%, #fff);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .items tbody td:first-child {
+    border-left: 4px solid var(--type-color);
+  }
+  .no {
+    font-weight: 700;
+  }
+  .offset {
+    font-size: 8.5pt;
+    color: #444;
+  }
+  .artist {
+    font-size: 9.5pt;
+  }
+  .tag {
+    display: inline-block;
+    border: 1px solid #000;
+    border-radius: 999px;
+    padding: 0 0.4em;
+    margin: 0 0.2em 0.15em 0;
+    font-size: 8.5pt;
+    white-space: nowrap;
+  }
+  .script {
+    font-size: 8.5pt;
+    color: #333;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1rem;
+    font-size: 9pt;
+    margin: 0.5rem 0 0;
+  }
+  .general-notes {
+    margin-top: 1rem;
+    break-inside: avoid;
+  }
+  .general-notes h2 {
+    font-size: 12pt;
+    color: #000;
+    margin: 0 0 0.3rem;
+    border-bottom: 1px solid #000;
+  }
+  .general-notes p {
+    margin: 0;
+    white-space: pre-wrap;
   }
   .num {
     text-align: right !important;

@@ -31,8 +31,9 @@ export interface AutomationConnector {
   /** Arrêt propre : plus aucun appel au contexte ensuite. */
   stop(): void;
   /**
-   * Signal entrant de l'automation (« un titre démarre »), reçu à l'heure serveur indiquée.
+   * Signal entrant de l'automation (« un titre démarre »), reçu à l'heure serveur indiquée,
+   * avec le nom brut transmis (« Artiste - Titre », éventuellement vide).
    * Facultatif : seuls les connecteurs alimentés par un signal (RadioDJ) l'implémentent.
    */
-  signal?(receivedAt: number): void;
+  signal?(receivedAt: number, title: string): void;
 }

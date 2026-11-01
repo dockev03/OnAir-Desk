@@ -437,6 +437,7 @@
       <RundownView
         rundown={shownRundown}
         {types}
+        tags={link.settings?.itemTags ?? []}
         currentUid={link.prompter?.rundown?.id === shownRundown.id ? link.prompter.itemUid : null}
         onitem={(uid) => void openItem(uid)}
       />

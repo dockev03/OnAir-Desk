@@ -63,7 +63,7 @@
       {#each songs as song (song.id)}
         <li>
           <button type="button" class="song" onclick={() => onpick(song)}>
-            <span>{song.artist} — {song.title}</span>
+            <span>{song.artist} — {song.title}{song.year !== null ? ` (${song.year})` : ''}</span>
             <span class="mono">{formatDuration(Math.round(song.durationMs / 1000))}</span>
           </button>
         </li>

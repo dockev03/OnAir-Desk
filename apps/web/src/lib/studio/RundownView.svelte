@@ -5,27 +5,31 @@
     itemSeconds,
     rundownSchedule,
     secondsToTime,
+    songNumbers,
     type ItemType,
     type PrompterRundown,
   } from '@onair-desk/shared';
-  import { i18n } from '$lib/i18n/index.svelte.js';
+  import { i18n, t } from '$lib/i18n/index.svelte.js';
   import { formatAirDate } from '$lib/rundowns.js';
 
   /** Conducteur : une ligne colorée par élément, heure de passage, durée ; clic = lecture. */
   let {
     rundown,
     types,
+    tags,
     currentUid,
     onitem,
   }: {
     rundown: PrompterRundown;
     types: ItemType[];
+    tags: ItemType[];
     /** Élément affiché sur le prompteur (mis en évidence). */
     currentUid: string | null;
     onitem: (uid: string) => void;
   } = $props();
 
   const schedule = $derived(rundownSchedule(rundown.startTime, rundown.items));
+  const numbers = $derived(songNumbers(rundown.items));
 </script>
 
 <div class="view">
@@ -46,14 +50,27 @@
         style:color={c.fg}
         onclick={() => onitem(item.uid)}
       >
+        <span class="num">{numbers[i] ?? ''}</span>
         <span class="time mono">{secondsToTime(schedule.starts[i] ?? 0)}</span>
         <span class="name">
-          {item.title}
+          {item.title}{#if item.artist}<span class="artist">{` · ${item.artist}`}</span>{/if}
           {#if item.scriptId !== null && item.script && !item.script.deleted}<span
               class="doc"
               aria-hidden="true">≡</span
             >{/if}
         </span>
+        {#each item.tags as tagId (tagId)}
+          {@const tc = itemColors(tags, tagId)}
+          <span class="tag" style:background-color={tc.bg} style:color={tc.fg}
+            >{tags.find((x) => x.id === tagId)?.label ?? tagId}</span
+          >
+        {/each}
+        {#if item.introSeconds !== null}
+          <span class="intro mono"
+            >{t('studio.introTime', { time: formatDuration(item.introSeconds) })}</span
+          >
+        {/if}
+        {#if item.cuttable}<span class="cut" aria-label={t('rundowns.item.cuttable')}>✂</span>{/if}
         <span class="dur mono">{formatDuration(itemSeconds(item))}</span>
       </button>
     {/each}
@@ -114,6 +131,30 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .num {
+    width: 1.6rem;
+    flex-shrink: 0;
+    text-align: right;
+    font-weight: 700;
+  }
+  .artist {
+    opacity: 0.8;
+  }
+  .tag {
+    flex-shrink: 0;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+  }
+  .intro {
+    flex-shrink: 0;
+    font-size: 1rem;
+    opacity: 0.85;
+  }
+  .cut {
+    flex-shrink: 0;
   }
   .doc {
     margin-left: 0.5rem;

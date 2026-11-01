@@ -9,7 +9,9 @@ import { cuesSchema, scriptDocSchema } from './content.js';
 import { layoutSchema } from './layout.js';
 import {
   airDateSchema,
+  itemTagsSchema,
   itemTypesSchema,
+  rundownNotesSchema,
   itemUidSchema,
   rundownItemsSchema,
   startTimeSchema,
@@ -151,6 +153,8 @@ export const settingsSchema = z.object({
   cues: cuesSchema,
   /** Types d'éléments de conducteur et leurs couleurs. */
   itemTypes: itemTypesSchema,
+  /** Étiquettes posées sur les éléments de conducteur (FR, Pépite…). */
+  itemTags: itemTagsSchema,
   /** Source d'automation du studio (titre en cours / à venir). */
   automationSource: z.enum(AUTOMATION_SOURCES),
   /** Simulateur : accélération des durées (1 = temps réel), pour les démonstrations. */
@@ -317,6 +321,7 @@ export const createRundownSchema = z.object({
   title: rundownTitleSchema,
   airDate: airDateSchema,
   startTime: startTimeSchema,
+  notes: rundownNotesSchema.default(''),
   /** Disposition de l'écran studio ; null : celle des paramètres. */
   layout: layoutSchema.nullable().optional(),
   items: rundownItemsSchema.optional(),
@@ -329,6 +334,7 @@ export const updateRundownSchema = z
     title: rundownTitleSchema.optional(),
     airDate: airDateSchema.optional(),
     startTime: startTimeSchema.optional(),
+    notes: rundownNotesSchema.optional(),
     layout: layoutSchema.nullable().optional(),
     items: rundownItemsSchema.optional(),
   })
