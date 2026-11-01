@@ -13,6 +13,7 @@ Documents liés :
 - `docs/plan-etape-6.md` : plan et **bilan** de l'étape 6 (socle antenne), réalisée.
 - `docs/cadrage-radiodj.md` : constats techniques sur RadioDJ (plugin, base), préalables à l'étape 7.
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
+- `docs/plan-etape-8.md` : plan de l'étape 8 (AzuraCast et écran de veille), validé.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne) et 7 (RadioDJ) réalisées ; étapes 8 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
