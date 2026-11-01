@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { AUTOMATION_SOURCES, SIMULATOR_SPEED_MAX } from './air.js';
+import {
+  AUTOMATION_SOURCES,
+  CONNECTED_SOURCES,
+  SIMULATOR_SPEED_MAX,
+  type ConnectedSource,
+} from './air.js';
 import { cuesSchema, scriptDocSchema } from './content.js';
+import { layoutSchema } from './layout.js';
 import {
   airDateSchema,
   itemTypesSchema,
@@ -78,6 +84,60 @@ export const radiodjSettingsSchema = z
   })
   .strict();
 
+/** Retard du flux AzuraCast (secondes) : décalage appliqué à l'heure de début des titres. */
+export const STREAM_DELAY_MAX_SECONDS = 30;
+
+/**
+ * Accès à AzuraCast (titre en cours / à venir, indicateur « en direct »). La clé API, si la
+ * station en exige une, n'est jamais stockée ici : elle vient de AZURACAST_API_KEY.
+ */
+export const azuracastSettingsSchema = z
+  .object({
+    /** Adresse d'AzuraCast, en https:// uniquement ; vide : non configuré. */
+    url: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((v) => {
+        if (v === '') return true;
+        try {
+          const u = new URL(v);
+          return u.protocol === 'https:' && !u.username && !u.password && !u.search && !u.hash;
+        } catch {
+          return false;
+        }
+      }, 'azuracast_url'),
+    /** Nom court de la station (shortcode), ou son numéro. */
+    station: z
+      .string()
+      .trim()
+      .regex(/^$|^[A-Za-z0-9_-]{1,64}$/, 'azuracast_station'),
+    streamDelaySeconds: z
+      .number()
+      .int()
+      .min(-STREAM_DELAY_MAX_SECONDS)
+      .max(STREAM_DELAY_MAX_SECONDS),
+  })
+  .strict();
+
+/** Bascule forcée : automatique, direct, hors direct. */
+export const AIR_FORCES = ['auto', 'live', 'offair'] as const;
+export type AirForce = (typeof AIR_FORCES)[number];
+
+/**
+ * Mode d'antenne « direct / hors direct » : deux sources, l'une pour le direct, l'autre le
+ * reste du temps. Désactivé : seule `automationSource` compte.
+ */
+export const airSwitchSchema = z
+  .object({
+    enabled: z.boolean(),
+    liveSource: z.enum(CONNECTED_SOURCES),
+    offAirSource: z.enum(CONNECTED_SOURCES),
+    force: z.enum(AIR_FORCES),
+  })
+  .strict()
+  .refine((s) => s.liveSource !== s.offAirSource, 'air_switch_same');
+
 export const settingsSchema = z.object({
   stationName: z.string().trim().min(1).max(80),
   locale: localeSchema,
@@ -99,6 +159,14 @@ export const settingsSchema = z.object({
   radiodj: radiodjSettingsSchema,
   /** Seuils de l'alerte de fin de titre sur l'écran studio. */
   trackAlert: trackAlertSchema,
+  /** AzuraCast : adresse, station, retard du flux. */
+  azuracast: azuracastSettingsSchema,
+  /** Bascule direct / hors direct entre deux sources. */
+  airSwitch: airSwitchSchema,
+  /** Disposition de l'écran studio hors émission et pour les conducteurs sans choix. */
+  defaultLayout: layoutSchema,
+  /** Protection contre l'usure de l'écran (léger décalage périodique des éléments fixes). */
+  burnInProtection: z.boolean(),
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
@@ -108,6 +176,19 @@ export const settingsSchema = z.object({
     .regex(/^[a-f0-9]{16}$/)
     .nullable(),
 });
+
+/**
+ * Sources d'automation en service : les deux sources de la bascule si elle est active, sinon la
+ * source unique (aucune si « aucune »).
+ */
+export function sourcesInUse(
+  settings: Pick<Settings, 'automationSource' | 'airSwitch'>,
+): ConnectedSource[] {
+  if (settings.airSwitch.enabled) {
+    return [settings.airSwitch.liveSource, settings.airSwitch.offAirSource];
+  }
+  return settings.automationSource === 'none' ? [] : [settings.automationSource];
+}
 
 /** Modification des paramètres : seuls les champs fournis changent. */
 export const settingsUpdateSchema = settingsSchema
@@ -236,6 +317,8 @@ export const createRundownSchema = z.object({
   title: rundownTitleSchema,
   airDate: airDateSchema,
   startTime: startTimeSchema,
+  /** Disposition de l'écran studio ; null : celle des paramètres. */
+  layout: layoutSchema.nullable().optional(),
   items: rundownItemsSchema.optional(),
 });
 
@@ -246,6 +329,7 @@ export const updateRundownSchema = z
     title: rundownTitleSchema.optional(),
     airDate: airDateSchema.optional(),
     startTime: startTimeSchema.optional(),
+    layout: layoutSchema.nullable().optional(),
     items: rundownItemsSchema.optional(),
   })
   .refine((v) => Object.keys(v).length > 1, 'empty');
@@ -271,6 +355,8 @@ export type TimeFormat = z.infer<typeof timeFormatSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type RadiodjSettings = z.infer<typeof radiodjSettingsSchema>;
 export type TrackAlertSettings = z.infer<typeof trackAlertSchema>;
+export type AzuracastSettings = z.infer<typeof azuracastSettingsSchema>;
+export type AirSwitchSettings = z.infer<typeof airSwitchSchema>;
 export type SetupInput = z.infer<typeof setupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

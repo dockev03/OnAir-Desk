@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { TestServer } from './server.js';
+import { TestServer, createShowNow } from './server.js';
 
 /**
  * Étape 7 : alerte de fin de titre (orange puis rouge), compte à rebours d'intro, et écoute
@@ -17,6 +17,8 @@ test.describe.configure({ mode: 'serial' });
 test.beforeAll(async () => {
   await server.start();
   api = await server.setupAdmin();
+  // Émission en cours : sinon l'écran est en veille.
+  await createShowNow(api);
   token = (await (await api.post('/api/devices', { data: { name: 'Afficheur' } })).json()).token;
 });
 

@@ -296,4 +296,10 @@ export const migrations: string[] = [
     created_at TEXT NOT NULL DEFAULT ${NOW}
   );
   `,
+  /* 8 — dispositions de l'écran studio, par conducteur et par modèle (null : par défaut) */ `
+  ALTER TABLE rundowns ADD COLUMN layout TEXT
+    CHECK (layout IS NULL OR layout IN ('solo', 'regie', 'interview'));
+  ALTER TABLE rundown_templates ADD COLUMN layout TEXT
+    CHECK (layout IS NULL OR layout IN ('solo', 'regie', 'interview'));
+  `,
 ];

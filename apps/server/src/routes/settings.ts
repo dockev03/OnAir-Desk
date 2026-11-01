@@ -36,23 +36,28 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) 
     repos.audit.write({ type: 'user', id: admin.id }, 'settings.updated', {
       fields: Object.keys(values),
     });
+    const sources = (v: Settings) => {
+      const sw = v.airSwitch;
+      return sw.enabled ? `${sw.liveSource}+${sw.offAirSource}` : v.automationSource;
+    };
     if (
-      settings.automationSource !== before.automationSource ||
+      sources(settings) !== sources(before) ||
       settings.simulatorSpeed !== before.simulatorSpeed
     ) {
       repos.audit.write(
         { type: 'user', id: admin.id },
         'automation.source_changed',
         {
-          from: before.automationSource,
-          to: settings.automationSource,
+          from: sources(before),
+          to: sources(settings),
           speed: settings.simulatorSpeed,
         },
         DEFAULT_STUDIO_ID,
       );
     }
-    // Ne redémarre le connecteur que si sa configuration a changé (accès RadioDJ, fuseau…).
-    ctx.automation.apply(settings);
+    // Ne redémarre un connecteur que si sa configuration a changé (accès RadioDJ, fuseau…) ;
+    // un forçage direct / hors direct bascule aussitôt, au nom de l'admin.
+    ctx.automation.apply(settings, { type: 'user', id: admin.id });
     return settings;
   });
 

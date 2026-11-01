@@ -1,6 +1,7 @@
 import type { AirMessage, AirSnapshot, Studio } from './air.js';
 import type { ScriptDoc } from './content.js';
 import type { ItemScriptInfo } from './rundown.js';
+import type { Layout } from './layout.js';
 import type { Locale, Role, Settings } from './schemas.js';
 import type { SkipReason, TemplateExclusion } from './template.js';
 
@@ -75,6 +76,23 @@ export interface RadiodjSong {
   title: string;
   /** Durée jusqu'au point de mix si les repères le donnent. */
   durationMs: number;
+}
+
+/**
+ * Résultat du bouton « Tester la connexion » à AzuraCast. `auth` : clé non nécessaire
+ * (« none »), acceptée, refusée (clé fournie mais rejetée) ou requise (aucune clé fournie).
+ */
+export interface AzuracastTestResult {
+  ok: boolean;
+  /** Code d'erreur stable (traduit côté interface) quand ok est faux. */
+  error: string | null;
+  auth: 'none' | 'accepted' | 'refused' | 'required' | null;
+  /** Une clé est fournie au serveur (AZURACAST_API_KEY) ; sa valeur n'est jamais renvoyée. */
+  keyConfigured: boolean;
+  stationName: string | null;
+  /** Titre en cours (« Artiste - Titre »), pour confirmer la bonne station. */
+  nowPlaying: string | null;
+  live: boolean | null;
 }
 
 // ---- Bibliothèque ------------------------------------------------------------
@@ -169,6 +187,8 @@ export interface RundownSummary {
   updatedByName: string | null;
   /** Modèle d'origine (conducteur créé depuis un modèle), sinon null. */
   templateId: number | null;
+  /** Disposition de l'écran studio ; null : celle des paramètres. */
+  layout: Layout | null;
 }
 
 export interface RundownItem {
@@ -203,6 +223,8 @@ export interface TemplateSummary {
   validFrom: string | null;
   validUntil: string | null;
   active: boolean;
+  /** Disposition de l'écran studio, copiée dans les conducteurs créés. */
+  layout: Layout | null;
   itemCount: number;
   totalSeconds: number;
   updatedAt: string;
@@ -250,6 +272,8 @@ export interface PrompterRundown {
   title: string;
   airDate: string;
   startTime: string;
+  /** Disposition de l'écran studio ; absente des copies antérieures à l'étape 8. */
+  layout?: Layout | null;
   items: RundownItem[];
 }
 

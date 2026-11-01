@@ -28,6 +28,10 @@ describe('settingsSchema', () => {
     simulatorSpeed: 1,
     radiodj: { host: '', port: 3306, database: 'radiodj', user: 'onairdesk' },
     trackAlert: { soonSeconds: 30, nowSeconds: 10 },
+    azuracast: { url: '', station: '', streamDelaySeconds: 0 },
+    airSwitch: { enabled: false, liveSource: 'radiodj', offAirSource: 'azuracast', force: 'auto' },
+    defaultLayout: 'solo',
+    burnInProtection: true,
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {

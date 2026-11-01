@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { addDays } from './time.js';
 import {
-  addDays,
   createFromTemplateSchema,
   createTemplateSchema,
   daysToMask,

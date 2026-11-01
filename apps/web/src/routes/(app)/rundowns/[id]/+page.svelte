@@ -2,9 +2,11 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
+    LAYOUTS,
     formatDuration,
     rundownSchedule,
     secondsToTime,
+    type Layout,
     type Library,
     type Rundown,
     type Template,
@@ -29,6 +31,8 @@
   let title = $state('');
   let airDate = $state('');
   let startTime = $state('07:00:00');
+  /** Disposition de l'écran studio ; null : celle des paramètres. */
+  let layout = $state<Layout | null>(null);
   let items = $state<EditItem[]>([]);
   let version = 0;
 
@@ -41,6 +45,7 @@
     title = r.title;
     airDate = r.airDate;
     startTime = r.startTime;
+    layout = r.layout;
     items = r.items.map(toEdit);
     version = r.version;
   }
@@ -69,6 +74,7 @@
         title: title.trim() || rundown!.title,
         airDate,
         startTime,
+        layout,
         items: items.map(toInput),
       });
       version = r.version;
@@ -224,6 +230,13 @@
       <label>
         {t('rundowns.field.startTime')}
         <input type="time" step="1" bind:value={startTime} required onchange={changed} />
+      </label>
+      <label>
+        {t('field.layout')}
+        <select bind:value={layout} onchange={changed}>
+          <option value={null}>{t('layout.default')}</option>
+          {#each LAYOUTS as l (l)}<option value={l}>{t(`layout.${l}`)}</option>{/each}
+        </select>
       </label>
     </div>
   {:else}

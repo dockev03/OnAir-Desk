@@ -20,6 +20,7 @@ import { registerWsRoutes } from './ws/routes.js';
 import type { RouteContext } from './routes/context.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerAzuracastRoutes } from './routes/azuracast.js';
 import { registerDeviceRoutes } from './routes/devices.js';
 import { registerLibraryRoutes } from './routes/library.js';
 import { registerRundownRoutes } from './routes/rundowns.js';
@@ -75,6 +76,8 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     air,
     automation: new AutomationManager(DEFAULT_STUDIO_ID, air, repos.audit, Date.now, {
       radiodjPassword: config.radiodjDbPassword,
+      azuracastApiKey: config.azuracastApiKey,
+      azuracastCa: config.azuracastCa,
       ...opts.connectorDeps,
     }),
     throttle: new LoginThrottle(),
@@ -127,6 +130,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerDeviceRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);
   registerRadiodjRoutes(app, ctx);
+  registerAzuracastRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);

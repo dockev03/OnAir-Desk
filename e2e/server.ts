@@ -95,3 +95,51 @@ export class TestServer {
     return api;
   }
 }
+
+/** Date AAAA-MM-JJ et heure HH:MM:SS à Paris (fuseau de la station de test), décalées. */
+export function parisTime(offsetMs = 0): { date: string; time: string } {
+  const s = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Paris',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(Date.now() + offsetMs));
+  const [date, time] = s.split(' ') as [string, string];
+  return { date, time };
+}
+
+/**
+ * Conducteur « en cours » : commencé il y a 5 minutes, pour 2 heures. Sans émission en cours,
+ * l'écran studio passe en veille (étape 8).
+ */
+export async function createShowNow(
+  api: APIRequestContext,
+  extra: Record<string, unknown> = {},
+): Promise<number> {
+  const { date, time } = parisTime(-5 * 60_000);
+  const res = await api.post('/api/rundowns', {
+    data: {
+      ownerId: null,
+      title: 'Émission en cours',
+      airDate: date,
+      startTime: time,
+      items: [
+        {
+          uid: 'emission',
+          typeId: 'chronique',
+          title: 'Émission',
+          durationSeconds: 7200,
+          notes: '',
+          scriptId: null,
+        },
+      ],
+      ...extra,
+    },
+  });
+  if (!res.ok()) throw new Error(`Conducteur : ${res.status()} ${await res.text()}`);
+  return (await res.json()).id as number;
+}

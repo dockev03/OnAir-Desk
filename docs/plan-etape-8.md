@@ -1,6 +1,6 @@
 # Étape 8 — AzuraCast et écran de veille : plan
 
-> **Statut : plan validé, réalisation à venir.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §2 (question ouverte 3), §5 (principes d'affichage), §6 (AzuraCast), §7 idée 17 (écran de veille), §8 étape 8, §10 (connecteurs, dispositions). Branche : `feature/etape-8-azuracast`.
 > 6 fonctionnalités. S'appuie sur le socle de l'étape 6 (état antenne, contrat des connecteurs) et sur le gestionnaire de l'étape 7.
 
@@ -105,3 +105,47 @@ Les 16 décisions sont **validées** ; la colonne « Alternative » garde trace 
   - gestionnaire : bascule auto direct ↔ hors direct, forçage manuel, secours si RadioDJ en panne, journal des bascules, signal RadioDJ transmis en hors direct ;
   - migration 8 et disposition copiée du modèle au conducteur.
 - **Bout en bout (Playwright)** : veille affichée sans conducteur puis quittée au démarrage d'une émission ; clic pour quitter la veille ; disposition « Interview » appliquée ; bandeau « Connexion perdue » après coupure prolongée puis retour ; bascule de source visible à l'écran (faux serveur AzuraCast passant en direct).
+
+## Bilan de l'étape 8
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - source `azuracast`, `CONNECTED_SOURCES` ; état antenne complété d'un champ `live` (côté à l'antenne, forçage, état des deux sources) ;
+  - paramètres `azuracast` (adresse `https://` sans identifiants, nom court, retard du flux de −30 à +30 s ; **aucune clé acceptée**), `airSwitch` (mode direct / hors direct, deux sources différentes, forçage `auto` / `live` / `offair`), `defaultLayout`, `burnInProtection` ; `sourcesInUse` ;
+  - dispositions (`layout.ts`) : trois dispositions figées et leurs effets, `effectiveLayout` ; champ `layout` sur conducteurs et modèles ;
+  - écran de veille (`standby.ts`) : fenêtre d'une émission dans le fuseau de la station, émission en cours (marge de 10 min), prochaine émission, `standbyActive` ;
+  - `zonedToEpoch` et `addDays` déplacés dans `time.ts` (utilisés par l'écran studio sans charger les schémas) ; action `automation.switched` au journal.
+- **Serveur** :
+  - `connectors/azuracast/` : client HTTPS sans dépendance (module `https`, autorité `AZURACAST_CA_FILE` ajoutée aux autorités publiques, clé `AZURACAST_API_KEY` dans l'en-tête `X-API-Key`, délai 5 s, codes d'erreur stables), flux SSE Centrifugo (reconnexion de 1 à 60 s, silence de plus de 75 s = reconnexion), lecture tolérante de la réponse « Now Playing », connecteur (relecture au démarrage puis toutes les 30 s, publications SSE, titre fini depuis plus de 2 min effacé) ;
+  - **gestionnaire réécrit** : une « source en service » par connecteur (état, panne, nouvel essai, mode dégradé RadioDJ), source unique ou **deux sources simultanées** ; bascule automatique sur l'indicateur « en direct » de la source hors direct (on reste où l'on est si elle ne répond pas), forçage sans redémarrage, **secours** (RadioDJ en panne en direct : titre relayé par AzuraCast, sinon titre signalé) ; chaque bascule journalisée (système, ou l'admin qui a forcé) ; le signal RadioDJ est transmis que RadioDJ soit à l'antenne ou non ;
+  - route admin `POST /api/settings/azuracast/test` (station, titre en cours, direct, sort de la clé : non nécessaire / acceptée / refusée / requise) ; recherche de titres RadioDJ ouverte aussi en mode bascule ;
+  - **migration 8** : colonne `layout` sur `rundowns` et `rundown_templates` ; disposition copiée du modèle aux conducteurs créés, à la duplication, à l'enregistrement comme modèle et à « Réappliquer le modèle » ;
+  - configuration : `AZURACAST_API_KEY`, `AZURACAST_CA_FILE` (lu et vérifié au démarrage).
+- **Interface** :
+  - écran studio : **veille** (horloge, voyant On Air gris, titre en cours de la source active, prochaine émission ; un clic la quitte pour 10 min) ; **dispositions** (« Interview » : bandeau réduit et barre latérale réduite d'office ; « Émission avec régie » : zone régie fixe réservée) ; **anti-usure** (bandeau, zone régie et barre latérale décalés de ±4 px toutes les 2 min ; dérive de la veille toutes les minutes ; sans transition avec `prefers-reduced-motion`) ; **indicateur de connexion** (point vert / orange + heure de dernière synchronisation ; bandeau « Connexion perdue depuis m:ss » au-delà de 30 s, dans le bandeau supérieur) ;
+  - Paramètres : mode d'antenne, sources du direct et hors direct, bascule (avec rappel du critère automatique), état de chaque source et côté à l'antenne, bloc AzuraCast + « Tester la connexion », disposition par défaut, protection contre l'usure ;
+  - éditeurs de conducteur et de modèle : choix de la disposition ;
+  - textes FR et EN.
+- **Installation** : `docker-compose.yml` (variables AzuraCast), `.env.example`, README (sections AzuraCast, écran de veille et dispositions ; sécurité).
+
+### Tests
+
+- 228 tests unitaires (+34), dont :
+  - réponse réelle relevée au cadrage (hors direct) et réponse « en direct » construite d'après la documentation ; texte brut seul, station hors ligne, réponse illisible ; messages SSE (`connect`, `pub`, ancien format) ;
+  - client contre un **faux serveur AzuraCast en HTTPS** : certificat inconnu refusé **sans qu'aucune requête n'arrive** (la clé ne part jamais), certificat fourni accepté, clé seulement dans l'en-tête, 401 / 403 / 404 / 500 → codes stables sans la clé dans le message, serveur injoignable, flux SSE avec clé ;
+  - connecteur : relecture puis flux, autre station ignorée, panne de relecture, réponse inattendue, titre trop ancien effacé ;
+  - bascule : automatique dans les deux sens, forçage tracé au nom de l'admin sans redémarrage, AzuraCast en panne pendant le direct, secours RadioDJ, passage source unique ↔ aucune ;
+  - routes : test de connexion (clé non nécessaire / acceptée / refusée / requise, jamais renvoyée ni journalisée, admin seul), validation (http refusé, identifiants dans l'adresse, sources identiques, retard hors bornes) ; dispositions (modèle → conducteurs, modification, valeur inconnue refusée, duplication, enregistrement comme modèle) ;
+  - commun : émission en cours (marges, minuit), prochaine émission, veille, dispositions, schémas.
+- **Bout en bout (Chromium)**, 4 nouveaux scénarios (11 au total), avec un faux AzuraCast à certificat auto-signé accepté par `AZURACAST_CA_FILE` : test de connexion ; veille (horloge, titre AzuraCast, prochaine émission) ; bascule automatique au direct puis retour, clic pour quitter la veille ; dispositions « Interview » et « Émission avec régie ». Scénario de coupure complété : point orange d'abord, bandeau après 30 s, reconnexion.
+- **Poids de `/studio`** : +4,3 Ko gzip (90,8 → 95,1 Ko, même méthode avant / après), toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Veille** : elle ne s'affiche pas non plus pendant que le prompteur affiche un texte (sinon elle couvrirait un script en préparation au bout de 10 minutes).
+- **Certificat auto-signé** : comme pour `TLS_CERT_FILE`, le volume `/certs` est commenté dans `docker-compose.yml` ; le décommenter demande de modifier la stack (le plus simple reste Let's Encrypt sur AzuraCast).
+- « Clé acceptée » signifie que la requête avec clé a réussi : si la station est publique, AzuraCast répond même sans regarder la clé.
+- Voyant On Air de la veille toujours gris jusqu'à l'étape 9 ; zone régie vide jusqu'à l'étape 10.
+- Les tests existants de l'écran studio créent désormais une émission « en cours » : sans elle, l'écran est en veille.
+- **Vérifications restantes** (voir plus haut), toujours à faire : capture pendant un direct RadioDJ, publication SSE au changement de titre, retard réel du flux, accès protégé par clé. Pour le flux SSE, le connecteur s'abonne au canal `station:<nom court>` (ici `station:vichyradio`) : la commande du cadrage, lancée avec `station:1`, n'a reçu aucune donnée, ce qui est normal sur un canal qui n'existe pas ; la refaire avec le nom court.

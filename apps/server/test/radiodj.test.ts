@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AirState, RadiodjSettings, ServerMessage, Settings } from '@onair-desk/shared';
+import {
+  zonedToEpoch,
+  type AirState,
+  type RadiodjSettings,
+  type ServerMessage,
+  type Settings,
+} from '@onair-desk/shared';
 import { AirStateStore } from '../src/air/state.js';
+import { defaultSettings } from '../src/db/settings.js';
 import {
   POLL_MS,
   RadiodjConnector,
@@ -16,7 +23,6 @@ import {
 import { radiodjErrorCode } from '../src/connectors/radiodj/reader.js';
 import { AutomationManager, DEGRADED_MAX_MS, RETRY_MS } from '../src/connectors/manager.js';
 import type { AutomationUpdate, ConnectorContext } from '../src/connectors/types.js';
-import { zonedToEpoch } from '../src/lib/time.js';
 import { FakeReader, SANS_INTRO, SUMMERTIME } from './radiodj-fixtures.js';
 import type { Hub } from '../src/ws/hub.js';
 
@@ -221,14 +227,14 @@ describe('gestionnaire et source RadioDJ', () => {
     database: 'radiodj',
     user: 'onairdesk',
   };
-  const settings = (over: Partial<Settings> = {}) =>
-    ({
-      automationSource: 'radiodj',
-      simulatorSpeed: 1,
-      timezone: 'Europe/Paris',
-      radiodj: RADIODJ,
-      ...over,
-    }) as Settings;
+  const settings = (over: Partial<Settings> = {}): Settings => ({
+    ...defaultSettings(),
+    automationSource: 'radiodj',
+    simulatorSpeed: 1,
+    timezone: 'Europe/Paris',
+    radiodj: RADIODJ,
+    ...over,
+  });
 
   const setup = (db: FakeReader, password: string | null = 'secret') => {
     const sent: ServerMessage[] = [];

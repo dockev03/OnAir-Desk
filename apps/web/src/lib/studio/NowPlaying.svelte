@@ -17,7 +17,8 @@
 
   /**
    * Bandeau supérieur : titre en cours (temps restant, progression, alerte de fin, intro) et
-   * titre à venir (heure de démarrage), calculés avec l'heure serveur.
+   * titre à venir (heure de démarrage), calculés avec l'heure serveur. Bandeau réduit
+   * (disposition « Interview ») : titre en cours et temps restant seulement.
    */
   let {
     air,
@@ -25,12 +26,14 @@
     timezone,
     timeFormat,
     alert,
+    compact = false,
   }: {
     air: AirState;
     now: number;
     timezone: string;
     timeFormat: TimeFormat;
     alert: TrackAlertSettings;
+    compact?: boolean;
   } = $props();
 
   const current = $derived(air.nowPlaying);
@@ -65,7 +68,7 @@
     <div class="row-main">
       <div class="names">
         <div class="title" data-testid="now-title">{current.title}</div>
-        {#if current.artist}<div class="artist">{current.artist}</div>{/if}
+        {#if current.artist && !compact}<div class="artist">{current.artist}</div>{/if}
       </div>
       {#if intro !== null && intro > 0}
         <div class="intro mono" data-testid="intro-left">
@@ -85,7 +88,7 @@
           : t('studio.yourTurn', { n: Math.max(0, Math.ceil(remaining / 1000)) })}
       </div>
     {/if}
-    {#if timed}
+    {#if timed && !compact}
       <div
         class="bar"
         role="progressbar"
@@ -111,27 +114,29 @@
   {/if}
 </section>
 
-<section class="card track next" aria-label={t('studio.nextTrack')}>
-  <div class="label">{t('studio.nextTrack')}</div>
-  {#if air.next}
-    <div class="names">
-      <div class="title" data-testid="next-title">{air.next.title}</div>
-      <div class="artist">{air.next.artist}</div>
-    </div>
-    <div class="meta mono">
-      {seconds(air.next.durationMs)}{air.next.introMs
-        ? ` · ${t('studio.intro')} ${seconds(air.next.introMs)}`
-        : ''}
-      {#if nextAt !== null}
-        · {t('studio.startsAtShort', {
-          time: formatClock(new Date(nextAt), timezone, timeFormat),
-        })}
-      {/if}
-    </div>
-  {:else}
-    <div class="empty">—</div>
-  {/if}
-</section>
+{#if !compact}
+  <section class="card track next" aria-label={t('studio.nextTrack')}>
+    <div class="label">{t('studio.nextTrack')}</div>
+    {#if air.next}
+      <div class="names">
+        <div class="title" data-testid="next-title">{air.next.title}</div>
+        <div class="artist">{air.next.artist}</div>
+      </div>
+      <div class="meta mono">
+        {seconds(air.next.durationMs)}{air.next.introMs
+          ? ` · ${t('studio.intro')} ${seconds(air.next.introMs)}`
+          : ''}
+        {#if nextAt !== null}
+          · {t('studio.startsAtShort', {
+            time: formatClock(new Date(nextAt), timezone, timeFormat),
+          })}
+        {/if}
+      </div>
+    {:else}
+      <div class="empty">—</div>
+    {/if}
+  </section>
+{/if}
 
 <style>
   .track {

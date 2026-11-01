@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { layoutSchema } from './layout.js';
 import { airDateSchema, rundownItemsSchema, startTimeSchema } from './rundown.js';
+import { addDays } from './time.js';
 
 /**
  * Modèles d'émission récurrente : jours de diffusion, période de validité, exclusions, et
@@ -19,13 +21,6 @@ const DAY_MS = 24 * 60 * 60_000;
 /** Nombre de jours entre deux dates AAAA-MM-JJ (to - from). */
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
-}
-
-/** Date AAAA-MM-JJ décalée d'un nombre de jours. */
-export function addDays(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 /** Jour de la semaine d'une date AAAA-MM-JJ (1 = lundi … 7 = dimanche). */
@@ -72,6 +67,8 @@ const templateFields = {
   /** Modèle suspendu : aucune création possible. */
   active: z.boolean(),
   exclusions: z.array(templateExclusionSchema).max(MAX_TEMPLATE_EXCLUSIONS),
+  /** Disposition de l'écran studio, copiée dans les conducteurs créés ; null : par défaut. */
+  layout: layoutSchema.nullable(),
   items: rundownItemsSchema,
 };
 
@@ -88,6 +85,7 @@ export const createTemplateSchema = z
     validUntil: templateFields.validUntil.default(null),
     active: templateFields.active.default(true),
     exclusions: templateFields.exclusions.default([]),
+    layout: templateFields.layout.default(null),
     items: templateFields.items.default([]),
   })
   .refine(validPeriod, { message: 'valid_period', path: ['validUntil'] });
@@ -103,6 +101,7 @@ export const updateTemplateSchema = z
     validUntil: templateFields.validUntil.optional(),
     active: templateFields.active.optional(),
     exclusions: templateFields.exclusions.optional(),
+    layout: templateFields.layout.optional(),
     items: templateFields.items.optional(),
   })
   .refine((v) => Object.keys(v).length > 1, 'empty')

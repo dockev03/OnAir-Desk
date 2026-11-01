@@ -1,5 +1,4 @@
-import type { Track } from '@onair-desk/shared';
-import { zonedToEpoch } from '../../lib/time.js';
+import { zonedToEpoch, type Track } from '@onair-desk/shared';
 import type { AutomationConnector, AutomationUpdate, ConnectorContext } from '../types.js';
 import { toTrack } from './cues.js';
 import { radiodjErrorCode, type RadiodjReader } from './reader.js';

@@ -92,6 +92,7 @@ export class Rundowns {
         title: input.title,
         airDate: input.airDate,
         startTime: input.startTime,
+        layout: input.layout ?? null,
         userId: user.id,
       },
       items,
@@ -125,6 +126,7 @@ export class Rundowns {
         title: input.title ?? source.title,
         airDate: input.airDate,
         startTime: source.startTime,
+        layout: source.layout,
         userId: user.id,
       },
       source.items.map(toItemInput),
@@ -132,8 +134,8 @@ export class Rundowns {
   }
 
   /**
-   * « Réappliquer le modèle » : le conducteur reprend le titre, l'heure de début et les
-   * éléments de son modèle d'origine ; sa date ne change pas.
+   * « Réappliquer le modèle » : le conducteur reprend le titre, l'heure de début, la
+   * disposition et les éléments de son modèle d'origine ; sa date ne change pas.
    */
   reapplyTemplate(user: User, id: number, version: number): RundownRecord {
     const updated = this.repos.db.transaction(() => {
@@ -146,6 +148,7 @@ export class Rundowns {
       return this.repos.rundowns.update(id, user.id, {
         title: template.title,
         startTime: template.startTime,
+        layout: template.layout,
         items: template.items.map(toItemInput),
       });
     })();

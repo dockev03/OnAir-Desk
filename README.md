@@ -130,6 +130,40 @@ OnAir-Desk lit le titre en cours, le titre à venir et les repères (intro, poin
 
 Les intros non marquées dans RadioDJ n'ont pas de compte à rebours de talk-over : marquer les repères dans RadioDJ pour en profiter.
 
+### 7. AzuraCast et bascule direct / hors direct (facultatif)
+
+OnAir-Desk lit le titre en cours et le titre à venir dans l'**API « Now Playing » d'AzuraCast**, en HTTPS : un flux temps réel (SSE) prévient à chaque changement, et l'état est relu toutes les 30 secondes. Toutes les connexions partent d'OnAir-Desk vers AzuraCast : **aucun port à ouvrir** côté OnAir-Desk. Si la Debian est filtrée en sortie, autoriser le HTTPS vers l'adresse d'AzuraCast.
+
+**Certificat d'AzuraCast** : la vérification HTTPS n'est jamais désactivée.
+
+- **Recommandé** : un certificat **Let's Encrypt** sur AzuraCast (_Administration_ → _Paramètres système_ → _Services_ ; il faut un nom de domaine). Rien à faire côté OnAir-Desk.
+- Certificat **auto-signé** : copier son certificat (format PEM) sur la Debian, par exemple dans `/etc/onair-desk/certs/azuracast.crt`, décommenter le volume `/etc/onair-desk/certs:/certs:ro` dans [`docker-compose.yml`](docker-compose.yml) et renseigner `AZURACAST_CA_FILE=/certs/azuracast.crt`. Ce certificat n'est accepté que pour AzuraCast.
+
+**Clé API** (si la page publique de la station est désactivée) :
+
+1. Dans AzuraCast, créer un **compte dédié** à OnAir-Desk, **sans aucun rôle d'administration** ni droit de gestion de station. ⚠️ Une clé AzuraCast a **tous les droits du compte** qui l'a créée : ne jamais utiliser la clé d'un administrateur.
+2. Avec ce compte : _Mon compte_ → _Clés API_ → créer une clé.
+3. La renseigner dans la variable `AZURACAST_API_KEY` de la stack (secret : jamais stocké dans OnAir-Desk, jamais renvoyé par l'interface ni journalisé). Elle est envoyée dans un en-tête, seulement après vérification du certificat. Changer de clé : modifier la variable et redéployer.
+
+| Variable            | Exemple                | Rôle                                                                      |
+| ------------------- | ---------------------- | ------------------------------------------------------------------------- |
+| `AZURACAST_API_KEY` | _(secret)_             | Clé API du compte dédié. Vide : aucune clé (station publique).            |
+| `AZURACAST_CA_FILE` | `/certs/azuracast.crt` | Certificat auto-signé d'AzuraCast à accepter. Vide : autorités publiques. |
+
+**Dans OnAir-Desk** : _Administration_ → **Paramètres** :
+
+- **Source unique** AzuraCast, ou mode **Direct / hors direct** : source du direct (ex. RadioDJ) et source hors direct (AzuraCast). Les deux tournent en même temps : le passage de l'une à l'autre est immédiat.
+- **Bascule** : _Automatique_ (direct dès qu'AzuraCast signale un DJ connecté, ce qui suppose que le direct RadioDJ passe par AzuraCast en tant que DJ / streamer), ou forcée (_Forcer le direct_ / _Forcer hors direct_). Chaque bascule est notée au journal.
+- **AzuraCast** : adresse (`https://…`), **nom court** de la station (visible dans l'adresse de sa page publique), **retard du flux** (secondes) pour que le temps restant colle à ce qu'on entend, puis **Tester la connexion** (indique aussi si la clé API est nécessaire, acceptée ou refusée).
+
+Sans repère intro / outro dans l'API d'AzuraCast, il n'y a pas de compte à rebours de talk-over pour ses titres. En direct, le titre envoyé par l'encodeur s'affiche sans temps restant.
+
+### 8. Écran de veille et dispositions
+
+- **Écran de veille** : quand aucun conducteur du jour n'est en cours (avec 10 minutes de marge avant et après) et que l'antenne n'est pas en direct, l'écran studio affiche l'horloge, le voyant On Air, le titre en cours et la prochaine émission. Il disparaît seul quand une émission commence ; un clic le quitte pour 10 minutes.
+- **Dispositions** : _Animateur seul_, _Émission avec régie_ (zone réservée aux messages régie), _Interview_ (bandeau réduit). Elles se choisissent sur le **modèle d'émission** et sur le **conducteur** ; la disposition par défaut se règle dans les Paramètres.
+- **Usure de l'écran** : les éléments fixes se décalent de quelques pixels toutes les 2 minutes, et la veille dérive lentement (désactivable dans les Paramètres).
+
 ### Mise à jour
 
 Portainer → _Stacks_ → `onair-desk` → **Pull and redeploy**. Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
@@ -156,6 +190,7 @@ Le nom exact du volume est visible dans Portainer → _Volumes_. **La sauvegarde
 - Conteneur durci : utilisateur non-root, système de fichiers en lecture seule (sauf `/data`), aucune capacité Linux, `no-new-privileges`.
 - Journal des actions sensibles (connexions, comptes, écrans) dans la table `audit_log`.
 - L'afficheur en kiosk ouvre une session sans intervention : il doit rester dans le studio, sur un réseau maîtrisé.
+- AzuraCast (facultatif) : connexions **sortantes** seulement, en HTTPS avec certificat **toujours vérifié** ; clé API facultative en variable d'environnement, liée à un compte **sans droit d'administration**, jamais journalisée ni renvoyée.
 - RadioDJ (facultatif) : base lue avec un compte **SELECT seul** ; port HTTP dédié aux connecteurs **fermé par défaut**, limité à la route du signal (jeton stocké haché, limitation de débit). Son jeton circule en clair sur le réseau local : la requête n'est qu'un signal, la base fait foi.
 
 ---

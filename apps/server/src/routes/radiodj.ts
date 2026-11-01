@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   radiodjSettingsSchema,
+  sourcesInUse,
   type ConnectorTokenCreated,
   type ConnectorTokenStatus,
   type RadiodjSong,
@@ -105,7 +106,7 @@ export function registerRadiodjRoutes(app: FastifyInstance, ctx: RouteContext) {
     requireUser(req);
     const { q } = parse(songSearchSchema, req.query);
     const settings = repos.settings.get();
-    if (settings.automationSource !== 'radiodj') throw badRequest('radiodj_not_source');
+    if (!sourcesInUse(settings).includes('radiodj')) throw badRequest('radiodj_not_source');
     try {
       const rows = await withReader(
         () => ctx.automation.openRadiodj(settings.radiodj),

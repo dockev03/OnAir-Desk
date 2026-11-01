@@ -7,6 +7,7 @@
     parseItemDuration,
     rundownSchedule,
     secondsToTime,
+    sourcesInUse,
     type ItemScriptInfo,
     type ItemType,
     type Library,
@@ -59,7 +60,9 @@
   $effect(() => {
     void stationSettings.load().catch(() => {});
   });
-  const radiodj = $derived(stationSettings.value?.automationSource === 'radiodj');
+  const radiodj = $derived(
+    stationSettings.value ? sourcesInUse(stationSettings.value).includes('radiodj') : false,
+  );
   /** Élément dont la recherche de titre est ouverte. */
   let picking = $state<string | null>(null);
 

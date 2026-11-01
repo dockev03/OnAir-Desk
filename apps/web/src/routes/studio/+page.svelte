@@ -1,11 +1,19 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import {
+    LAYOUT_BLOCKS,
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
+    STANDBY_DISMISS_MS,
+    addDays,
+    effectiveLayout,
     formatClock,
+    formatCountdown,
+    nextShow,
     rundownSchedule,
     secondsToTime,
+    showInProgress,
+    standbyActive,
     type Library,
     type PrompterRundown,
     type RundownList,
@@ -21,11 +29,15 @@
   import Reader from '$lib/studio/Reader.svelte';
   import RundownPicker from '$lib/studio/RundownPicker.svelte';
   import RundownView from '$lib/studio/RundownView.svelte';
+  import Standby from '$lib/studio/Standby.svelte';
+  import { FIXED_SHIFT, burnInShift, translate } from '$lib/studio/burnin.js';
   import StudioBrowser from '$lib/studio/StudioBrowser.svelte';
   import StudioSidebar from '$lib/studio/StudioSidebar.svelte';
 
   const FONT_KEY = 'onair-desk.studio.fontSize';
   const LIBRARY_REFRESH_MS = 60_000;
+  /** Au-delà, une coupure est « prolongée » : elle est affichée en grand. */
+  const LONG_OUTAGE_MS = 30_000;
 
   const link = new LiveLink();
   /** Heure serveur estimée, mise à jour à chaque changement de seconde. */
@@ -82,7 +94,49 @@
     // Sur l'écran studio : le jour et la suite d'abord, quelques passés seulement.
     return [...g.today, ...g.upcoming, ...g.past.slice(0, 10)];
   });
-  const collapsed = $derived(manualCollapse ?? reading);
+  /** Conducteurs proches (veille, émission en cours) : inutile de parcourir tout l'historique. */
+  const nearby = $derived(
+    rundownList
+      ? rundownList.rundowns.filter(
+          (r) =>
+            r.airDate >= addDays(rundownList!.today, -1) &&
+            r.airDate <= addDays(rundownList!.today, 7),
+        )
+      : [],
+  );
+  /** Émission en cours d'après les heures des conducteurs du jour. */
+  const onShow = $derived(showInProgress(nearby, now, timezone));
+  const isLive = $derived(link.air?.state.live?.active ?? false);
+  /** Disposition : celle du conducteur suivi, sinon de l'émission en cours, sinon par défaut. */
+  const layout = $derived(
+    effectiveLayout(
+      live ? (live.layout ?? null) : (onShow?.layout ?? null),
+      link.settings?.defaultLayout ?? 'solo',
+    ),
+  );
+  const blocks = $derived(LAYOUT_BLOCKS[layout]);
+  /** Veille quittée d'un clic jusqu'à cette heure (serveur). */
+  let standbyDismissedUntil = $state(0);
+  const standby = $derived(
+    rundownList !== null &&
+      link.state !== 'unauthorized' &&
+      link.state !== 'revoked' &&
+      !reading &&
+      now >= standbyDismissedUntil &&
+      standbyActive(nearby, now, timezone, isLive),
+  );
+  const upcoming = $derived(standby ? (nextShow(nearby, now, timezone)?.show ?? null) : null);
+  /** Protection contre l'usure : décalage des éléments fixes. */
+  const shift = $derived(
+    link.settings?.burnInProtection ? translate(burnInShift(now, FIXED_SHIFT)) : 'none',
+  );
+  const outage = $derived(link.offlineSince === null ? 0 : Math.max(0, now - link.offlineSince));
+  const syncTime = $derived(
+    link.syncedAt === null
+      ? ''
+      : formatClock(new Date(link.syncedAt), timezone, link.settings?.timeFormat ?? '24h'),
+  );
+  const collapsed = $derived(manualCollapse ?? (reading || blocks.collapseSidebar));
   const currentOwner = $derived(ownerId === undefined ? (lib?.owners[0]?.id ?? null) : ownerId);
   const fontSize = $derived(localFont ?? link.settings?.prompterFontSize ?? 48);
 
@@ -257,8 +311,8 @@
   <title>{link.settings?.stationName ?? 'OnAir-Desk'}</title>
 </svelte:head>
 
-<div class="studio">
-  <header class="top">
+<div class="studio" data-layout={layout}>
+  <header class="top" style:transform={shift}>
     <div class="card clock-card">
       <div class="station">{link.settings?.stationName ?? ''}</div>
       <div class="clock mono" aria-live="off">{clock}</div>
@@ -270,29 +324,51 @@
         {timezone}
         timeFormat={link.settings?.timeFormat ?? '24h'}
         alert={link.settings?.trackAlert ?? { soonSeconds: 30, nowSeconds: 10 }}
+        compact={blocks.compactHeader}
       />
     {/if}
-    <!-- Dans le bandeau : une coupure ne décale pas le texte en cours de lecture. -->
+    <!-- Dans le bandeau : une coupure ne décale pas le texte en cours de lecture. Discrète
+         d'abord (point orange), affichée en grand seulement si elle se prolonge. -->
     <div class="spacer" class:compact={showAir}>
-      {#if link.state === 'offline'}<div class="offline-line">{t('studio.offline')}</div>{/if}
+      {#if outage > LONG_OUTAGE_MS}
+        <div class="offline-line" role="alert" data-testid="offline-banner">
+          {t('studio.offlineLong', { time: formatCountdown(outage) })}
+        </div>
+      {/if}
     </div>
-    <div class="link {link.state}" title={link.state}><span class="dot"></span></div>
+    <div class="link {link.state}" title={link.state === 'online' ? '' : t('studio.offline')}>
+      <span class="dot"></span>
+      {#if syncTime}
+        <span class="sync mono" data-testid="last-sync"
+          >{t('studio.lastSync', { time: syncTime })}</span
+        >
+      {/if}
+    </div>
   </header>
+
+  {#if blocks.regieZone}
+    <!-- Zone fixe réservée aux messages de la régie (étape 10) : jamais par-dessus le texte. -->
+    <section class="regie-zone" style:transform={shift} data-testid="regie-zone">
+      <span class="regie-label">{t('studio.regieZone')}</span>
+    </section>
+  {/if}
 
   <div class="body">
     {#if lib}
-      <StudioSidebar
-        {lib}
-        {view}
-        ownerId={currentOwner}
-        {folderId}
-        {collapsed}
-        logo={reading ? null : logoUrl(link.settings)}
-        onselect={(o, f) => navigate('scripts', () => select(o, f))}
-        ontoday={() => navigate('today', () => {})}
-        onrundowns={(o) => navigate('rundowns', () => select(o, null))}
-        ontoggle={() => (manualCollapse = !collapsed)}
-      />
+      <div class="side-wrap" style:transform={shift}>
+        <StudioSidebar
+          {lib}
+          {view}
+          ownerId={currentOwner}
+          {folderId}
+          {collapsed}
+          logo={reading ? null : logoUrl(link.settings)}
+          onselect={(o, f) => navigate('scripts', () => select(o, f))}
+          ontoday={() => navigate('today', () => {})}
+          onrundowns={(o) => navigate('rundowns', () => select(o, null))}
+          ontoggle={() => (manualCollapse = !collapsed)}
+        />
+      </div>
     {/if}
 
     {#if reading && live && item}
@@ -377,6 +453,20 @@
     {/if}
   </div>
 
+  {#if standby && rundownList}
+    <Standby
+      stationName={link.settings?.stationName ?? ''}
+      logo={logoUrl(link.settings)}
+      {clock}
+      air={showAir ? (link.air?.state ?? null) : null}
+      {now}
+      today={rundownList.today}
+      next={upcoming}
+      drift={link.settings?.burnInProtection ?? false}
+      ondismiss={() => (standbyDismissedUntil = now + STANDBY_DISMISS_MS)}
+    />
+  {/if}
+
   {#if link.state === 'unauthorized'}
     <div class="message">
       <strong>{t('studio.notPaired')}</strong>
@@ -431,10 +521,48 @@
   .spacer.compact {
     flex: 0 1 auto;
   }
+  .top,
+  .regie-zone,
+  .side-wrap {
+    transition: transform 1s ease-in-out;
+  }
+  .side-wrap {
+    display: flex;
+    min-height: 0;
+  }
+  /* Zone régie : hauteur fixe, sous le bandeau ; vide jusqu'à l'étape 10. */
+  .regie-zone {
+    display: flex;
+    align-items: center;
+    min-height: 3.2rem;
+    padding: 0 14px;
+    border: 1px dashed #2f3034;
+    border-radius: var(--radius);
+  }
+  .regie-label {
+    color: #5f5e5a;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
   .link {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
     padding-top: 4px;
+  }
+  .sync {
+    font-size: 0.7rem;
+    color: #5f5e5a;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .top,
+    .regie-zone,
+    .side-wrap {
+      transition: none;
+    }
   }
   .dot {
     width: 10px;
@@ -449,13 +577,15 @@
   .link.revoked .dot {
     background: var(--danger);
   }
+  /* Coupure prolongée : affichée en grand, dans le bandeau (le texte ne bouge pas). */
   .offline-line {
     color: #fac775;
     background: #412402;
     border: 1px solid var(--warn);
     border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 0.95rem;
+    padding: 6px 14px;
+    font-size: 1.5rem;
+    font-weight: 600;
   }
   .body {
     flex: 1;
