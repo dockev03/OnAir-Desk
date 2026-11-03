@@ -8,6 +8,7 @@ import {
 import { cuesSchema, scriptDocSchema } from './content.js';
 import { layoutSchema } from './layout.js';
 import { regieSettingsSchema } from './regie.js';
+import { endAfterStart, endTimeSchema, fixedTimesSchema, timeTrackingSchema } from './tracking.js';
 import {
   airDateSchema,
   itemTagsSchema,
@@ -228,6 +229,10 @@ export const settingsSchema = z.object({
   liners: linersSettingsSchema,
   /** Régie : durée de vie des messages, accusé « Vu », ordres rapides. */
   regie: regieSettingsSchema,
+  /** Horaires fixes (flash infos, top horaire…) : compte à rebours sur l'écran studio. */
+  fixedTimes: fixedTimesSchema,
+  /** Suivi du temps : seuils d'alerte, répétition depuis l'écran studio. */
+  timeTracking: timeTrackingSchema,
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
@@ -376,16 +381,23 @@ export const restoreRevisionSchema = z.object({ version: z.number().int().positi
 
 export const rundownTitleSchema = z.string().trim().min(1).max(120);
 
-export const createRundownSchema = z.object({
-  ownerId: ownerIdSchema,
-  title: rundownTitleSchema,
-  airDate: airDateSchema,
-  startTime: startTimeSchema,
-  notes: rundownNotesSchema.default(''),
-  /** Disposition de l'écran studio ; null : celle des paramètres. */
-  layout: layoutSchema.nullable().optional(),
-  items: rundownItemsSchema.optional(),
-});
+export const createRundownSchema = z
+  .object({
+    ownerId: ownerIdSchema,
+    title: rundownTitleSchema,
+    airDate: airDateSchema,
+    startTime: startTimeSchema,
+    /** Heure de fin imposée (backtiming) ; null : aucune. */
+    endTime: endTimeSchema.default(null),
+    notes: rundownNotesSchema.default(''),
+    /** Disposition de l'écran studio ; null : celle des paramètres. */
+    layout: layoutSchema.nullable().optional(),
+    items: rundownItemsSchema.optional(),
+  })
+  .refine((v) => endAfterStart(v.startTime, v.endTime), {
+    message: 'end_before_start',
+    path: ['endTime'],
+  });
 
 export const updateRundownSchema = z
   .object({
@@ -394,6 +406,7 @@ export const updateRundownSchema = z
     title: rundownTitleSchema.optional(),
     airDate: airDateSchema.optional(),
     startTime: startTimeSchema.optional(),
+    endTime: endTimeSchema.optional(),
     notes: rundownNotesSchema.optional(),
     layout: layoutSchema.nullable().optional(),
     items: rundownItemsSchema.optional(),
@@ -434,6 +447,6 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
 export type CreateScriptInput = z.infer<typeof createScriptSchema>;
 export type UpdateScriptInput = z.infer<typeof updateScriptSchema>;
-export type CreateRundownInput = z.infer<typeof createRundownSchema>;
+export type CreateRundownInput = z.output<typeof createRundownSchema>;
 export type UpdateRundownInput = z.infer<typeof updateRundownSchema>;
 export type PrompterSendInput = z.infer<typeof prompterSendSchema>;

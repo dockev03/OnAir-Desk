@@ -135,7 +135,8 @@ export class AuditRepo {
       .prepare(
         `SELECT * FROM audit_log
           WHERE (category IN ('regie', 'antenne') AND studio_id = @studioId
-                 AND at >= @from AND at < @to)
+                 AND at >= @from AND at < @to
+                 AND action NOT IN ('rehearsal.started', 'rehearsal.stopped'))
              OR (action = 'logbook.note' AND json_extract(details, '$.rundownId') = @rundownId)
           ORDER BY at, id
           LIMIT 2000`,

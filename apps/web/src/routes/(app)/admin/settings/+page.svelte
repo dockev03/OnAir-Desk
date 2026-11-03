@@ -16,6 +16,12 @@
     MAX_ITEM_TYPES,
     MAX_LINERS,
     MAX_QUICK_ORDERS,
+    MAX_FIXED_TIMES,
+    FIXED_TIME_LABEL_MAX,
+    FIXED_WARN_MAX_MINUTES,
+    FIXED_WARN_MIN_MINUTES,
+    ALL_DAYS,
+    ALL_HOURS,
     MESSAGE_TTL_MAX_MINUTES,
     MESSAGE_TTL_MIN_MINUTES,
     QUICK_ORDER_LABEL_MAX,
@@ -42,8 +48,9 @@
     type WeatherTestResult,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
-  import { errorMessage, t } from '$lib/i18n/index.svelte.js';
+  import { errorMessage, i18n, t } from '$lib/i18n/index.svelte.js';
   import { logoUrl, stationSettings } from '$lib/settings.svelte.js';
+  import { WEEKDAYS, weekdayName } from '$lib/templates.js';
   import { timezones } from '$lib/timezones.js';
 
   let settings = $state<Settings | null>(null);
@@ -153,6 +160,32 @@
       urgent: false,
       active: true,
     });
+  }
+
+  // ---- Horaires fixes (étape 11) ---------------------------------------------------------
+
+  function addFixedTime() {
+    if (!settings || settings.fixedTimes.length >= MAX_FIXED_TIMES) return;
+    settings.fixedTimes.push({
+      id: cueId(
+        'horaire',
+        settings.fixedTimes.map((f) => f.id),
+      ),
+      label: t('settings.fixedNew'),
+      minute: 0,
+      hours: [...ALL_HOURS],
+      days: [...ALL_DAYS],
+      warnMinutes: 5,
+      active: true,
+    });
+  }
+
+  /** Coche / décoche une heure ou un jour ; la liste ne reste jamais vide. */
+  function toggle(list: number[], value: number) {
+    const i = list.indexOf(value);
+    if (i === -1) list.push(value);
+    else if (list.length > 1) list.splice(i, 1);
+    list.sort((a, b) => a - b);
   }
 
   // ---- Liners ----------------------------------------------------------------------------
@@ -894,6 +927,150 @@
       </label>
     </div>
 
+    <h2>{t('settings.fixedTimes')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.fixedTimesHint')}</p>
+    <div class="cues" data-testid="fixed-times">
+      {#each settings.fixedTimes as f, i (f.id)}
+        <fieldset class="fixed-row">
+          <div class="fixed-head">
+            <input
+              aria-label={t('settings.fixedLabel')}
+              bind:value={f.label}
+              required
+              maxlength={FIXED_TIME_LABEL_MAX}
+            />
+            <label class="inline">
+              {t('settings.fixedMinute')}
+              <input type="number" min="0" max="59" bind:value={f.minute} required />
+            </label>
+            <label class="inline">
+              {t('settings.fixedWarn')}
+              <input
+                type="number"
+                min={FIXED_WARN_MIN_MINUTES}
+                max={FIXED_WARN_MAX_MINUTES}
+                bind:value={f.warnMinutes}
+                required
+              />
+            </label>
+            <label class="inline">
+              <input type="checkbox" bind:checked={f.active} />
+              {t('settings.fixedActive')}
+            </label>
+            <button type="button" class="danger" onclick={() => settings!.fixedTimes.splice(i, 1)}
+              >{t('settings.fixedRemove')}</button
+            >
+          </div>
+          <div class="chips" aria-label={t('settings.fixedHours')}>
+            <span class="muted">{t('settings.fixedHours')}</span>
+            <button
+              type="button"
+              class="chip"
+              class:on={f.hours.length === 24}
+              onclick={() => (f.hours = [...ALL_HOURS])}>{t('settings.fixedAllHours')}</button
+            >
+            {#each ALL_HOURS as h (h)}
+              <button
+                type="button"
+                class="chip mono"
+                class:on={f.hours.includes(h)}
+                aria-pressed={f.hours.includes(h)}
+                onclick={() => toggle(f.hours, h)}>{String(h).padStart(2, '0')}</button
+              >
+            {/each}
+          </div>
+          <div class="chips" aria-label={t('settings.fixedDays')}>
+            <span class="muted">{t('settings.fixedDays')}</span>
+            {#each WEEKDAYS as d (d)}
+              <button
+                type="button"
+                class="chip"
+                class:on={f.days.includes(d)}
+                aria-pressed={f.days.includes(d)}
+                onclick={() => toggle(f.days, d)}>{weekdayName(d, i18n.locale)}</button
+              >
+            {/each}
+          </div>
+        </fieldset>
+      {/each}
+    </div>
+    <div>
+      <button
+        type="button"
+        onclick={addFixedTime}
+        disabled={settings.fixedTimes.length >= MAX_FIXED_TIMES}>{t('settings.fixedAdd')}</button
+      >
+    </div>
+
+    <h2>{t('settings.timeTracking')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.timeTrackingHint')}</p>
+    <div class="grid2">
+      <label>
+        {t('settings.driftSoon')}
+        <input
+          type="number"
+          min="5"
+          max="600"
+          bind:value={settings.timeTracking.driftSoonSeconds}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.driftNow')}
+        <input
+          type="number"
+          min={settings.timeTracking.driftSoonSeconds + 1}
+          max="1800"
+          bind:value={settings.timeTracking.driftNowSeconds}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.onTime')}
+        <input
+          type="number"
+          min="0"
+          max="60"
+          bind:value={settings.timeTracking.onTimeSeconds}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.sequenceSoon')}
+        <input
+          type="number"
+          min="1"
+          max="120"
+          bind:value={settings.timeTracking.sequenceSoonSeconds}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.endSoon')}
+        <input
+          type="number"
+          min="2"
+          max="60"
+          bind:value={settings.timeTracking.endSoonMinutes}
+          required
+        />
+      </label>
+      <label>
+        {t('settings.endNow')}
+        <input
+          type="number"
+          min="1"
+          max={settings.timeTracking.endSoonMinutes - 1}
+          bind:value={settings.timeTracking.endNowMinutes}
+          required
+        />
+      </label>
+    </div>
+    <label class="inline">
+      <input type="checkbox" bind:checked={settings.timeTracking.kioskRehearsal} />
+      {t('settings.kioskRehearsal')}
+    </label>
+
     <h2>{t('settings.scripts')}</h2>
     <label>
       {t('settings.defaultSpeed')}
@@ -1182,6 +1359,39 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+  .fixed-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem;
+    margin: 0;
+  }
+  .fixed-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .fixed-head input[type='number'] {
+    width: 4.5rem;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+  }
+  .chip {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.85rem;
+    opacity: 0.55;
+  }
+  .chip.on {
+    opacity: 1;
+    border-color: #85b7eb;
   }
   .liner-row {
     display: grid;

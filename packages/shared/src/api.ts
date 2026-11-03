@@ -206,6 +206,8 @@ export interface RundownSummary {
   airDate: string;
   /** Heure de début HH:MM:SS. */
   startTime: string;
+  /** Heure de fin imposée HH:MM:SS (backtiming) ; null : aucune. */
+  endTime: string | null;
   itemCount: number;
   /** Durée totale prévue, en secondes. */
   totalSeconds: number;
@@ -259,6 +261,7 @@ export interface TemplateSummary {
   ownerId: number | null;
   title: string;
   startTime: string;
+  endTime: string | null;
   /** Jours de diffusion, 1 = lundi … 7 = dimanche. */
   days: number[];
   validFrom: string | null;
@@ -314,6 +317,8 @@ export interface PrompterRundown {
   title: string;
   airDate: string;
   startTime: string;
+  /** Fin imposée ; absente des copies antérieures à l'étape 11. */
+  endTime?: string | null;
   /** Disposition de l'écran studio ; absente des copies antérieures à l'étape 8. */
   layout?: Layout | null;
   items: RundownItem[];

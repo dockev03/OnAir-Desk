@@ -32,6 +32,11 @@ export function canWrite(user: User, ownerId: number | null): boolean {
 }
 
 export class Library {
+  /** Prévenus après chaque changement d'affichage d'un studio (déroulés, étape 11). */
+  readonly prompterListeners: ((studioId: number) => void)[] = [];
+  /** Prévenus après chaque modification d'un conducteur. */
+  readonly rundownListeners: ((rundownId: number) => void)[] = [];
+
   constructor(
     private readonly repos: Repos,
     private readonly hub: Hub,
@@ -251,6 +256,7 @@ export class Library {
       this.repos.prompter.send(studioId, script, by);
     }
     this.broadcastPrompter(studioId);
+    for (const listener of this.prompterListeners) listener(studioId);
     return this.prompterState(studioId);
   }
 
@@ -276,6 +282,7 @@ export class Library {
     for (const studioId of this.studioIds()) {
       if (this.refreshRundownSnapshot(studioId, rundownId)) this.broadcastPrompter(studioId);
     }
+    for (const listener of this.rundownListeners) listener(rundownId);
   }
 
   private refreshRundownSnapshot(studioId: number, rundownId: number | null): boolean {
@@ -321,6 +328,7 @@ const toPrompterRundown = (r: RundownRecord): PrompterRundown => ({
   title: r.title,
   airDate: r.airDate,
   startTime: r.startTime,
+  endTime: r.endTime,
   layout: r.layout,
   items: r.items,
 });

@@ -16,6 +16,8 @@
   import { ownerKey, ownerName } from '$lib/library.js';
   import { Autosave, type SaveStatus } from '$lib/rundown-editor/autosave.svelte.js';
   import ItemsEditor from '$lib/rundown-editor/ItemsEditor.svelte';
+  import MeasuredDurations from '$lib/rundown-editor/MeasuredDurations.svelte';
+  import PlannedBalance from '$lib/rundown-editor/PlannedBalance.svelte';
   import { toEdit, toInput, type EditItem } from '$lib/rundown-editor/items.js';
   import RundownNotes from '$lib/rundown-editor/RundownNotes.svelte';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
@@ -32,6 +34,8 @@
   let title = $state('');
   let airDate = $state('');
   let startTime = $state('07:00:00');
+  /** Fin imposée (backtiming) ; vide : aucune. */
+  let endTime = $state('');
   let notes = $state('');
   /** Disposition de l'écran studio ; null : celle des paramètres. */
   let layout = $state<Layout | null>(null);
@@ -44,12 +48,17 @@
   const liveEdit = $derived(!canWrite && (rundown?.liveEdit ?? false));
   const editItems = $derived(canWrite || liveEdit);
   const schedule = $derived(rundownSchedule(startTime, items));
+  /** Fin imposée au format HH:MM:SS (la saisie peut omettre les secondes). */
+  const normalizedEnd = $derived(
+    endTime === '' ? null : endTime.length === 5 ? `${endTime}:00` : endTime,
+  );
 
   function apply(r: Rundown) {
     rundown = r;
     title = r.title;
     airDate = r.airDate;
     startTime = r.startTime;
+    endTime = r.endTime ?? '';
     notes = r.notes;
     layout = r.layout;
     items = r.items.map(toEdit);
@@ -85,6 +94,7 @@
               title: title.trim() || rundown!.title,
               airDate,
               startTime,
+              endTime: endTime || null,
               notes,
               layout,
               items: items.map(toInput),
@@ -181,6 +191,18 @@
     }
   }
 
+  /** Répétition : le premier élément s'affiche sur l'écran studio, heures depuis maintenant. */
+  async function rehearse() {
+    error = notice = '';
+    if (!(await autosave.save()) && autosave.dirty) return;
+    try {
+      await api('POST', '/api/rehearsal', { rundownId: id });
+      notice = t('rundowns.rehearsalStarted');
+    } catch (e) {
+      error = errorMessage(errorCode(e));
+    }
+  }
+
   const statusText: Record<SaveStatus, string> = $derived({
     saved: t('editor.saved'),
     pending: t('editor.unsaved'),
@@ -199,7 +221,11 @@
     {#if editItems}
       <span class="status {autosave.status}" role="status">{statusText[autosave.status]}</span>
     {/if}
+    <a class="button" href="/rundowns/{rundown.id}/report">{t('rundowns.report')}</a>
     <a class="button" href="/rundowns/{rundown.id}/print">{t('print.open')}</a>
+    {#if rundown.items.length > 0}
+      <button onclick={rehearse}>{t('rundowns.rehearse')}</button>
+    {/if}
     <button onclick={saveAsTemplate}>{t('templates.saveAs')}</button>
     {#if !canWrite}<button onclick={duplicateToMe}>{t('library.duplicate')}</button>{/if}
   </div>
@@ -244,6 +270,16 @@
         {t('rundowns.field.startTime')}
         <input type="time" step="1" bind:value={startTime} required onchange={changed} />
       </label>
+      <label title={t('rundowns.endTimeHint')}>
+        {t('rundowns.endTime')}
+        <input
+          type="time"
+          step="1"
+          bind:value={endTime}
+          onchange={changed}
+          data-testid="end-time"
+        />
+      </label>
       <label>
         {t('field.layout')}
         <select bind:value={layout} onchange={changed}>
@@ -271,6 +307,7 @@
       end: secondsToTime(schedule.end),
     })}
   </p>
+  <PlannedBalance {startTime} endTime={normalizedEnd} {items} />
 
   {#if items.length === 0}
     <p class="muted">{t('rundowns.emptyRundown')}</p>
@@ -290,6 +327,8 @@
   />
 
   <RundownNotes bind:notes {canWrite} onchange={changed} />
+
+  <MeasuredDurations rundownId={rundown.id} bind:items canWrite={editItems} onchange={changed} />
 {:else if !error}
   <p class="muted">{t('common.loading')}</p>
 {/if}

@@ -15,6 +15,7 @@ import { Library } from './library.js';
 import { OnAirService } from './onair.js';
 import { RegieService } from './regie.js';
 import { Rundowns } from './rundowns.js';
+import { RunService } from './runs.js';
 import { SetupState } from './setup.js';
 import { Templates } from './templates.js';
 import { inlineScriptHashes, readIndexHtml, registerStatic } from './static.js';
@@ -30,6 +31,7 @@ import { registerOnAirRoutes } from './routes/onair.js';
 import { registerRundownRoutes } from './routes/rundowns.js';
 import { registerRadiodjRoutes } from './routes/radiodj.js';
 import { registerRegieRoutes } from './routes/regie.js';
+import { registerRunRoutes } from './routes/runs.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
@@ -89,6 +91,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
     }),
     onAir: new OnAirService(repos, air),
     regie: new RegieService(repos, air),
+    runs: new RunService(repos, air, library),
     weather: new WeatherManager(DEFAULT_STUDIO_ID, air, repos, Date.now, {
       openMeteoUrl: config.openMeteoUrl ?? undefined,
       ...opts.weatherDeps,
@@ -148,6 +151,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerRegieRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
+  registerRunRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerWsRoutes(app, ctx);
@@ -180,12 +184,14 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   ctx.automation.apply(initial);
   ctx.onAir.restore(DEFAULT_STUDIO_ID);
   ctx.regie.restore(DEFAULT_STUDIO_ID);
+  ctx.runs.start(DEFAULT_STUDIO_ID);
   ctx.weather.apply(initial);
 
   app.addHook('onClose', async () => {
     ctx.automation.stop();
     ctx.weather.stop();
     ctx.regie.stop();
+    ctx.runs.stop();
     clearInterval(sweep);
     clearInterval(purgeTimer);
     ctx.hub.close();

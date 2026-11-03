@@ -2,7 +2,7 @@
 
 > Vérifications, tests et décisions en attente qui **ne bloquent pas** les étapes suivantes.
 > Cocher au fur et à mesure ; un écart constaté donne une branche `fix/…`.
-> Dernière mise à jour : après l'étape 10.
+> Dernière mise à jour : après l'étape 11.
 
 ## 1. Vérifications sur l'installation réelle
 
@@ -37,12 +37,21 @@
 - [ ] Relire et activer les **ordres rapides** (_Paramètres_ → Régie : proposés inactifs) ; régler la durée d'affichage des messages.
 - [ ] Choisir la disposition **« Émission avec régie »** pour les émissions avec réalisateur (conducteur ou modèle).
 
+### Suivi du temps (étape 11, `docs/plan-etape-11.md`)
+
+- [ ] Saisir les **horaires fixes** réels (top horaire, flashs, relais réseau) : _Paramètres_ → Horaires fixes (exemples proposés inactifs).
+- [ ] Renseigner la **fin imposée** des émissions concernées (journal, relais réseau), sur les modèles d'émission.
+- [ ] Relire les **seuils** du suivi du temps (retard 30 s / 2 min, fin de séquence 15 s, fin imposée 5 / 1 min) avec les animateurs.
+- [ ] Vérifier le **pointage des titres par RadioDJ** pendant un direct (titres choisis dans la bibliothèque RadioDJ, bascule sur la source du direct).
+- [ ] Décider si la **répétition depuis l'écran studio** reste permise (_Paramètres_ → Suivi du temps).
+
 ### Écran studio
 
 - [ ] **Tailles minimales** (heure, temps restant, alertes) vérifiées sur l'afficheur réel, à 1,5–2 m (`CLAUDE.md` §5).
 - [ ] Veille, dispositions et décalage anti-usure regardés sur l'afficheur réel (lisibilité, aucun saut gênant pendant la lecture).
 - [ ] Voyant ON AIR, chronomètre, météo et bande de liners lisibles à 1,5–2 m.
 - [ ] Zone régie (message normal et urgent) et pastilles de duplex lisibles à 1,5–2 m ; agrandissement d'un urgent non gênant pendant la lecture.
+- [ ] Bande de temps (minuteur, retard, fin imposée, horaire fixe) lisible à 1,5–2 m ; place restante pour le texte avec la zone régie et la bande de liners.
 
 ## 2. Décisions à prendre
 
@@ -67,3 +76,5 @@ Rien d'obligatoire : à reprendre si le besoin se confirme à l'usage.
 - « Clé acceptée » au test de connexion AzuraCast : une station publique répond même sans regarder la clé.
 - Régie : renommer une ligne de duplex depuis la page Régie (l'API le permet déjà) ; main courante du seul studio par défaut.
 - Bouton On Air de la barre de l'interface : toujours relu toutes les 15 s (la page Régie, elle, est en temps réel).
+- Suivi du temps : seul le premier passage d'un élément compte ; pas de bilan pour une émission dont l'écran n'a affiché aucun élément ; durée d'un élément calculée depuis un script modifié en direct mise à jour au prochain enregistrement du conducteur ; détails bruts des « Envois au prompteur » dans la main courante.
+- Idées non validées liées : pointage manuel « fait » (n° 20), part de chansons francophones (n° 21), statistiques sur plusieurs émissions.

@@ -1,4 +1,5 @@
 import { emptyRegieState, type LiveChange, type RegieState } from './regie.js';
+import type { RunState } from './tracking.js';
 
 /**
  * État antenne : un objet par studio, versionné. À la connexion, l'écran reçoit l'état
@@ -110,6 +111,8 @@ export interface AirState {
    * soulignée quelques secondes sur l'écran studio (étape 10).
    */
   liveChange: LiveChange | null;
+  /** Déroulé en cours : heures réelles de passage (étape 11) ; null : aucun. */
+  run: RunState | null;
 }
 
 export interface Studio {
@@ -140,6 +143,7 @@ export const emptyAirState = (source: AutomationSource = 'none'): AirState => ({
   weather: null,
   regie: emptyRegieState(),
   liveChange: null,
+  run: null,
 });
 
 /**

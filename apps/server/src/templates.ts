@@ -1,4 +1,5 @@
 import {
+  endAfterStart,
   templateDates,
   weekdayOf,
   type CreateFromTemplateInput,
@@ -62,6 +63,9 @@ export class Templates {
       const validFrom = patch.validFrom !== undefined ? patch.validFrom : current.validFrom;
       const validUntil = patch.validUntil !== undefined ? patch.validUntil : current.validUntil;
       if (validFrom && validUntil && validFrom > validUntil) throw badRequest('valid_period');
+      const startTime = patch.startTime ?? current.startTime;
+      const endTime = patch.endTime !== undefined ? patch.endTime : current.endTime;
+      if (!endAfterStart(startTime, endTime)) throw badRequest('end_before_start');
       return this.repos.templates.update(id, user.id, patch);
     })();
   }
@@ -78,6 +82,7 @@ export class Templates {
         ownerId: input.ownerId,
         title: input.title ?? source.title,
         startTime: source.startTime,
+        endTime: source.endTime,
         days: source.days,
         validFrom: source.validFrom,
         validUntil: source.validUntil,
@@ -104,6 +109,7 @@ export class Templates {
         ownerId: input.ownerId,
         title: input.title ?? source.title,
         startTime: source.startTime,
+        endTime: source.endTime,
         days: input.days ?? [weekdayOf(source.airDate)],
         validFrom: null,
         validUntil: null,
@@ -146,6 +152,7 @@ export class Templates {
             title: template.title,
             airDate: date,
             startTime: template.startTime,
+            endTime: template.endTime,
             notes: template.notes,
             layout: template.layout,
             userId: user.id,

@@ -7,6 +7,7 @@ import {
   startTimeSchema,
 } from './rundown.js';
 import { addDays } from './time.js';
+import { endAfterStart, endTimeSchema } from './tracking.js';
 
 /**
  * Modèles d'émission récurrente : jours de diffusion, période de validité, exclusions, et
@@ -65,6 +66,8 @@ export type TemplateExclusion = z.output<typeof templateExclusionSchema>;
 const templateFields = {
   title: templateTitleSchema,
   startTime: startTimeSchema,
+  /** Heure de fin imposée (backtiming), copiée dans les conducteurs créés ; null : aucune. */
+  endTime: endTimeSchema,
   days: templateDaysSchema,
   /** Période de validité facultative (ex. saison septembre → juin). */
   validFrom: airDateSchema.nullable(),
@@ -86,6 +89,7 @@ export const createTemplateSchema = z
     ownerId: z.number().int().positive().nullable(),
     title: templateFields.title,
     startTime: templateFields.startTime,
+    endTime: templateFields.endTime.default(null),
     days: templateFields.days,
     validFrom: templateFields.validFrom.default(null),
     validUntil: templateFields.validUntil.default(null),
@@ -95,7 +99,11 @@ export const createTemplateSchema = z
     layout: templateFields.layout.default(null),
     items: templateFields.items.default([]),
   })
-  .refine(validPeriod, { message: 'valid_period', path: ['validUntil'] });
+  .refine(validPeriod, { message: 'valid_period', path: ['validUntil'] })
+  .refine((v) => endAfterStart(v.startTime, v.endTime), {
+    message: 'end_before_start',
+    path: ['endTime'],
+  });
 
 export const updateTemplateSchema = z
   .object({
@@ -103,6 +111,7 @@ export const updateTemplateSchema = z
     version: z.number().int().positive(),
     title: templateFields.title.optional(),
     startTime: templateFields.startTime.optional(),
+    endTime: templateFields.endTime.optional(),
     days: templateFields.days.optional(),
     validFrom: templateFields.validFrom.optional(),
     validUntil: templateFields.validUntil.optional(),

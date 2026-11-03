@@ -37,6 +37,8 @@ const bold = { type: 'bold' };
 const color = (c: string) => ({ type: 'textStyle', attrs: { color: c } });
 const hl = (c: string) => ({ type: 'highlight', attrs: { color: c } });
 
+const pause = (page: import('@playwright/test').Page, ms: number) => page.waitForTimeout(ms);
+
 async function main(): Promise<void> {
   fs.mkdirSync(OUT, { recursive: true });
   await new Promise<void>((r) => weather.listen(WEATHER_PORT, '127.0.0.1', r));
@@ -167,6 +169,8 @@ async function main(): Promise<void> {
         title: 'La Matinale',
         airDate: today,
         startTime: '07:00',
+        // Fin imposée (journal de 7 h 30) : l'éditeur affiche le temps à caser.
+        endTime: '07:30',
         notes:
           'Prises d’antenne de 45 secondes à 1 minute.\nSi ça déborde : couper le titre marqué ✂.',
         items: [
@@ -281,6 +285,91 @@ async function main(): Promise<void> {
   await ui.getByTestId('regie-seen-at').waitFor();
   await ui.getByTestId('logbook').waitFor();
   await shot(ui, 'regie', true);
+
+  // Suivi du temps (étape 11) : émission commencée il y a 80 s, fin imposée, horaire fixe.
+  // Réponses sans contenu (204) : seul le code compte.
+  const done = async (res: Awaited<ReturnType<typeof api.post>>) => {
+    if (!res.ok()) throw new Error(`${res.url()} : ${res.status()} ${await res.text()}`);
+  };
+  await done(await api.delete('/api/regie/message'));
+  await done(await api.delete('/api/regie/duplex'));
+  const paris = (offsetMs: number) => {
+    const [date, time] = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Paris',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+      .format(new Date(Date.now() + offsetMs))
+      .split(' ') as [string, string];
+    return { date, time };
+  };
+  const journalStart = paris(-80_000);
+  const journalEnd = paris(-80_000 + 11 * 60_000);
+  const flashMinute = (Number(paris(0).time.slice(3, 5)) + 3) % 60;
+  await ok(
+    await api.put('/api/settings', {
+      data: {
+        fixedTimes: [
+          {
+            id: 'flash',
+            label: 'Flash infos',
+            minute: flashMinute,
+            hours: Array.from({ length: 24 }, (_, h) => h),
+            days: [1, 2, 3, 4, 5, 6, 7],
+            warnMinutes: 5,
+            active: true,
+          },
+        ],
+      },
+    }),
+  );
+  const journal = await ok(
+    await api.post('/api/rundowns', {
+      data: {
+        ownerId: claire.id,
+        title: 'Le Journal',
+        airDate: journalStart.date,
+        startTime: journalStart.time,
+        endTime: journalEnd.date === journalStart.date ? journalEnd.time : '23:59:59',
+        items: [
+          item('titres', 'flash', 'Les titres', 60, agenda.id),
+          item('reportage', 'chronique', 'Reportage : le marché couvert', 240),
+          item('meteo-j', 'meteo', 'Météo', 120, null, '', { cuttable: true }),
+          item('invite-j', 'interview', 'Invité : la maire', 240),
+        ],
+      },
+    }),
+  );
+  await ok(await api.post('/api/prompter', { data: { rundownId: journal.id, itemUid: 'titres' } }));
+  await studio.bringToFront();
+  await studio.getByTestId('timing-drift').waitFor();
+  await pause(studio, 3000);
+  await shot(studio, 'studio-suivi-temps');
+
+  // Bilan : quelques éléments passés, une note, émission close.
+  await ok(
+    await api.post('/api/prompter', { data: { rundownId: journal.id, itemUid: 'reportage' } }),
+  );
+  await ok(
+    await api.post('/api/regie/logbook', { data: { text: 'Reportage : son repris en régie' } }),
+  );
+  await pause(studio, 2000);
+  await ok(
+    await api.post('/api/prompter', { data: { rundownId: journal.id, itemUid: 'invite-j' } }),
+  );
+  await pause(studio, 2000);
+  await ok(await api.post('/api/prompter', { data: { scriptId: null } }));
+  const report = await ok(await api.get(`/api/rundowns/${journal.id}/report`));
+  await done(await api.post(`/api/runs/${report.report.runId}/close`));
+  await ui.bringToFront();
+  await ui.goto(`/rundowns/${journal.id}/report`);
+  await ui.getByTestId('report').waitFor();
+  await shot(ui, 'bilan', true);
 
   await browser.close();
   await api.dispose();

@@ -17,12 +17,12 @@ Documents liés :
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/plan-etape-9.md` : plan et **bilan** de l'étape 9 (On Air, météo et liners), réalisée.
 - `docs/plan-etape-10.md` : plan et **bilan** de l'étape 10 (régie), réalisée.
-- `docs/plan-etape-11.md` : plan **validé** de l'étape 11 (suivi du temps), à réaliser.
+- `docs/plan-etape-11.md` : plan et **bilan** de l'étape 11 (suivi du temps), réalisée.
 - `docs/plan-acces-distant.md` : **proposition non validée** d'accès depuis l'extérieur (option 1 : tunnel vers un VPS ; option 2 : central sur VPS + agent studio), à reprendre dans une future version.
 - `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille), 9 (On Air, météo et liners) et 10 (régie) réalisées, ainsi que le conducteur enrichi (hors étape) ; l'étape 11 reste à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille), 9 (On Air, météo et liners), 10 (régie) et 11 (suivi du temps) réalisées, ainsi que le conducteur enrichi (hors étape) : le plan de réalisation est terminé. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -111,7 +111,7 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
   - limitation du débit d'envoi, contre les erreurs et les abus ;
   - tranché à l'étape 10 : rattachement **au studio** ; modification en direct limitée **au conducteur à l'antenne** (suivi sur l'écran studio, ou émission en cours d'après ses heures), éléments seulement.
   - seule écriture du kiosk pour la régie : l'accusé « Vu » d'un message (désactivable).
-- **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin. **Seule écriture permise** (décidé à l'étape 3) : choisir le script affiché (`POST /api/prompter`), étendu à l'étape 4 au choix d'un élément de conducteur. Taille du texte réglée sur l'écran : mémorisée sur l'afficheur.
+- **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin. **Seule écriture permise** (décidé à l'étape 3) : choisir le script affiché (`POST /api/prompter`), étendu à l'étape 4 au choix d'un élément de conducteur, et à l'étape 11 au lancement / arrêt d'une répétition (appui long, désactivable). Taille du texte réglée sur l'écran : mémorisée sur l'afficheur.
 - **Bibliothèque** (décidé à l'étape 2) : un animateur modifie **son dossier et Commun** ; il voit les dossiers des collègues **en lecture seule** (pour dupliquer chez lui) ; l'admin modifie tout. Suppression = **corbeille 30 jours** ; **historique** des 20 dernières versions.
 
 ### Décisions d'architecture (validées, mises en place à l'étape 6)
@@ -267,7 +267,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
     4. état des duplex et liaisons extérieures ;
     5. conducteur modifié en direct ;
     6. main courante de l'émission (vue du journal d'audit).
-11. **Suivi du temps** (6 fonctionnalités) :
+11. ✅ **Suivi du temps** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-11.md` :
     1. compte à rebours vers un horaire fixe ;
     2. avance / retard sur le conducteur ;
     3. minuteur de séquence ;
@@ -307,6 +307,7 @@ Pas d'étape ni de guide pour le matériel d'affichage : il est **hors spécific
   - **Base RadioDJ** : ouverte au réseau par la station, pour la seule adresse du serveur, avec un compte `SELECT` seul.
   - **API On Air** (étape 9) : sur l'écoute des connecteurs (fermée par défaut), jeton haché ; l'appel simple met le jeton dans l'adresse (désactivé par défaut). Le kiosk peut allumer / éteindre le On Air (appui long, tracé, désactivable).
   - **Météo** (étape 9) : connexion **sortante** du serveur vers Open-Meteo.
+  - **Suivi du temps** (étape 11) : l'écran studio peut lancer / arrêter une répétition (appui long, tracé, désactivable), jamais pendant une émission ni On Air allumé.
   - **Régie** (étape 10) : nouveaux droits d'écriture (envoi à l'écran studio, modification du conducteur à l'antenne d'un collègue) réservés à l'admin et aux réalisateurs, vérifiés côté serveur et tracés ; accusé « Vu » depuis le kiosk (désactivable).
   - **AzuraCast** (étape 8) : connexion **sortante** du serveur vers le VPS AzuraCast (HTTPS, certificat toujours vérifié) ; clé API éventuelle liée à un compte AzuraCast **sans droit d'administration**.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).

@@ -6,6 +6,9 @@ import {
 } from '@onair-desk/shared';
 import type { Hub } from '../ws/hub.js';
 
+/** Écoute des changements (après diffusion) : champs modifiés et nouvel état. */
+export type AirListener = (studioId: number, diff: Partial<AirState>, state: AirState) => void;
+
 /**
  * État antenne de chaque studio, en mémoire : il est reconstruit par les connecteurs au
  * démarrage. Chaque changement incrémente la version et n'envoie aux écrans du studio que
@@ -13,6 +16,7 @@ import type { Hub } from '../ws/hub.js';
  */
 export class AirStateStore {
   private readonly studios = new Map<number, AirSnapshot>();
+  private readonly listeners: AirListener[] = [];
 
   constructor(private readonly hub: Hub) {}
 
@@ -23,6 +27,11 @@ export class AirStateStore {
       this.studios.set(studioId, s);
     }
     return s;
+  }
+
+  /** Prévient `listener` à chaque changement (ex. pointage des titres par l'automation). */
+  listen(listener: AirListener): void {
+    this.listeners.push(listener);
   }
 
   /** Message d'état complet (connexion, ou version manquante côté écran). */
@@ -52,6 +61,7 @@ export class AirStateStore {
       full: false,
       changes: diff,
     });
+    for (const listener of this.listeners) listener(studioId, diff, next.state);
     return true;
   }
 }

@@ -1,9 +1,12 @@
 <script lang="ts">
   import {
+    fixedTimeLevel,
     formatCountdown,
+    formatElapsed,
     isTimed,
     trackRemaining,
     type AirState,
+    type FixedCountdown,
     type OnAirState,
     type RundownSummary,
     type TimeFormat,
@@ -33,6 +36,7 @@
     weather,
     timezone,
     timeFormat,
+    fixed = null,
     ondismiss,
   }: {
     stationName: string;
@@ -48,6 +52,8 @@
     weather: WeatherState | null;
     timezone: string;
     timeFormat: TimeFormat;
+    /** Prochain horaire fixe (« Top horaire dans 1:05 »), seule information de suivi du temps. */
+    fixed?: FixedCountdown | null;
     ondismiss: () => void;
   } = $props();
 
@@ -83,6 +89,16 @@
       </div>
     {/if}
     <div class="next" data-testid="standby-next">{nextText}</div>
+    {#if fixed}
+      <div class="fixed {fixedTimeLevel(fixed.remainingMs)}" data-testid="standby-fixed">
+        {fixed.remainingMs <= 0
+          ? t('timing.fixedNow', { label: fixed.label })
+          : t('timing.fixedIn', {
+              label: fixed.label,
+              time: formatElapsed(Math.ceil(fixed.remainingMs / 1000) * 1000),
+            })}
+      </div>
+    {/if}
     <div class="hint">{t('studio.standbyHint')}</div>
   </div>
 </button>
@@ -143,6 +159,17 @@
   .next {
     font-size: 1.3rem;
     color: #c9c8c2;
+  }
+  .fixed {
+    font-size: 1.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .fixed.soon {
+    color: var(--warn);
+  }
+  .fixed.now {
+    color: #ff8a8a;
   }
   .hint {
     font-size: 0.9rem;
