@@ -143,3 +143,35 @@ export function formatCountdown(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
+
+// ---- Chronomètre micro ouvert ------------------------------------------------------
+
+/** Après l'extinction, la dernière durée reste affichée, grisée, 10 secondes. */
+export const MIC_LAST_SHOWN_MS = 10_000;
+
+/** Ce qu'il faut de l'état On Air pour le chronomètre (voir OnAirState dans air.ts). */
+export interface MicState {
+  on: boolean;
+  since: number | null;
+  lastDurationMs: number | null;
+}
+
+/**
+ * Chronomètre micro ouvert : temps écoulé depuis l'allumage ; après l'extinction, la dernière
+ * durée pendant 10 s (`running` faux). Null : rien à afficher.
+ */
+export function micTimer(state: MicState, now: number): { ms: number; running: boolean } | null {
+  if (state.since === null) return null;
+  if (state.on) return { ms: Math.max(0, now - state.since), running: true };
+  if (state.lastDurationMs === null || now - state.since > MIC_LAST_SHOWN_MS) return null;
+  return { ms: state.lastDurationMs, running: false };
+}
+
+/** Durée écoulée affichée : m:ss, puis h:mm:ss au-delà d'une heure (secondes entières). */
+export function formatElapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}

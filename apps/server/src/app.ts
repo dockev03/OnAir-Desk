@@ -6,11 +6,13 @@ import fastifyWebsocket from '@fastify/websocket';
 import { AirStateStore } from './air/state.js';
 import type { Config } from './config.js';
 import { AutomationManager, type ConnectorDeps } from './connectors/manager.js';
+import { WeatherManager, type WeatherDeps } from './connectors/weather/manager.js';
 import { DEFAULT_STUDIO_ID, createRepos, type Db } from './db/index.js';
 import { registerIdentity, type Identity } from './auth/identity.js';
 import { LoginThrottle } from './auth/throttle.js';
 import { HttpError } from './lib/errors.js';
 import { Library } from './library.js';
+import { OnAirService } from './onair.js';
 import { Rundowns } from './rundowns.js';
 import { SetupState } from './setup.js';
 import { Templates } from './templates.js';
@@ -23,6 +25,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerAzuracastRoutes } from './routes/azuracast.js';
 import { registerDeviceRoutes } from './routes/devices.js';
 import { registerLibraryRoutes } from './routes/library.js';
+import { registerOnAirRoutes } from './routes/onair.js';
 import { registerRundownRoutes } from './routes/rundowns.js';
 import { registerRadiodjRoutes } from './routes/radiodj.js';
 import { registerSettingsRoutes } from './routes/settings.js';
@@ -39,6 +42,8 @@ export interface AppOptions {
   logger?: FastifyServerOptions['logger'];
   /** Accès aux sources des connecteurs (remplacés dans les tests). */
   connectorDeps?: ConnectorDeps;
+  /** Fournisseur météo (remplacé dans les tests). */
+  weatherDeps?: WeatherDeps;
 }
 
 export interface App {
@@ -79,6 +84,11 @@ export async function buildApp(opts: AppOptions): Promise<App> {
       azuracastApiKey: config.azuracastApiKey,
       azuracastCa: config.azuracastCa,
       ...opts.connectorDeps,
+    }),
+    onAir: new OnAirService(repos, air),
+    weather: new WeatherManager(DEFAULT_STUDIO_ID, air, repos, Date.now, {
+      openMeteoUrl: config.openMeteoUrl ?? undefined,
+      ...opts.weatherDeps,
     }),
     throttle: new LoginThrottle(),
     setup: new SetupState(),
@@ -131,6 +141,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerSettingsRoutes(app, ctx);
   registerRadiodjRoutes(app, ctx);
   registerAzuracastRoutes(app, ctx);
+  registerOnAirRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);
@@ -159,11 +170,16 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   purge();
   const purgeTimer = setInterval(purge, 24 * 60 * 60_000).unref();
 
-  // Connecteur d'automation choisi dans les paramètres (aucun par défaut).
-  ctx.automation.apply(repos.settings.get());
+  // Connecteur d'automation choisi dans les paramètres (aucun par défaut), voyant ON AIR
+  // conservé en base, météo.
+  const initial = repos.settings.get();
+  ctx.automation.apply(initial);
+  ctx.onAir.restore(DEFAULT_STUDIO_ID);
+  ctx.weather.apply(initial);
 
   app.addHook('onClose', async () => {
     ctx.automation.stop();
+    ctx.weather.stop();
     clearInterval(sweep);
     clearInterval(purgeTimer);
     ctx.hub.close();

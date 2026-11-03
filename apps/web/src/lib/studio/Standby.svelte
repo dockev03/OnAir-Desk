@@ -4,11 +4,16 @@
     isTimed,
     trackRemaining,
     type AirState,
+    type OnAirState,
     type RundownSummary,
+    type TimeFormat,
+    type WeatherState,
   } from '@onair-desk/shared';
   import { i18n, t } from '$lib/i18n/index.svelte.js';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
   import { STANDBY_DRIFT, burnInShift, translate } from './burnin.js';
+  import OnAirLamp from './OnAirLamp.svelte';
+  import WeatherLine from './WeatherLine.svelte';
 
   /**
    * Écran de veille hors émission : horloge, voyant On Air, titre en cours de la source active,
@@ -24,6 +29,10 @@
     today,
     next,
     drift,
+    onAir,
+    weather,
+    timezone,
+    timeFormat,
     ondismiss,
   }: {
     stationName: string;
@@ -35,6 +44,10 @@
     today: string;
     next: RundownSummary | null;
     drift: boolean;
+    onAir: OnAirState;
+    weather: WeatherState | null;
+    timezone: string;
+    timeFormat: TimeFormat;
     ondismiss: () => void;
   } = $props();
 
@@ -60,8 +73,8 @@
     {#if logo}<img class="logo" src={logo} alt="" />{/if}
     <div class="station">{stationName}</div>
     <div class="clock mono">{clock}</div>
-    <!-- Voyant gris tant que le déclenchement du On Air n'existe pas (étape 9). -->
-    <div class="onair" aria-label={t('studio.onAir')}>{t('studio.onAir')}</div>
+    <OnAirLamp {onAir} {now} large />
+    <WeatherLine {weather} {now} {timezone} {timeFormat} large />
     {#if current}
       <div class="track" data-testid="standby-track">
         <span class="title">{current.title}</span>
@@ -112,15 +125,6 @@
     font-weight: 500;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-  }
-  .onair {
-    padding: 0.3rem 1.2rem;
-    border: 2px solid #3a3b3f;
-    border-radius: 8px;
-    color: #5f5e5a;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    font-size: 1.4rem;
   }
   .track {
     font-size: 1.6rem;

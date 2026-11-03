@@ -58,15 +58,13 @@ export function nextShow<T extends ShowSlot>(
   return found;
 }
 
-/**
- * Veille affichée : aucune émission en cours et antenne hors direct. (À l'étape 9, la
- * condition « On Air éteint » s'y ajoutera.)
- */
+/** Veille affichée : aucune émission en cours, antenne hors direct et micro fermé. */
 export function standbyActive<T extends ShowSlot>(
   shows: readonly T[],
   now: number,
   timezone: string,
   live: boolean,
+  onAir = false,
 ): boolean {
-  return !live && showInProgress(shows, now, timezone) === null;
+  return !live && !onAir && showInProgress(shows, now, timezone) === null;
 }

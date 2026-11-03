@@ -37,6 +37,8 @@ const envSchema = z.object({
   AZURACAST_API_KEY: z.string().optional(),
   /** Certificat (PEM) à accepter pour AzuraCast, en plus des autorités publiques. */
   AZURACAST_CA_FILE: z.string().optional(),
+  /** Adresse de l'API Open-Meteo : à ne changer que pour les tests. */
+  OPEN_METEO_URL: z.string().url().optional(),
 });
 
 export interface TlsConfig {
@@ -67,6 +69,8 @@ export interface Config {
   azuracastApiKey: string | null;
   /** Contenu PEM du certificat à accepter pour AzuraCast (auto-signé) ; null : aucun. */
   azuracastCa: string | null;
+  /** Adresse de l'API Open-Meteo ; null : l'adresse publique. */
+  openMeteoUrl: string | null;
 }
 
 export class ConfigError extends Error {}
@@ -153,5 +157,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     radiodjDbPassword: e.RADIODJ_DB_PASSWORD || null,
     azuracastApiKey: e.AZURACAST_API_KEY?.trim() || null,
     azuracastCa,
+    openMeteoUrl: e.OPEN_METEO_URL ?? null,
   };
 }

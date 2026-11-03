@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import type { SetupStatus } from '@onair-desk/shared';
   import { api } from '$lib/api.js';
+  import OnAirButton from '$lib/OnAirButton.svelte';
   import { t } from '$lib/i18n/index.svelte.js';
   import { loadMe, logout, session } from '$lib/session.svelte.js';
   import { logoUrl as logoOf, stationSettings } from '$lib/settings.svelte.js';
@@ -68,17 +69,31 @@
         <a href={link.href} class:active={page.url.pathname.startsWith(link.href)}>{link.label}</a>
       {/each}
     </nav>
+    <OnAirButton />
     <span class="who muted">{session.user.displayName}</span>
     <button onclick={signOut}>{t('nav.logout')}</button>
   </header>
   <main>
     {@render children()}
   </main>
+  {#if stationSettings.value?.weather.provider === 'openmeteo'}
+    <!-- Données météo sous licence CC BY 4.0 : attribution obligatoire. -->
+    <footer class="attribution muted no-print">
+      <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer"
+        >{t('weather.attribution')}</a
+      >
+    </footer>
+  {/if}
 {:else}
   <div class="narrow muted">{t('common.loading')}</div>
 {/if}
 
 <style>
+  .attribution {
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+  }
   header {
     display: flex;
     align-items: center;

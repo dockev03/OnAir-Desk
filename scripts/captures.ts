@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 import { ADMIN, TestServer } from '../e2e/server.js';
@@ -8,7 +9,18 @@ import { ADMIN, TestServer } from '../e2e/server.js';
  * image par écran dans docs/captures/. Lancer après `npm run build` : `npm run captures`.
  */
 const OUT = path.resolve(import.meta.dirname, '../docs/captures');
-const server = new TestServer(3198);
+const WEATHER_PORT = 3197;
+// Météo de démonstration : faux Open-Meteo local (aucun appel à Internet).
+const weather = http.createServer((_req, res) => {
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(
+    JSON.stringify({
+      current: { temperature_2m: 14.2, weather_code: 2, is_day: 1 },
+      daily: { temperature_2m_max: [17.4], temperature_2m_min: [8.1] },
+    }),
+  );
+});
+const server = new TestServer(3198, { OPEN_METEO_URL: `http://127.0.0.1:${WEATHER_PORT}` });
 
 type Inline = { type: 'text'; text: string; marks?: object[] } | { type: 'cue'; attrs: object };
 const text = (t: string, ...marks: object[]): Inline => ({
@@ -27,6 +39,7 @@ const hl = (c: string) => ({ type: 'highlight', attrs: { color: c } });
 
 async function main(): Promise<void> {
   fs.mkdirSync(OUT, { recursive: true });
+  await new Promise<void>((r) => weather.listen(WEATHER_PORT, '127.0.0.1', r));
   await server.start();
   const api = await server.setupAdmin();
   const ok = async (res: Awaited<ReturnType<typeof api.post>>) => {
@@ -36,7 +49,18 @@ async function main(): Promise<void> {
 
   await ok(
     await api.put('/api/settings', {
-      data: { stationName: 'Radio Démo', automationSource: 'simulator' },
+      data: {
+        stationName: 'Radio Démo',
+        automationSource: 'simulator',
+        weather: { provider: 'openmeteo', city: 'Ville démo', latitude: 45, longitude: 3 },
+        liners: {
+          items: [
+            { id: 'station', text: 'Vous écoutez Radio Démo, la radio de la ville', active: true },
+            { id: 'standard', text: 'Le standard : 01 23 45 67 89', active: true },
+          ],
+          rotationSeconds: 20,
+        },
+      },
     }),
   );
   const claire = await ok(
@@ -181,10 +205,11 @@ async function main(): Promise<void> {
   // Écran studio (kiosk).
   const studio = await browser.newPage({ baseURL: server.url, ...context });
   await studio.goto(`/studio#token=${token}`);
-  // Hors émission (la Matinale est à 7 h) : l'écran est en veille ; un clic la quitte.
+  // Hors émission (la Matinale est à 7 h) et micro fermé : l'écran est en veille.
   await studio.getByTestId('standby-track').waitFor();
   await shot(studio, 'studio-veille');
-  await studio.getByTestId('standby').click();
+  // Micro ouvert pour la suite : voyant ON AIR, chronomètre (et plus de veille).
+  await ok(await api.post('/api/studio/onair', { data: { state: 'on' } }));
   await studio.getByTestId('now-title').filter({ hasText: /./ }).waitFor();
   await shot(studio, 'studio-navigation');
   await studio.getByText('La Matinale').click();
@@ -214,10 +239,12 @@ async function main(): Promise<void> {
   await browser.close();
   await api.dispose();
   await server.dispose();
+  weather.close();
 }
 
 main().catch(async (err) => {
   console.error(err);
+  weather.close();
   await server.dispose();
   process.exit(1);
 });

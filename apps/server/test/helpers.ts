@@ -1,6 +1,7 @@
 import type { LightMyRequestResponse } from 'fastify';
 import { buildApp, type App } from '../src/app.js';
 import type { ConnectorDeps } from '../src/connectors/manager.js';
+import type { WeatherDeps } from '../src/connectors/weather/manager.js';
 import { loadConfig } from '../src/config.js';
 import { openMemoryDatabase } from '../src/db/index.js';
 
@@ -8,7 +9,11 @@ export const ORIGIN = 'https://onair-desk.test';
 export const ADMIN_PASSWORD = 'mot-de-passe-admin-solide';
 
 export async function createTestApp(
-  opts: { env?: Record<string, string>; connectorDeps?: ConnectorDeps } = {},
+  opts: {
+    env?: Record<string, string>;
+    connectorDeps?: ConnectorDeps;
+    weatherDeps?: WeatherDeps;
+  } = {},
 ): Promise<App> {
   const config = loadConfig({
     NODE_ENV: 'test',
@@ -22,6 +27,7 @@ export async function createTestApp(
     db: openMemoryDatabase(),
     logger: false,
     connectorDeps: opts.connectorDeps,
+    weatherDeps: opts.weatherDeps,
   });
   built.ctx.setup.ensure(true);
   return built;

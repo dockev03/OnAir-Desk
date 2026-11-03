@@ -33,6 +33,10 @@ describe('settingsSchema', () => {
     airSwitch: { enabled: false, liveSource: 'radiodj', offAirSource: 'azuracast', force: 'auto' },
     defaultLayout: 'solo',
     burnInProtection: true,
+    onAirKiosk: true,
+    onAirSimpleCall: false,
+    weather: { provider: 'none', city: '', latitude: 0, longitude: 0 },
+    liners: { items: [], rotationSeconds: 20 },
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {

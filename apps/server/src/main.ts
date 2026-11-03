@@ -90,6 +90,8 @@ async function main() {
     ? await buildIngestServer({
         tokens: ctx.repos.connectorTokens,
         automation: ctx.automation,
+        onAir: ctx.onAir,
+        settings: ctx.repos.settings,
         logger: { level: config.logLevel },
       })
     : null;

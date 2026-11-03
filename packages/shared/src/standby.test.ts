@@ -69,6 +69,7 @@ describe('dispositions', () => {
       compactHeader: false,
       regieZone: false,
       collapseSidebar: false,
+      liners: true,
     });
     expect(LAYOUT_BLOCKS.regie.regieZone).toBe(true);
     expect(LAYOUT_BLOCKS.interview).toMatchObject({ compactHeader: true, collapseSidebar: true });

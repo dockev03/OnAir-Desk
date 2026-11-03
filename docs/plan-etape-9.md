@@ -1,6 +1,6 @@
 # Étape 9 — On Air, météo et liners : plan
 
-> **Statut : plan validé, réalisation à venir.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §2 (question ouverte 1), §5 (bandeau supérieur, principes d'affichage), §6 (On Air, météo), §7 idées 5 et 7, §8 étape 9, §10 (connecteurs, paramétrage). Branche : `feature/etape-9-onair-meteo-liners`.
 > 6 fonctionnalités. S'appuie sur l'état antenne (étape 6), l'écoute dédiée aux connecteurs (étape 7), la veille et les dispositions (étape 8).
 
@@ -84,3 +84,41 @@ Les décisions sont **validées** ; la colonne « Alternative » garde trace des
   - persistance après redémarrage ; migration 10 (jeton RadioDJ conservé) ;
   - Open-Meteo contre un faux serveur : réponse réelle, panne puis retour, valeur ancienne puis trop ancienne, changement de paramètres.
 - **Bout en bout (Playwright)** : On Air allumé par la route (`toggle`) → voyant rouge et chronomètre, puis éteint ; appui long sur l'écran studio ; météo affichée puis repli ; rotation et clic sur les liners ; veille masquée micro ouvert.
+
+## Bilan de l'étape 9
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - état antenne complété : `onAir` (allumé, heure du dernier passage, origine, durée de la dernière ouverture) et `weather` (dernière valeur, heure, état de la source) ;
+  - paramètres `onAirKiosk`, `onAirSimpleCall`, `weather` (fournisseur, ville, coordonnées bornées, ville obligatoire avec un fournisseur), `liners` (30 cartes au plus, 200 caractères, rotation de 10 à 120 s) ; requête On Air stricte (`on` / `off` / `toggle`) ;
+  - `weather.ts` : codes WMO → libellés et pictogrammes (jour / nuit), fraîcheur (récente, ancienne au-delà de 45 min, expirée au-delà de 6 h), température affichée ; chronomètre micro (`micTimer`, `formatElapsed`) ;
+  - veille masquée micro ouvert ; bande de liners dans les dispositions « Animateur seul » et « Émission avec régie » ; actions `onair.changed`, `weather.error`, `weather.recovered` au journal.
+- **Serveur** :
+  - `OnAirService` : passages, état déjà atteint sans effet, durée gardée à l'extinction, journal, état antenne ; **migration 10** (état On Air par studio, dernière météo, table des jetons recréée pour accepter `onair`, jeton RadioDJ repris) ;
+  - écoute dédiée aux connecteurs : `POST /api/onair` et `GET /api/onair` (jeton dans l'en-tête `Authorization: Bearer`), appel simple `GET /api/onair/on|off|toggle?token=` désactivé par défaut ; adresse des requêtes journalisée **sans** sa partie après `?` ;
+  - bouton manuel `POST /api/studio/onair` (comptes, et écran studio si autorisé) ; jeton `GET/POST /api/settings/onair/token` ;
+  - météo : connecteur Open-Meteo (`fetch`, délai 10 s, réponse lue par un schéma tolérant), gestionnaire (interrogation au démarrage puis toutes les 20 min, dernière valeur conservée en base et affichée tout de suite au redémarrage, panne et retour journalisés une fois) ; `POST /api/settings/weather/test` ; `OPEN_METEO_URL` pour les tests.
+- **Interface** :
+  - écran studio : voyant ON AIR (rouge fixe) et chronomètre dans le bloc horloge, appui long d'1 seconde sur le voyant ; météo sous l'heure (pictogramme SVG, température, libellé, min / max, heure si ancienne) ; bande de liners en bas, rotation et clic ; veille avec voyant réel et météo ;
+  - interface : bouton On Air dans la barre du haut (confirmation, état relu toutes les 15 s) ; attribution « Météo : Open-Meteo.com » en pied de page ;
+  - Paramètres : On Air (bouton de l'écran studio, jeton, exemples d'appel, appel simple), météo (« Tester »), liners (liste, ordre, actives, rotation) ; cases à cocher alignées sur leur libellé (y compris celle de l'étape 8) ;
+  - textes FR et EN ; README et captures (écran studio avec voyant, chronomètre, météo et liners ; veille).
+
+### Tests
+
+- 262 tests unitaires (+23), dont :
+  - service On Air (on / off / toggle, état déjà atteint, durée, journal) ; route de l'écoute dédiée (jeton valide / faux / absent, lecture de l'état, corps strict, débit) ; appel simple refusé puis accepté, **jeton absent du journal** ; bouton manuel (compte, écran studio, désactivé, journal au nom de l'écran) ; migration 10 (jeton RadioDJ conservé) et état conservé après redémarrage ;
+  - Open-Meteo contre un faux serveur (requête, fuseau, erreurs HTTP, réponse illisible, injoignable) ; gestionnaire (relecture, panne puis retour, journal une fois, valeur conservée pour le même lieu, aucun fournisseur) ; bouton « Tester » et validation ;
+  - commun : codes WMO, fraîcheur, chronomètre, requête On Air, liners, veille micro ouvert.
+- **Bout en bout (Chromium)**, 4 nouveaux scénarios (17 au total) : API On Air (`toggle`) → plus de veille, voyant rouge et chronomètre, puis extinction ; appui long sur le voyant (un clic ne fait rien) ; météo affichée puis gardée pendant une panne ; liners (cartes actives seulement, clic).
+- **Poids de `/studio`** : +4,8 Ko gzip (96,4 → 101,2 Ko, même méthode), toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Pictogrammes météo** : dessinés en SVG dans l'interface (livrés avec elle, aucune ressource externe) plutôt que servis comme fichiers à part : une dizaine de tracés, quelques centaines d'octets.
+- **Panne météo** : nouvel essai au bout de **5 minutes** (au lieu d'attendre les 20 minutes), pour que la météo revienne vite après une coupure.
+- **Bande de liners** : sous la zone principale, sur toute la largeur de l'écran, pour rester fixe quelle que soit la vue.
+- Le bouton On Air de l'interface relit l'état toutes les 15 secondes (pas de liaison temps réel dans l'interface).
+- Le jeton On Air vaut pour le studio par défaut (un seul studio aujourd'hui).
+- À vérifier à la mise en service : ce que savent envoyer le Stream Deck et la console (voie normale ou appel simple), taille du voyant et du chronomètre sur l'afficheur réel (`docs/a-faire.md`).

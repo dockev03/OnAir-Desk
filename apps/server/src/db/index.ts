@@ -4,6 +4,7 @@ import { ConnectorTokenRepo } from './connector-tokens.js';
 import { DeviceRepo } from './devices.js';
 import { FolderRepo } from './folders.js';
 import { LogoRepo } from './logo.js';
+import { OnAirRepo } from './onair.js';
 import { PrompterRepo } from './prompter.js';
 import { RundownRepo } from './rundowns.js';
 import { ScriptRepo } from './scripts.js';
@@ -12,6 +13,7 @@ import { SettingsRepo } from './settings.js';
 import { StudioRepo } from './studios.js';
 import { TemplateRepo } from './templates.js';
 import { UserRepo } from './users.js';
+import { WeatherCacheRepo } from './weather-cache.js';
 
 export interface Repos {
   db: Db;
@@ -28,6 +30,8 @@ export interface Repos {
   logo: LogoRepo;
   studios: StudioRepo;
   connectorTokens: ConnectorTokenRepo;
+  onAir: OnAirRepo;
+  weatherCache: WeatherCacheRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -46,6 +50,8 @@ export function createRepos(db: Db): Repos {
     logo: new LogoRepo(db),
     studios: new StudioRepo(db),
     connectorTokens: new ConnectorTokenRepo(db),
+    onAir: new OnAirRepo(db),
+    weatherCache: new WeatherCacheRepo(db),
   };
 }
 

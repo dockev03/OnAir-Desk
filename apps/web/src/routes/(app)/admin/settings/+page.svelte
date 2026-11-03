@@ -5,12 +5,16 @@
     CONNECTED_SOURCES,
     ITEM_COLORS,
     LAYOUTS,
+    LINER_MAX_LENGTH,
+    LINER_ROTATION_MAX,
+    LINER_ROTATION_MIN,
     LOCALES,
     LOGO_TYPES,
     MAX_LOGO_BYTES,
     MAX_CUES,
     MAX_ITEM_TAGS,
     MAX_ITEM_TYPES,
+    MAX_LINERS,
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     SPEED_WPM_MAX,
@@ -20,7 +24,10 @@
     TEXT_COLORS,
     TIME_FORMATS,
     TRACK_ALERT_MAX_SECONDS,
+    WEATHER_PROVIDERS,
+    formatTemperature,
     sourcesInUse,
+    weatherLabel,
     type AirSnapshot,
     type AzuracastTestResult,
     type ConnectorTokenCreated,
@@ -28,6 +35,7 @@
     type RadiodjTestResult,
     type Settings,
     type SourceStatus,
+    type WeatherTestResult,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
   import { errorMessage, t } from '$lib/i18n/index.svelte.js';
@@ -79,6 +87,67 @@
     } catch (err) {
       tokenError = errorMessage(errorCode(err));
     }
+  }
+
+  // ---- On Air : jeton de l'API, adresses à recopier dans le Stream Deck / la console --------
+
+  let onAirToken = $state<ConnectorTokenStatus | null>(null);
+  let newOnAirToken = $state('');
+  let onAirTokenError = $state('');
+  const onAirBase = $derived(
+    onAirToken?.httpPort ? `http://${location.hostname}:${onAirToken.httpPort}/api/onair` : '',
+  );
+
+  function loadOnAirToken() {
+    api<ConnectorTokenStatus>('GET', '/api/settings/onair/token')
+      .then((s) => (onAirToken = s))
+      .catch(() => {});
+  }
+
+  async function generateOnAirToken() {
+    if (onAirToken?.configured && !confirm(t('settings.radiodjTokenConfirm'))) return;
+    onAirTokenError = '';
+    try {
+      const r = await api<ConnectorTokenCreated>('POST', '/api/settings/onair/token');
+      onAirToken = r.status;
+      newOnAirToken = r.token;
+    } catch (err) {
+      onAirTokenError = errorMessage(errorCode(err));
+    }
+  }
+
+  // ---- Météo : bouton « Tester » ----------------------------------------------------------
+
+  let weatherTest = $state<WeatherTestResult | null>(null);
+  let weatherTesting = $state(false);
+
+  async function testWeather() {
+    if (!settings) return;
+    weatherTesting = true;
+    weatherTest = null;
+    try {
+      weatherTest = await api<WeatherTestResult>('POST', '/api/settings/weather/test', {
+        weather: settings.weather,
+      });
+    } catch (err) {
+      weatherTest = { ok: false, error: errorCode(err), weather: null };
+    } finally {
+      weatherTesting = false;
+    }
+  }
+
+  // ---- Liners ----------------------------------------------------------------------------
+
+  function addLiner() {
+    if (!settings || settings.liners.items.length >= MAX_LINERS) return;
+    settings.liners.items.push({
+      id: cueId(
+        'liner',
+        settings.liners.items.map((l) => l.id),
+      ),
+      text: settings.stationName,
+      active: true,
+    });
   }
 
   async function testRadiodj() {
@@ -141,6 +210,7 @@
       .catch((e) => (error = errorMessage(errorCode(e))));
     loadAir();
     loadToken();
+    loadOnAirToken();
     fetch('/api/tls/root-ca.crt', { method: 'HEAD' })
       .then((r) => (hasRootCa = r.ok))
       .catch(() => {});
@@ -553,11 +623,169 @@
       </select>
       <span class="muted small">{t('settings.defaultLayoutHelp')}</span>
     </label>
-    <label class="check">
+    <label class="inline">
       <input type="checkbox" bind:checked={settings.burnInProtection} />
       {t('settings.burnIn')}
     </label>
     <p class="muted small" style="margin: 0">{t('settings.burnInHelp')}</p>
+
+    <h2>{t('settings.onAir')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.onAirIntro')}</p>
+    <label class="inline">
+      <input type="checkbox" bind:checked={settings.onAirKiosk} />
+      {t('settings.onAirKiosk')}
+    </label>
+    <h3>{t('settings.onAirToken')}</h3>
+    {#if onAirToken}
+      {#if !onAirToken.httpPort}
+        <p class="warn-text">{t('settings.onAirPortClosed')}</p>
+      {:else}
+        <p class="muted" style="margin: 0">{t('settings.onAirExamples')}</p>
+        <code class="token small">POST {onAirBase} {'{"state":"toggle"}'}</code>
+        <code class="token small">GET {onAirBase}</code>
+      {/if}
+      <p style="margin: 0">
+        {onAirToken.createdAt
+          ? t('settings.radiodjTokenSince', {
+              date: new Date(onAirToken.createdAt).toLocaleString(),
+            })
+          : t('settings.radiodjTokenNone')}
+      </p>
+      {#if newOnAirToken}
+        <p class="warn-text" style="margin: 0">{t('settings.radiodjTokenShown')}</p>
+        <code class="token">{newOnAirToken}</code>
+      {/if}
+      <div>
+        <button type="button" onclick={generateOnAirToken}
+          >{onAirToken.configured
+            ? t('settings.radiodjTokenRegenerate')
+            : t('settings.radiodjTokenGenerate')}</button
+        >
+      </div>
+      {#if onAirTokenError}<p class="error" role="alert">{onAirTokenError}</p>{/if}
+    {/if}
+    <label class="inline">
+      <input type="checkbox" bind:checked={settings.onAirSimpleCall} />
+      {t('settings.onAirSimpleCall')}
+    </label>
+    <p class="muted small" style="margin: 0">{t('settings.onAirSimpleCallHelp')}</p>
+    {#if settings.onAirSimpleCall && onAirBase}
+      <code class="token small">GET {onAirBase}/toggle?token=…</code>
+    {/if}
+
+    <h2>{t('settings.weather')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.weatherIntro')}</p>
+    <label>
+      {t('settings.weatherProvider')}
+      <select bind:value={settings.weather.provider}>
+        {#each WEATHER_PROVIDERS as p (p)}<option value={p}>{t(`weatherProvider.${p}`)}</option
+          >{/each}
+      </select>
+    </label>
+    {#if settings.weather.provider !== 'none'}
+      <div class="grid2">
+        <label>
+          {t('settings.weatherCity')}
+          <input bind:value={settings.weather.city} maxlength="80" required />
+        </label>
+        <label>
+          {t('settings.weatherLatitude')}
+          <input
+            type="number"
+            min="-90"
+            max="90"
+            step="0.0001"
+            bind:value={settings.weather.latitude}
+            required
+          />
+        </label>
+        <label>
+          {t('settings.weatherLongitude')}
+          <input
+            type="number"
+            min="-180"
+            max="180"
+            step="0.0001"
+            bind:value={settings.weather.longitude}
+            required
+          />
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" onclick={testWeather} disabled={weatherTesting}
+          >{t('settings.weatherTest')}</button
+        >
+        {#if weatherTest}
+          <span class="test-result" class:ok={weatherTest.ok} role="status">
+            {weatherTest.ok && weatherTest.weather
+              ? t('settings.weatherTestOk', {
+                  city: weatherTest.weather.city,
+                  temperature: formatTemperature(weatherTest.weather.temperature),
+                  label: t(`weather.${weatherLabel(weatherTest.weather.code)}`),
+                })
+              : errorMessage(weatherTest.error ?? 'weather_error')}
+          </span>
+        {/if}
+      </div>
+      {#if settings.weather.provider === 'openmeteo'}
+        <p class="muted small" style="margin: 0">
+          <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer"
+            >{t('weather.attribution')}</a
+          >
+        </p>
+      {/if}
+    {/if}
+
+    <h2>{t('settings.liners')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.linersIntro')}</p>
+    <div class="cues">
+      {#each settings.liners.items as liner, i (liner.id)}
+        <div class="liner-row">
+          <input
+            aria-label={t('settings.linerText')}
+            bind:value={liner.text}
+            required
+            maxlength={LINER_MAX_LENGTH}
+          />
+          <label class="inline">
+            <input type="checkbox" bind:checked={liner.active} />
+            {t('settings.linerActive')}
+          </label>
+          <div class="row">
+            <button
+              type="button"
+              aria-label={t('settings.moveUp')}
+              disabled={i === 0}
+              onclick={() => swap(settings!.liners.items, i, i - 1)}>↑</button
+            >
+            <button
+              type="button"
+              aria-label={t('settings.moveDown')}
+              disabled={i === settings.liners.items.length - 1}
+              onclick={() => swap(settings!.liners.items, i, i + 1)}>↓</button
+            >
+            <button type="button" class="danger" onclick={() => settings!.liners.items.splice(i, 1)}
+              >{t('settings.removeCue')}</button
+            >
+          </div>
+        </div>
+      {/each}
+    </div>
+    <div>
+      <button type="button" onclick={addLiner} disabled={settings.liners.items.length >= MAX_LINERS}
+        >{t('settings.addLiner')}</button
+      >
+    </div>
+    <label>
+      {t('settings.linersRotation')}
+      <input
+        type="number"
+        min={LINER_ROTATION_MIN}
+        max={LINER_ROTATION_MAX}
+        bind:value={settings.liners.rotationSeconds}
+        required
+      />
+    </label>
 
     <h2>{t('settings.trackAlert')}</h2>
     <p class="muted" style="margin: 0">{t('settings.trackAlertIntro')}</p>
@@ -804,11 +1032,6 @@
   .small {
     font-size: 0.85rem;
   }
-  .check {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
   .test-result.ok {
     color: var(--ok);
   }
@@ -878,6 +1101,12 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+  .liner-row {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) auto auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
   .cue-row {
     display: grid;
     grid-template-columns: 9rem minmax(8rem, 1fr) auto auto;
@@ -885,6 +1114,7 @@
     align-items: center;
   }
   @media (max-width: 720px) {
+    .liner-row,
     .cue-row {
       grid-template-columns: 1fr;
     }

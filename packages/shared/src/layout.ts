@@ -16,12 +16,14 @@ export interface LayoutBlocks {
   regieZone: boolean;
   /** Barre latérale réduite d'office (le bouton « Réduire » reste utilisable). */
   collapseSidebar: boolean;
+  /** Bande des cartes de liners en bas de la zone principale. */
+  liners: boolean;
 }
 
 export const LAYOUT_BLOCKS: Record<Layout, LayoutBlocks> = {
-  solo: { compactHeader: false, regieZone: false, collapseSidebar: false },
-  regie: { compactHeader: false, regieZone: true, collapseSidebar: false },
-  interview: { compactHeader: true, regieZone: false, collapseSidebar: true },
+  solo: { compactHeader: false, regieZone: false, collapseSidebar: false, liners: true },
+  regie: { compactHeader: false, regieZone: true, collapseSidebar: false, liners: true },
+  interview: { compactHeader: true, regieZone: false, collapseSidebar: true, liners: false },
 };
 
 /** Disposition d'une émission : la sienne si elle en a une, sinon celle des paramètres. */

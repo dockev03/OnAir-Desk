@@ -2,9 +2,9 @@
 
 Écran studio pour radios, affiché dans un navigateur en mode kiosk, sur l'afficheur de votre choix : prompteur, conducteurs d'émission colorés, horloge à la seconde, titre en cours et à venir (depuis l'automation, RadioDJ en premier), météo et voyant On Air.
 
-![Écran studio en mode lecture : horloge, titre en cours avec compte à rebours d'intro, titre à venir, prompteur avec repères colorés et bande de lecture](docs/captures/studio-lecture.png)
+![Écran studio en mode lecture : voyant ON AIR et chronomètre micro ouvert, horloge et météo, titre en cours avec compte à rebours d'intro, titre à venir, prompteur avec repères colorés et bande de lecture, carte de liner en bas](docs/captures/studio-lecture.png)
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille) et 9 (On Air, météo et liners) réalisées.**
 
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
@@ -18,7 +18,10 @@
 - AzuraCast : titre en cours et à venir 24 h/24 ; bascule automatique ou forcée entre la source du direct (RadioDJ) et AzuraCast.
 - Écran studio hors émission : écran de veille (horloge, On Air, titre en cours, prochaine émission), protection contre l'usure, dispositions toutes prêtes (Animateur seul, Émission avec régie, Interview), indicateur de connexion discret.
 
-Les autres intégrations (On Air, météo) arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+- On Air : voyant ON AIR piloté par une API (bouton du Stream Deck, de la console ou d'un logiciel) ou par un bouton de secours, chronomètre micro ouvert.
+- Météo (Open-Meteo) sous l'heure, interrogée par le serveur, avec repli en cas de panne ; cartes de liners en rotation sur l'écran studio.
+
+La régie (messages, ordres rapides, duplex) et le suivi du temps arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
 
 ### Aperçu
 
@@ -33,7 +36,7 @@ Les autres intégrations (On Air, météo) arrivent aux étapes suivantes (voir 
 Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md) : plans et bilans des étapes.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md), [`docs/plan-etape-9.md`](docs/plan-etape-9.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---
@@ -183,6 +186,29 @@ Sans repère intro / outro dans l'API d'AzuraCast, il n'y a pas de compte à reb
 - **Dispositions** : _Animateur seul_, _Émission avec régie_ (zone réservée aux messages régie), _Interview_ (bandeau réduit). Elles se choisissent sur le **modèle d'émission** et sur le **conducteur** ; la disposition par défaut se règle dans les Paramètres.
 - **Usure de l'écran** : les éléments fixes se décalent de quelques pixels toutes les 2 minutes, et la veille dérive lentement (désactivable dans les Paramètres).
 
+### 9. On Air, météo et liners
+
+**On Air** : le voyant s'allume par l'API d'OnAir-Desk (bouton du Stream Deck, de la console, d'un logiciel) ou par un bouton de secours : dans la barre de l'interface (avec confirmation) et sur l'écran studio (appui long d'1 seconde sur le voyant, désactivable). La dernière action l'emporte ; chaque passage est noté au journal.
+
+1. Ouvrir l'écoute des connecteurs (`CONNECTOR_HTTP_PORT`, `CONNECTOR_BIND` : voir la section RadioDJ) : l'API On Air y répond, en HTTP sur le réseau interne.
+2. _Administration_ → **Paramètres** → On Air → **Générer le jeton** (montré une seule fois, stocké haché, régénérable).
+3. Régler le déclencheur, par exemple un plugin de requêtes HTTP du Stream Deck ou Bitfocus Companion :
+
+```bash
+# Allumer, éteindre, ou inverser (un seul bouton) :
+curl -X POST http://<adresse-de-la-debian>:8780/api/onair \
+  -H "Authorization: Bearer <jeton>" -H "Content-Type: application/json" \
+  -d '{"state":"toggle"}'
+# État (pour colorer le bouton) :
+curl http://<adresse-de-la-debian>:8780/api/onair -H "Authorization: Bearer <jeton>"
+```
+
+⚠️ **Appel simple** (désactivé par défaut) : pour un déclencheur qui ne sait qu'ouvrir une adresse (action « Site web » du Stream Deck, macro de console), cocher _Autoriser l'appel simple_, puis appeler `http://<adresse>:8780/api/onair/toggle?token=<jeton>` (ou `/on`, `/off`). Le jeton figure alors dans l'adresse : à n'activer qu'en cas de besoin. L'adresse n'est jamais écrite dans les journaux d'OnAir-Desk.
+
+**Météo** : _Paramètres_ → Météo → fournisseur **Open-Meteo** (gratuit, sans clé), ville affichée, latitude et longitude, puis **Tester**. Le serveur l'interroge toutes les 20 minutes (connexion sortante vers `api.open-meteo.com`) ; en cas de panne, la dernière valeur reste affichée avec son heure, puis disparaît au-delà de 6 heures. Attribution « Météo : Open-Meteo.com » en pied de page de l'interface (licence CC BY 4.0).
+
+**Liners** : _Paramètres_ → Cartes de liners : jusqu'à 30 cartes (nom de la station, fréquence, standard, slogan…), actives ou non, durée d'affichage. Elles défilent en bas de l'écran studio (sauf disposition « Interview » et veille) ; un clic passe à la suivante.
+
 ### Mise à jour
 
 Portainer → _Stacks_ → `onair-desk` → **Pull and redeploy**. Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
@@ -210,6 +236,8 @@ Le nom exact du volume est visible dans Portainer → _Volumes_. **La sauvegarde
 - Journal des actions sensibles (connexions, comptes, écrans) dans la table `audit_log`.
 - L'afficheur en kiosk ouvre une session sans intervention : il doit rester dans le studio, sur un réseau maîtrisé.
 - AzuraCast (facultatif) : connexions **sortantes** seulement, en HTTPS avec certificat **toujours vérifié** ; clé API facultative en variable d'environnement, liée à un compte **sans droit d'administration**, jamais journalisée ni renvoyée.
+- On Air : API sur l'écoute dédiée aux connecteurs (fermée par défaut), jeton stocké haché, débit limité ; appel simple (jeton dans l'adresse) désactivé par défaut. Bouton de l'écran studio : appui long, tracé, désactivable.
+- Météo : connexion **sortante** vers Open-Meteo seulement ; l'afficheur n'a pas besoin d'Internet.
 - RadioDJ (facultatif) : base lue avec un compte **SELECT seul** ; port HTTP dédié aux connecteurs **fermé par défaut**, limité à la route du signal (jeton stocké haché, limitation de débit). Son jeton circule en clair sur le réseau local : la requête n'est qu'un signal, la base fait foi.
 
 ---

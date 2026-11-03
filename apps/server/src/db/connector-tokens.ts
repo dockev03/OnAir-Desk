@@ -1,8 +1,8 @@
 import type { Db } from './database.js';
 import { nowIso } from '../lib/time.js';
 
-/** Connecteurs entrants authentifiés par un jeton (le plugin RadioDJ pour l'instant). */
-export type IncomingConnector = 'radiodj';
+/** Connecteurs entrants authentifiés par un jeton : plugin RadioDJ, déclencheur On Air. */
+export type IncomingConnector = 'radiodj' | 'onair';
 
 /**
  * Jetons des connecteurs entrants : un par connecteur, stocké haché, remplacé à chaque

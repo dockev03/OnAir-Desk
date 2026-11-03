@@ -29,6 +29,19 @@ export function defaultSettings(): Settings {
     airSwitch: { enabled: false, liveSource: 'radiodj', offAirSource: 'azuracast', force: 'auto' },
     defaultLayout: 'solo',
     burnInProtection: true,
+    onAirKiosk: true,
+    onAirSimpleCall: false,
+    weather: { provider: 'none', city: '', latitude: 0, longitude: 0 },
+    // Exemples à adapter par la station : inactifs tant qu'ils ne sont pas relus.
+    liners: {
+      items: [
+        { id: 'station', text: 'Vous écoutez [nom de la station]', active: false },
+        { id: 'frequence', text: 'Sur [fréquence] FM et sur Internet', active: false },
+        { id: 'standard', text: 'Le standard : [numéro de téléphone]', active: false },
+        { id: 'slogan', text: '[slogan de la station]', active: false },
+      ],
+      rotationSeconds: 20,
+    },
     logoHash: null,
   };
 }
