@@ -13,6 +13,7 @@ import { LoginThrottle } from './auth/throttle.js';
 import { HttpError } from './lib/errors.js';
 import { Library } from './library.js';
 import { OnAirService } from './onair.js';
+import { RegieService } from './regie.js';
 import { Rundowns } from './rundowns.js';
 import { SetupState } from './setup.js';
 import { Templates } from './templates.js';
@@ -28,6 +29,7 @@ import { registerLibraryRoutes } from './routes/library.js';
 import { registerOnAirRoutes } from './routes/onair.js';
 import { registerRundownRoutes } from './routes/rundowns.js';
 import { registerRadiodjRoutes } from './routes/radiodj.js';
+import { registerRegieRoutes } from './routes/regie.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSetupRoutes } from './routes/setup.js';
 import { registerSystemRoutes } from './routes/system.js';
@@ -69,8 +71,8 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   const repos = createRepos(db);
   const hub = new Hub();
   const library = new Library(repos, hub);
-  const rundowns = new Rundowns(repos, library);
   const air = new AirStateStore(hub);
+  const rundowns = new Rundowns(repos, library, air);
   const ctx: RouteContext = {
     config,
     repos,
@@ -86,6 +88,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
       ...opts.connectorDeps,
     }),
     onAir: new OnAirService(repos, air),
+    regie: new RegieService(repos, air),
     weather: new WeatherManager(DEFAULT_STUDIO_ID, air, repos, Date.now, {
       openMeteoUrl: config.openMeteoUrl ?? undefined,
       ...opts.weatherDeps,
@@ -142,6 +145,7 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   registerRadiodjRoutes(app, ctx);
   registerAzuracastRoutes(app, ctx);
   registerOnAirRoutes(app, ctx);
+  registerRegieRoutes(app, ctx);
   registerLibraryRoutes(app, ctx);
   registerRundownRoutes(app, ctx);
   registerTemplateRoutes(app, ctx);
@@ -175,11 +179,13 @@ export async function buildApp(opts: AppOptions): Promise<App> {
   const initial = repos.settings.get();
   ctx.automation.apply(initial);
   ctx.onAir.restore(DEFAULT_STUDIO_ID);
+  ctx.regie.restore(DEFAULT_STUDIO_ID);
   ctx.weather.apply(initial);
 
   app.addHook('onClose', async () => {
     ctx.automation.stop();
     ctx.weather.stop();
+    ctx.regie.stop();
     clearInterval(sweep);
     clearInterval(purgeTimer);
     ctx.hub.close();

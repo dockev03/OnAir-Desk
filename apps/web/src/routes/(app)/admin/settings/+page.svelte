@@ -15,6 +15,10 @@
     MAX_ITEM_TAGS,
     MAX_ITEM_TYPES,
     MAX_LINERS,
+    MAX_QUICK_ORDERS,
+    MESSAGE_TTL_MAX_MINUTES,
+    MESSAGE_TTL_MIN_MINUTES,
+    QUICK_ORDER_LABEL_MAX,
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     SPEED_WPM_MAX,
@@ -134,6 +138,21 @@
     } finally {
       weatherTesting = false;
     }
+  }
+
+  // ---- Ordres rapides de la régie --------------------------------------------------------
+
+  function addOrder() {
+    if (!settings || settings.regie.orders.length >= MAX_QUICK_ORDERS) return;
+    settings.regie.orders.push({
+      id: cueId(
+        'ordre',
+        settings.regie.orders.map((o) => o.id),
+      ),
+      label: '',
+      urgent: false,
+      active: true,
+    });
   }
 
   // ---- Liners ----------------------------------------------------------------------------
@@ -786,6 +805,69 @@
         required
       />
     </label>
+
+    <h2>{t('settings.regie')}</h2>
+    <p class="muted" style="margin: 0">{t('settings.regieIntro')}</p>
+    <label>
+      {t('settings.regieTtl')}
+      <input
+        type="number"
+        min={MESSAGE_TTL_MIN_MINUTES}
+        max={MESSAGE_TTL_MAX_MINUTES}
+        bind:value={settings.regie.messageTtlMinutes}
+        required
+      />
+    </label>
+    <label class="inline">
+      <input type="checkbox" bind:checked={settings.regie.kioskSeen} />
+      {t('settings.regieKioskSeen')}
+    </label>
+    <h3>{t('settings.regieOrders')}</h3>
+    <div class="cues">
+      {#each settings.regie.orders as order, i (order.id)}
+        <div class="liner-row">
+          <input
+            aria-label={t('settings.regieOrderLabel')}
+            bind:value={order.label}
+            required
+            maxlength={QUICK_ORDER_LABEL_MAX}
+          />
+          <label class="inline">
+            <input type="checkbox" bind:checked={order.urgent} />
+            {t('regie.urgent')}
+          </label>
+          <label class="inline">
+            <input type="checkbox" bind:checked={order.active} />
+            {t('settings.linerActive')}
+          </label>
+          <div class="row">
+            <button
+              type="button"
+              aria-label={t('settings.moveUp')}
+              disabled={i === 0}
+              onclick={() => swap(settings!.regie.orders, i, i - 1)}>↑</button
+            >
+            <button
+              type="button"
+              aria-label={t('settings.moveDown')}
+              disabled={i === settings.regie.orders.length - 1}
+              onclick={() => swap(settings!.regie.orders, i, i + 1)}>↓</button
+            >
+            <button type="button" class="danger" onclick={() => settings!.regie.orders.splice(i, 1)}
+              >{t('settings.removeCue')}</button
+            >
+          </div>
+        </div>
+      {/each}
+    </div>
+    <div>
+      <button
+        type="button"
+        onclick={addOrder}
+        disabled={settings.regie.orders.length >= MAX_QUICK_ORDERS}
+        >{t('settings.regieAddOrder')}</button
+      >
+    </div>
 
     <h2>{t('settings.trackAlert')}</h2>
     <p class="muted" style="margin: 0">{t('settings.trackAlertIntro')}</p>

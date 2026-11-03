@@ -42,6 +42,19 @@ export function defaultSettings(): Settings {
       ],
       rotationSeconds: 20,
     },
+    // Ordres rapides proposés à l'installation : inactifs tant que la station ne les a pas relus.
+    regie: {
+      messageTtlMinutes: 5,
+      kioskSeen: true,
+      orders: [
+        { id: 'accelere', label: 'Accélère', urgent: false, active: false },
+        { id: 'etire', label: 'Étire', urgent: false, active: false },
+        { id: 'conclus', label: 'Conclus', urgent: true, active: false },
+        { id: 'invite', label: 'Invité en ligne', urgent: false, active: false },
+        { id: 'pub', label: 'Pub dans 1 min', urgent: false, active: false },
+        { id: 'rends', label: "Rends l'antenne", urgent: true, active: false },
+      ],
+    },
     logoHash: null,
   };
 }

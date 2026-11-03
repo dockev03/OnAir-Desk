@@ -6,6 +6,7 @@ import type { LoginThrottle } from '../auth/throttle.js';
 import type { WeatherManager } from '../connectors/weather/manager.js';
 import type { Library } from '../library.js';
 import type { OnAirService } from '../onair.js';
+import type { RegieService } from '../regie.js';
 import type { Rundowns } from '../rundowns.js';
 import type { SetupState } from '../setup.js';
 import type { Templates } from '../templates.js';
@@ -24,6 +25,8 @@ export interface RouteContext {
   automation: AutomationManager;
   /** Voyant ON AIR des studios. */
   onAir: OnAirService;
+  /** Régie : messages, duplex, main courante. */
+  regie: RegieService;
   /** Météo du studio par défaut. */
   weather: WeatherManager;
   throttle: LoginThrottle;

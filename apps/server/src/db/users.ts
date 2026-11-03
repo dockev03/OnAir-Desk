@@ -8,6 +8,7 @@ interface UserRow {
   display_name: string;
   password_hash: string;
   role: Role;
+  is_director: 0 | 1;
   locale: Locale;
   is_active: 0 | 1;
   created_at: string;
@@ -23,6 +24,7 @@ const toUser = (r: UserRow): User => ({
   displayName: r.display_name,
   passwordHash: r.password_hash,
   role: r.role,
+  isDirector: r.is_director === 1,
   locale: r.locale,
   isActive: r.is_active === 1,
   createdAt: r.created_at,
@@ -64,14 +66,15 @@ export class UserRepo {
     displayName: string;
     passwordHash: string;
     role: Role;
+    isDirector?: boolean;
     locale: Locale;
   }): User {
     const info = this.db
       .prepare(
-        `INSERT INTO users (username, display_name, password_hash, role, locale)
-         VALUES (@username, @displayName, @passwordHash, @role, @locale)`,
+        `INSERT INTO users (username, display_name, password_hash, role, is_director, locale)
+         VALUES (@username, @displayName, @passwordHash, @role, @isDirector, @locale)`,
       )
-      .run(u);
+      .run({ ...u, isDirector: u.isDirector ? 1 : 0 });
     return this.findById(Number(info.lastInsertRowid))!;
   }
 
@@ -81,6 +84,7 @@ export class UserRepo {
       displayName: string;
       passwordHash: string;
       role: Role;
+      isDirector: boolean;
       locale: Locale;
       isActive: boolean;
     }>,
@@ -89,6 +93,7 @@ export class UserRepo {
       displayName: 'display_name',
       passwordHash: 'password_hash',
       role: 'role',
+      isDirector: 'is_director',
       locale: 'locale',
       isActive: 'is_active',
     };

@@ -2,6 +2,7 @@ import type { AirMessage, AirSnapshot, Studio, WeatherNow } from './air.js';
 import type { ScriptDoc } from './content.js';
 import type { ItemScriptInfo } from './rundown.js';
 import type { Layout } from './layout.js';
+import type { AuditEntry } from './audit.js';
 import type { Locale, Role, Settings } from './schemas.js';
 import type { SkipReason, TemplateExclusion } from './template.js';
 
@@ -10,10 +11,16 @@ export interface PublicUser {
   username: string;
   displayName: string;
   role: Role;
+  /** Droit « Réalisateur » (régie) ; l'admin l'a d'office (voir canDirect). */
+  isDirector: boolean;
   locale: Locale;
   isActive: boolean;
   createdAt: string;
 }
+
+/** Admin, ou compte avec le droit « Réalisateur ». */
+export const canDirect = (u: Pick<PublicUser, 'role' | 'isDirector'> | null | undefined) =>
+  !!u && (u.role === 'admin' || u.isDirector);
 
 export interface PublicDevice {
   id: number;
@@ -236,6 +243,11 @@ export interface Rundown extends RundownSummary {
   items: RundownItem[];
   version: number;
   canWrite: boolean;
+  /**
+   * Modification en direct par la régie : le compte n'a pas le droit d'écrire, mais peut
+   * modifier les éléments de ce conducteur, suivi sur l'écran studio (étape 10).
+   */
+  liveEdit: boolean;
   /** Modèle d'origine, s'il existe encore (null s'il a été supprimé définitivement). */
   template: { id: number; title: string; deleted: boolean } | null;
 }
@@ -317,6 +329,14 @@ export interface PrompterState {
   deleted: boolean;
   sentAt: string | null;
   sentByName: string | null;
+}
+
+/** Main courante d'une émission (vue du journal). */
+export interface LogbookView {
+  rundown: { id: number; title: string; airDate: string; startTime: string };
+  from: string;
+  to: string;
+  entries: AuditEntry[];
 }
 
 /** Messages WebSocket serveur → client. */

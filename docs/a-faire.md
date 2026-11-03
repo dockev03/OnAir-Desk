@@ -2,7 +2,7 @@
 
 > Vérifications, tests et décisions en attente qui **ne bloquent pas** les étapes suivantes.
 > Cocher au fur et à mesure ; un écart constaté donne une branche `fix/…`.
-> Dernière mise à jour : après l'étape 9.
+> Dernière mise à jour : après l'étape 10.
 
 ## 1. Vérifications sur l'installation réelle
 
@@ -31,11 +31,18 @@
 - [ ] Ouvrir l'écoute des connecteurs (`CONNECTOR_HTTP_PORT`, `CONNECTOR_BIND`) si ce n'est pas déjà fait pour RadioDJ, puis générer le jeton On Air.
 - [ ] Renseigner la **météo** (Open-Meteo, ville et coordonnées de la station) et les **cartes de liners** (les exemples fournis sont inactifs, à adapter).
 
+### Régie (étape 10, `docs/plan-etape-10.md`)
+
+- [ ] Donner le droit **Réalisateur** aux comptes concernés (_Comptes_) et choisir le poste de la régie.
+- [ ] Relire et activer les **ordres rapides** (_Paramètres_ → Régie : proposés inactifs) ; régler la durée d'affichage des messages.
+- [ ] Choisir la disposition **« Émission avec régie »** pour les émissions avec réalisateur (conducteur ou modèle).
+
 ### Écran studio
 
 - [ ] **Tailles minimales** (heure, temps restant, alertes) vérifiées sur l'afficheur réel, à 1,5–2 m (`CLAUDE.md` §5).
 - [ ] Veille, dispositions et décalage anti-usure regardés sur l'afficheur réel (lisibilité, aucun saut gênant pendant la lecture).
 - [ ] Voyant ON AIR, chronomètre, météo et bande de liners lisibles à 1,5–2 m.
+- [ ] Zone régie (message normal et urgent) et pastilles de duplex lisibles à 1,5–2 m ; agrandissement d'un urgent non gênant pendant la lecture.
 
 ## 2. Décisions à prendre
 
@@ -47,9 +54,6 @@
 - [ ] **Déclenchement matériel du On Air** (GPO de la console, GPIO, boîtier USB), si le bouton du Stream Deck ou de la console ne suffit pas : même API ; câblage avec optocoupleur ou relais, à confier à un technicien.
 - [ ] **Alerte de micro ouvert trop longtemps** (seuil orange / rouge sur le chronomètre) : écartée à l'étape 9, à reprendre si le besoin apparaît.
 
-Questions déjà rattachées à une étape, à trancher dans son plan :
-
-- Étape 10 : rattachement d'un réalisateur à un studio ou à une émission ; modification en direct limitée au conducteur à l'antenne ou étendue à tous. Tranché dans `docs/plan-etape-10.md` : rattachement au studio (décision 2), modification limitée au conducteur à l'antenne (décision 14).
 
 ## 3. Limites acceptées, améliorations possibles
 
@@ -57,7 +61,9 @@ Rien d'obligatoire : à reprendre si le besoin se confirme à l'usage.
 
 - Position de lecture RadioDJ (avance, recul, pause) non répercutée jusqu'au titre suivant : voir le plugin maison ci-dessus.
 - Heure de début d'un titre RadioDJ décalée d'une heure possible pendant l'heure répétée du passage à l'heure d'hiver (sans signal du plugin).
-- Journal : filtres de dates en UTC ; actions affichées par leur code technique (`script.trashed`…), non traduites.
+- Journal : filtres de dates en UTC (les actions sont traduites depuis l’étape 10).
 - Simulateur : repart du premier titre après un redémarrage du serveur.
 - AzuraCast : pas de talk-over (aucun repère intro / outro dans son API) ; en direct, titre de l'encodeur sans temps restant.
 - « Clé acceptée » au test de connexion AzuraCast : une station publique répond même sans regarder la clé.
+- Régie : renommer une ligne de duplex depuis la page Régie (l'API le permet déjà) ; main courante du seul studio par défaut.
+- Bouton On Air de la barre de l'interface : toujours relu toutes les 15 s (la page Régie, elle, est en temps réel).

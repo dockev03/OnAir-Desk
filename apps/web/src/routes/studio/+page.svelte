@@ -5,7 +5,11 @@
     PROMPTER_FONT_MAX,
     PROMPTER_FONT_MIN,
     STANDBY_DISMISS_MS,
+    activeMessage,
     addDays,
+    emptyRegieState,
+    liveChangeActive,
+    regieZoneVisible,
     effectiveLayout,
     formatClock,
     formatCountdown,
@@ -29,6 +33,7 @@
   import NowPlaying from '$lib/studio/NowPlaying.svelte';
   import OnAirLamp from '$lib/studio/OnAirLamp.svelte';
   import Reader from '$lib/studio/Reader.svelte';
+  import RegieZone from '$lib/studio/RegieZone.svelte';
   import RundownPicker from '$lib/studio/RundownPicker.svelte';
   import RundownView from '$lib/studio/RundownView.svelte';
   import Standby from '$lib/studio/Standby.svelte';
@@ -123,6 +128,17 @@
     ),
   );
   const blocks = $derived(LAYOUT_BLOCKS[layout]);
+  /** Régie : message, duplex ; modification récente du conducteur suivi (soulignée 10 s). */
+  const regie = $derived(link.air?.state.regie ?? emptyRegieState());
+  const regieMessage = $derived(activeMessage(regie, now));
+  const change = $derived(link.air?.state.liveChange ?? null);
+  /** Modification encore à souligner : sur le conducteur lu, ou sur celui affiché en liste. */
+  const liveChange = $derived(liveChangeActive(change, live?.id ?? rundownId, now) ? change : null);
+  const showRegie = $derived(regieZoneVisible(blocks.regieZone, regie, now, liveChange !== null));
+  /** Élément suivi retiré du conducteur pendant la lecture : son texte reste affiché. */
+  const itemRemoved = $derived(
+    !!link.prompter?.rundown && !!link.prompter.itemUid && itemIndex === -1,
+  );
   /** Veille quittée d'un clic jusqu'à cette heure (serveur). */
   let standbyDismissedUntil = $state(0);
   const standby = $derived(
@@ -130,6 +146,7 @@
       link.state !== 'unauthorized' &&
       link.state !== 'revoked' &&
       !reading &&
+      regieMessage === null &&
       now >= standbyDismissedUntil &&
       standbyActive(nearby, now, timezone, isLive, onAir.on),
   );
@@ -199,6 +216,11 @@
     } catch {
       // Hors ligne : la dernière copie connue reste affichée.
     }
+  }
+
+  /** Accusé « Vu » d'un message de la régie (si les paramètres l'autorisent). */
+  async function markSeen(id: string) {
+    await api('POST', '/api/studio/regie/seen', { id }).catch(() => {});
   }
 
   /** Bouton de secours : appui long sur le voyant (si les paramètres l'autorisent). */
@@ -310,6 +332,28 @@
     });
   });
 
+  // Conducteur à l'antenne modifié alors qu'il est affiché en liste (copie non suivie) : la
+  // copie est rechargée, pour montrer la nouvelle version soulignée.
+  let refreshedChange = 0;
+  $effect(() => {
+    const c = change;
+    if (!c || c.at === refreshedChange) return;
+    untrack(() => {
+      refreshedChange = c.at;
+      if (
+        view === 'rundown' &&
+        rundownId === c.rundownId &&
+        link.prompter?.rundown?.id !== c.rundownId
+      ) {
+        void api<PrompterRundown>('GET', `/api/rundowns/${c.rundownId}`)
+          .then((r) => {
+            if (rundownId === r.id) browsed = r;
+          })
+          .catch(() => {});
+      }
+    });
+  });
+
   // Au retour de la liaison, la liste des dossiers est rechargée.
   $effect(() => {
     if (link.state === 'online') untrack(() => void loadLibrary());
@@ -368,11 +412,20 @@
     </div>
   </header>
 
-  {#if blocks.regieZone}
-    <!-- Zone fixe réservée aux messages de la régie (étape 10) : jamais par-dessus le texte. -->
-    <section class="regie-zone" style:transform={shift} data-testid="regie-zone">
-      <span class="regie-label">{t('studio.regieZone')}</span>
-    </section>
+  {#if showRegie && !standby}
+    <!-- Zone fixe des messages de la régie : jamais par-dessus le texte. Toujours réservée dans
+         la disposition « régie » ; ailleurs, elle apparaît quand il y a quelque chose à montrer. -->
+    <div class="regie-wrap" style:transform={shift}>
+      <RegieZone
+        {regie}
+        {now}
+        {timezone}
+        {timeFormat}
+        change={reading ? liveChange : null}
+        canSeen={link.settings?.regie.kioskSeen ?? false}
+        onseen={(id) => void markSeen(id)}
+      />
+    </div>
   {/if}
 
   <div class="body">
@@ -437,6 +490,7 @@
         onprev={() => void open(siblings[index - 1]!.id)}
         onnext={() => void open(siblings[index + 1]!.id)}
         onexit={() => void exit()}
+        label={itemRemoved ? t('studio.itemRemoved') : undefined}
       />
     {:else if view === 'today' && rundownList}
       <RundownPicker
@@ -461,6 +515,7 @@
         {types}
         tags={link.settings?.itemTags ?? []}
         currentUid={link.prompter?.rundown?.id === shownRundown.id ? link.prompter.itemUid : null}
+        change={liveChange?.rundownId === shownRundown.id ? liveChange : null}
         onitem={(uid) => void openItem(uid)}
       />
     {:else if lib}
@@ -564,7 +619,7 @@
     flex: 0 1 auto;
   }
   .top,
-  .regie-zone,
+  .regie-wrap,
   .side-wrap,
   .liners-wrap {
     transition: transform 1s ease-in-out;
@@ -572,21 +627,6 @@
   .side-wrap {
     display: flex;
     min-height: 0;
-  }
-  /* Zone régie : hauteur fixe, sous le bandeau ; vide jusqu'à l'étape 10. */
-  .regie-zone {
-    display: flex;
-    align-items: center;
-    min-height: 3.2rem;
-    padding: 0 14px;
-    border: 1px dashed #2f3034;
-    border-radius: var(--radius);
-  }
-  .regie-label {
-    color: #5f5e5a;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
   .link {
     display: flex;
@@ -602,7 +642,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .top,
-    .regie-zone,
+    .regie-wrap,
     .side-wrap,
     .liners-wrap {
       transition: none;

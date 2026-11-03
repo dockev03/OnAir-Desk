@@ -23,12 +23,14 @@ export function registerUserRoutes(app: FastifyInstance, ctx: RouteContext) {
       username: input.username,
       displayName: input.displayName,
       role: input.role,
+      isDirector: input.isDirector ?? false,
       locale: input.locale ?? repos.settings.get().locale,
       passwordHash: await hashPassword(input.password),
     });
     repos.audit.write({ type: 'user', id: admin.id }, 'user.created', {
       userId: user.id,
       role: user.role,
+      isDirector: user.isDirector,
     });
     return reply.code(201).send(toPublicUser(user));
   });
@@ -63,6 +65,10 @@ export function registerUserRoutes(app: FastifyInstance, ctx: RouteContext) {
     repos.audit.write({ type: 'user', id: admin.id }, 'user.updated', {
       userId: id,
       fields: Object.keys(patch),
+      // Droit « Réalisateur » : ancien et nouvel état (décision 1).
+      ...(patch.isDirector !== undefined && patch.isDirector !== target.isDirector
+        ? { isDirector: { from: target.isDirector, to: patch.isDirector } }
+        : {}),
     });
     return toPublicUser(updated);
   });

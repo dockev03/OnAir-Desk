@@ -214,6 +214,11 @@ export class Library {
     return this.repos.studios.list().map((s) => s.id);
   }
 
+  /** Studios dont l'écran suit ce conducteur. */
+  studiosFollowing(rundownId: number): number[] {
+    return this.studioIds().filter((s) => this.repos.prompter.get(s).rundownId === rundownId);
+  }
+
   prompterState(studioId: number): PrompterState {
     const { scriptId: _s, rundownId: _r, ...state } = this.repos.prompter.get(studioId);
     return state;

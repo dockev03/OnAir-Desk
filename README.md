@@ -4,7 +4,7 @@
 
 ![Écran studio en mode lecture : voyant ON AIR et chronomètre micro ouvert, horloge et météo, titre en cours avec compte à rebours d'intro, titre à venir, prompteur avec repères colorés et bande de lecture, carte de liner en bas](docs/captures/studio-lecture.png)
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille) et 9 (On Air, météo et liners) réalisées.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille), 9 (On Air, météo et liners) et 10 (régie) réalisées.**
 
 - Comptes, écrans kiosk, paramètres de la station, HTTPS, horloge synchronisée sur le serveur.
 - Scripts : éditeur de texte enrichi avec repères, bibliothèque et dossiers, recherche, corbeille, historique, envoi au prompteur.
@@ -21,7 +21,9 @@
 - On Air : voyant ON AIR piloté par une API (bouton du Stream Deck, de la console ou d'un logiciel) ou par un bouton de secours, chronomètre micro ouvert.
 - Météo (Open-Meteo) sous l'heure, interrogée par le serveur, avec repli en cas de panne ; cartes de liners en rotation sur l'écran studio.
 
-La régie (messages, ordres rapides, duplex) et le suivi du temps arrivent aux étapes suivantes (voir [`CLAUDE.md`](CLAUDE.md) §8).
+- Régie : droit « Réalisateur » par compte ; page Régie pour envoyer messages, ordres rapides et liners à l'écran studio (zone fixe, jamais par-dessus le texte, accusé « Vu »), régler l'état des duplex, modifier le conducteur à l'antenne (changements soulignés à l'écran) et tenir la main courante.
+
+Le suivi du temps (avance / retard, minuteurs, backtiming, bilan d'émission) arrive à l'étape suivante (voir [`CLAUDE.md`](CLAUDE.md) §8).
 
 ### Aperçu
 
@@ -32,11 +34,13 @@ La régie (messages, ordres rapides, duplex) et le suivi du temps arrivent aux �
 | ![Éditeur de script : texte enrichi, couleurs, surlignage, repères JINGLE / PAUSE / LANCER TITRE, vitesse de défilement](docs/captures/editeur-script.png)                                     | ![Édition d'un conducteur : types colorés, scripts attachés, heures de passage calculées, détails d'un titre (artiste, année, intro, étiquettes, à couper)](docs/captures/conducteur.png) |
 | **Impression / PDF du conducteur**                                                                                                                                                             | **Écran studio : veille hors émission**                                                                                                                                                   |
 | ![Conducteur imprimé : lignes teintées par type, numéro des titres, heure et position, artiste, année, étiquettes, intro, légende et notes générales](docs/captures/conducteur-impression.png) | ![Écran de veille : horloge en grand, voyant On Air, titre en cours, prochaine émission](docs/captures/studio-veille.png)                                                                 |
+| **Écran studio : message de la régie et duplex**                                                                                                                                               | **Page Régie**                                                                                                                                                                            |
+| ![Écran studio en disposition « Émission avec régie » : message de la régie dans la zone fixe sous le bandeau, pastilles des duplex, prompteur en dessous](docs/captures/studio-regie.png)     | ![Page Régie : conducteur à l'antenne, message affiché et accusé « Vu », ordres rapides, liners, duplex, main courante](docs/captures/regie.png)                                          |
 
 Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 
 - [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
-- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md), [`docs/plan-etape-9.md`](docs/plan-etape-9.md) : plans et bilans des étapes.
+- [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md), [`docs/plan-etape-9.md`](docs/plan-etape-9.md), [`docs/plan-etape-10.md`](docs/plan-etape-10.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 
 ---
@@ -209,6 +213,16 @@ curl http://<adresse-de-la-debian>:8780/api/onair -H "Authorization: Bearer <jet
 
 **Liners** : _Paramètres_ → Cartes de liners : jusqu'à 30 cartes (nom de la station, fréquence, standard, slogan…), actives ou non, durée d'affichage. Elles défilent en bas de l'écran studio (sauf disposition « Interview » et veille) ; un clic passe à la suivante.
 
+### 10. Régie
+
+- **Droit « Réalisateur »** : _Administration_ → **Comptes** → case _Réalisateur_ (cumulable avec Animateur ; l'administrateur l'a d'office). Seuls ces comptes voient la page **Régie** ; le serveur refuse les envois de tout autre compte et de l'écran studio.
+- **Messages et ordres** : un message (200 caractères, normal ou urgent) remplace le précédent et s'affiche en grand dans la zone fixe sous le bandeau ; un message urgent l'agrandit 5 secondes sur fond rouge. Il disparaît quand la régie l'efface, ou au bout de la durée réglée (5 minutes par défaut). En disposition « Émission avec régie », la zone est toujours réservée ; dans les autres, elle apparaît à l'arrivée d'un message ou d'un duplex.
+- **Ordres rapides** : _Paramètres_ → Régie : jusqu'à 24 boutons (« Accélère », « Conclus », « Pub dans 1 min »…), proposés inactifs à l'installation. Les cartes de liners actives peuvent aussi être envoyées depuis la page Régie.
+- **Accusé « Vu »** : l'animateur touche le message sur l'écran studio ; la page Régie affiche « Vu à… ». Désactivable dans les paramètres.
+- **Duplex** : jusqu'à 6 lignes (correspondant, invité au téléphone) avec leur état : en attente, prêt, à l'antenne, coupé ; affichées en pastilles sur l'écran studio.
+- **Conducteur à l'antenne** (suivi sur l'écran studio, ou émission en cours d'après ses heures) : le réalisateur en modifie les éléments depuis la page Régie ; l'écran studio souligne 10 secondes ce qui a changé et recalcule les heures de passage.
+- **Main courante** : notes datées (heure corrigeable jusqu'à 2 heures en arrière) et vue, par émission, des messages, ordres, duplex, modifications et passages à l'antenne. Tout envoi est tracé au journal (catégorie « Régie ») ; 20 envois par minute et par compte au plus.
+
 ### Mise à jour
 
 Portainer → _Stacks_ → `onair-desk` → **Pull and redeploy**. Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
@@ -238,6 +252,7 @@ Le nom exact du volume est visible dans Portainer → _Volumes_. **La sauvegarde
 - AzuraCast (facultatif) : connexions **sortantes** seulement, en HTTPS avec certificat **toujours vérifié** ; clé API facultative en variable d'environnement, liée à un compte **sans droit d'administration**, jamais journalisée ni renvoyée.
 - On Air : API sur l'écoute dédiée aux connecteurs (fermée par défaut), jeton stocké haché, débit limité ; appel simple (jeton dans l'adresse) désactivé par défaut. Bouton de l'écran studio : appui long, tracé, désactivable.
 - Météo : connexion **sortante** vers Open-Meteo seulement ; l'afficheur n'a pas besoin d'Internet.
+- Régie : envois réservés à l'admin et aux comptes « Réalisateur », vérifiés côté serveur sur chaque route ; le WebSocket reste en lecture seule ; texte brut borné (aucun HTML) ; débit limité par compte ; tout est tracé. Seule écriture de l'écran studio pour la régie : l'accusé « Vu » (désactivable).
 - RadioDJ (facultatif) : base lue avec un compte **SELECT seul** ; port HTTP dédié aux connecteurs **fermé par défaut**, limité à la route du signal (jeton stocké haché, limitation de débit). Son jeton circule en clair sur le réseau local : la requête n'est qu'un signal, la base fait foi.
 
 ---

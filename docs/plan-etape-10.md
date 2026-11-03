@@ -1,7 +1,7 @@
 # Étape 10 — Régie : plan
 
-> **Statut : plan validé, à réaliser.** Développement sur feu vert explicite de l'utilisateur.
-> Référence : `CLAUDE.md` §4 (Accès, rôle « Réalisateur »), §5 (principes d'affichage : zone fixe, code couleur d'alerte), §7 idées 4, 9, 11, 12 et 14, §8 étape 10. Branche prévue : `feature/etape-10-regie`.
+> **Statut : réalisée (bilan en fin de document).**
+> Référence : `CLAUDE.md` §4 (Accès, rôle « Réalisateur »), §5 (principes d'affichage : zone fixe, code couleur d'alerte), §7 idées 4, 9, 11, 12 et 14, §8 étape 10. Branche : `feature/etape-10-regie`.
 > 6 fonctionnalités. S'appuie sur l'état antenne et le journal d'audit (étape 6), les dispositions et la zone régie réservée (étape 8), le rafraîchissement du conducteur suivi (étape 4).
 
 ## Objectif
@@ -125,3 +125,42 @@ Les décisions sont **validées** (y compris les deux questions ouvertes et les 
 
 - À voir avec la station (non bloquant) : qui tient la régie et sur quel poste. L'accusé « Vu » est retenu, désactivable dans Paramètres.
 - Lisibilité de la zone régie et des pastilles de duplex à 1,5–2 m : à vérifier sur l'afficheur réel après réalisation (`docs/a-faire.md`).
+
+## Bilan de l'étape 10
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - `regie.ts` : schémas du message (texte brut de 200 caractères, sans caractère de contrôle, normal ou urgent), des ordres rapides, des duplex (4 états), de la note de main courante (300 caractères, heure corrigée facultative) ; paramètres `regie` (durée de vie des messages de 1 à 30 min, accusé « Vu », 24 ordres au plus) ;
+  - calculs purs : message encore actif, phase « agrandie » d'un urgent (5 s), zone régie visible, comparaison de deux versions d'un conducteur (ajoutés, modifiés, déplacés au sens de la plus longue suite restée dans l'ordre, nombre de supprimés), soulignement de 10 s, fenêtre de la main courante ;
+  - état antenne complété : `regie` (message affiché, lignes de duplex) et `liveChange` (dernière modification du conducteur à l'antenne) ; droit `isDirector` sur les comptes et `canDirect` ; 7 actions au catalogue du journal (catégorie `regie`).
+- **Serveur** :
+  - **migration 11** : `users.is_director`, table `studio_regie` (message et duplex par studio, conservés en base) ;
+  - garde `requireDirector` sur chaque route de la régie (kiosk et animateur sans le droit : 403) ; le WebSocket reste en lecture (tout message d'écriture est ignoré, testé) ;
+  - `RegieService` : envoi (remplace le précédent), effacement, expiration programmée (et au redémarrage), accusé « Vu » de l'écran studio (une fois, désactivable), duplex (6 lignes), notes ; débit limité par compte (20 envois / min, 30 notes / min, `429 rate_limited`) ; journal ;
+  - routes `/api/regie/message`, `/order/:id`, `/liner/:id`, `/duplex[/:id]`, `/logbook` ; `/api/studio/regie/seen` pour l'écran studio ;
+  - conducteur modifié en direct : un réalisateur modifie **les éléments seulement** (`live_edit_items_only` sinon) du conducteur à l'antenne ; le serveur compare les versions, publie le changement dans l'état antenne et trace `rundown.live_edited` quand l'auteur n'est pas le propriétaire ; protection par version inchangée (`version_conflict`) ;
+  - main courante : vue filtrée du journal (catégories régie et antenne du studio, début − 15 min → fin + 30 min) et notes rattachées au conducteur, triées à leur heure (corrigée le cas échéant).
+- **Interface** :
+  - écran studio : composant `RegieZone` (message en grand, heure et auteur, rouge agrandi 5 s pour un urgent puis liseré rouge, « Vu » au clic, pastilles des duplex, bandeau « Conducteur modifié » en lecture) ; zone toujours réservée en « Émission avec régie », apparition à la demande ailleurs ; la veille cède devant un message ; éléments ajoutés / modifiés / déplacés soulignés 10 s dans la liste du conducteur, copie rechargée si elle n'est pas celle du prompteur ; élément retiré pendant la lecture : texte conservé, mention « Élément retiré du conducteur » ;
+  - page **Régie** (`/regie`, temps réel par le WebSocket) : conducteur à l'antenne et élément en cours, avertissement de disposition, message (aperçu, « Vu à… », Effacer), ordres rapides, liners, duplex, notes et main courante par émission ; lien dans la barre pour les réalisateurs et l'admin ;
+  - éditeur de conducteur : mode « modification en direct » (éléments seulement, bandeau explicatif) ;
+  - comptes : case « Réalisateur » (création et liste) ; paramètres : section Régie ; journal : actions traduites (toutes, plus les codes techniques) ;
+  - textes FR et EN ; README (section Régie, sécurité, captures `studio-regie.png` et `regie.png`).
+
+### Tests
+
+- 291 tests unitaires (+29), dont :
+  - commun : schémas (texte, contrôle, longueurs, ordres, duplex, notes), droit cumulable, message actif, urgent agrandi, zone visible, comparaison de conducteurs (rien, ajout / suppression / modification, déplacement minimal), soulignement, fenêtre ;
+  - serveur : droits sur **chaque** route (animateur, kiosk, anonyme, compte désactivé), envoi / remplacement / effacement / journal, texte refusé, ordres et liners actifs seulement, expiration et redémarrage, « Vu » (écran seulement, une fois, désactivable, tracé au nom de l'écran), débit par compte, duplex (limite, états, suppression, tout effacer, journal), persistance et migration 11, modification en direct (refusée hors antenne, éléments seulement, conflit de version, changement de conducteur suivi, propriétaire non tracé, émission en cours non suivie), main courante (heure corrigée bornée, fenêtre, note rattachée), WebSocket en lecture.
+- **Bout en bout (Chromium)**, 6 nouveaux scénarios : message dans la zone fixe au-dessus du texte du prompteur (jamais par-dessus) ; « Vu » depuis l'écran, visible dans la console ; ordre urgent agrandi puis réduit, effacement ; duplex passé « à l'antenne » ; conducteur modifié en lecture puis en liste (souligné 10 s), main courante ; animateur sans le droit (ni lien, ni page, 403).
+- **Poids de `/studio`** : +6,6 Ko gzip (102,0 → 108,6 Ko, même méthode avant / après), dont +4,5 Ko de textes (le dictionnaire FR + EN est commun à toutes les pages : régie et libellés traduits du journal) ; toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Conducteur « à l'antenne »** : suivi sur l'écran studio **ou** émission en cours d'après ses heures (même règle que la veille, marge de 10 min). Le plan ne parlait que du conducteur suivi ; or l'écran ne suit plus le conducteur dès que l'animateur revient à la liste des éléments, ce qui aurait retiré le droit de modification en pleine émission. La console de régie applique la même règle.
+- **Signal de modification** : publié dans l'état antenne (`liveChange`) plutôt que dans l'état du prompteur, pour être vu aussi quand le conducteur est affiché en liste. Il n'est pas conservé en base (un redémarrage l'efface : il ne sert que 10 secondes).
+- **Duplex** : renommage prévu par l'API (`PATCH` avec `name`), pas encore proposé dans la page Régie (supprimer puis recréer).
+- **Main courante** : pour le studio par défaut (un seul studio aujourd'hui) ; impression et rattachement au bilan à l'étape 11.
+- Le réalisateur ne peut pas créer de script dans le dossier d'un collègue depuis l'éditeur de conducteur (droits de la bibliothèque inchangés) : il attache un script existant ou en crée un dans son dossier.
+- À vérifier à la mise en service : lisibilité de la zone régie et des pastilles de duplex à 1,5–2 m ; qui tient la régie, sur quel poste (`docs/a-faire.md`).

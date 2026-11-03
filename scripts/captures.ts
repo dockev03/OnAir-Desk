@@ -60,6 +60,18 @@ async function main(): Promise<void> {
           ],
           rotationSeconds: 20,
         },
+        regie: {
+          messageTtlMinutes: 10,
+          kioskSeen: true,
+          orders: [
+            { id: 'accelere', label: 'Accélère', urgent: false, active: true },
+            { id: 'etire', label: 'Étire', urgent: false, active: true },
+            { id: 'conclus', label: 'Conclus', urgent: true, active: true },
+            { id: 'invite', label: 'Invité en ligne', urgent: false, active: true },
+            { id: 'pub', label: 'Pub dans 1 min', urgent: false, active: true },
+            { id: 'rends', label: "Rends l'antenne", urgent: true, active: true },
+          ],
+        },
       },
     }),
   );
@@ -191,9 +203,9 @@ async function main(): Promise<void> {
     args: ['--lang=fr-FR'],
     env: { ...process.env, LANG: 'fr_FR.UTF-8', LANGUAGE: 'fr' },
   });
-  const shot = async (page: import('@playwright/test').Page, name: string) => {
+  const shot = async (page: import('@playwright/test').Page, name: string, fullPage = false) => {
     await page.waitForTimeout(800);
-    await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+    await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage });
     console.log(`docs/captures/${name}.png`);
   };
   const context = {
@@ -235,6 +247,40 @@ async function main(): Promise<void> {
   await ui.goto(`/rundowns/${rundown.id}/print`);
   await ui.getByText('Lumière du matin').waitFor();
   await shot(ui, 'conducteur-impression');
+
+  // Régie : disposition « Émission avec régie », duplex, ordre puis message, accusé « Vu ».
+  const current = await ok(await api.get(`/api/rundowns/${rundown.id}`));
+  await ok(
+    await api.patch(`/api/rundowns/${rundown.id}`, {
+      data: { version: current.version, layout: 'regie' },
+    }),
+  );
+  const moulins = await ok(
+    await api.post('/api/regie/duplex', { data: { name: 'Correspondant Moulins' } }),
+  );
+  await ok(await api.patch(`/api/regie/duplex/${moulins.id}`, { data: { state: 'ready' } }));
+  await ok(await api.post('/api/regie/duplex', { data: { name: 'Invité tél. 1' } }));
+  await ok(await api.post('/api/regie/order/accelere'));
+  await ok(
+    await api.post('/api/regie/message', {
+      data: { text: 'Le comité des fêtes est en ligne, prêt pour 7 h 38', urgent: false },
+    }),
+  );
+  await ok(
+    await api.post('/api/regie/logbook', {
+      data: { text: 'Duplex Moulins : son faible, rappelé' },
+    }),
+  );
+  await studio.getByTestId('regie-message').waitFor();
+  await shot(studio, 'studio-regie');
+  // Chaque page au premier plan avant d'y agir (un onglet en arrière-plan peut se figer).
+  await studio.bringToFront();
+  await studio.getByTestId('regie-message').click();
+  await ui.bringToFront();
+  await ui.goto('/regie');
+  await ui.getByTestId('regie-seen-at').waitFor();
+  await ui.getByTestId('logbook').waitFor();
+  await shot(ui, 'regie', true);
 
   await browser.close();
   await api.dispose();

@@ -1,3 +1,5 @@
+import { emptyRegieState, type LiveChange, type RegieState } from './regie.js';
+
 /**
  * État antenne : un objet par studio, versionné. À la connexion, l'écran reçoit l'état
  * complet ; ensuite, seulement les champs modifiés. Chaque nouvelle fonctionnalité (On Air,
@@ -101,6 +103,13 @@ export interface AirState {
   onAir: OnAirState;
   /** Météo ; null : aucun fournisseur choisi. */
   weather: WeatherState | null;
+  /** Régie : message affiché et lignes de duplex (étape 10). */
+  regie: RegieState;
+  /**
+   * Dernière modification du conducteur à l'antenne (suivi sur l'écran, ou émission en cours),
+   * soulignée quelques secondes sur l'écran studio (étape 10).
+   */
+  liveChange: LiveChange | null;
 }
 
 export interface Studio {
@@ -129,6 +138,8 @@ export const emptyAirState = (source: AutomationSource = 'none'): AirState => ({
   live: null,
   onAir: { on: false, since: null, source: null, lastDurationMs: null },
   weather: null,
+  regie: emptyRegieState(),
+  liveChange: null,
 });
 
 /**

@@ -40,6 +40,9 @@
 
   const types = $derived(stationSettings.value?.itemTypes ?? []);
   const canWrite = $derived(rundown?.canWrite ?? false);
+  /** Régie : conducteur à l'antenne modifiable en direct, éléments seulement (étape 10). */
+  const liveEdit = $derived(!canWrite && (rundown?.liveEdit ?? false));
+  const editItems = $derived(canWrite || liveEdit);
   const schedule = $derived(rundownSchedule(startTime, items));
 
   function apply(r: Rundown) {
@@ -72,15 +75,21 @@
 
   const autosave = new Autosave(
     async () => {
-      const r = await api<Rundown>('PATCH', `/api/rundowns/${rundown!.id}`, {
-        version,
-        title: title.trim() || rundown!.title,
-        airDate,
-        startTime,
-        notes,
-        layout,
-        items: items.map(toInput),
-      });
+      const r = await api<Rundown>(
+        'PATCH',
+        `/api/rundowns/${rundown!.id}`,
+        liveEdit
+          ? { version, items: items.map(toInput) }
+          : {
+              version,
+              title: title.trim() || rundown!.title,
+              airDate,
+              startTime,
+              notes,
+              layout,
+              items: items.map(toInput),
+            },
+      );
       version = r.version;
       rundown = r;
       // Les infos de script (titre, durée) viennent du serveur ; la saisie reste en place.
@@ -88,7 +97,7 @@
         item.script = r.items.find((x) => x.uid === item.uid)?.script ?? item.script;
       }
     },
-    () => canWrite && rundown !== null,
+    () => editItems && rundown !== null,
     (code) => (error = errorMessage(code)),
   );
   const changed = () => autosave.changed();
@@ -187,7 +196,7 @@
   <div class="row top">
     <a href="/rundowns?owner={ownerKey(rundown.ownerId)}">← {t('rundowns.back')}</a>
     <span class="spacer"></span>
-    {#if canWrite}
+    {#if editItems}
       <span class="status {autosave.status}" role="status">{statusText[autosave.status]}</span>
     {/if}
     <a class="button" href="/rundowns/{rundown.id}/print">{t('print.open')}</a>
@@ -245,7 +254,11 @@
     </div>
   {:else}
     <h1>{rundown.title}</h1>
-    <p class="notice">{t('rundowns.readOnly')}</p>
+    {#if liveEdit}
+      <p class="notice live-edit" data-testid="live-edit-notice">{t('rundowns.liveEdit')}</p>
+    {:else}
+      <p class="notice">{t('rundowns.readOnly')}</p>
+    {/if}
     <p class="muted">
       {formatAirDate(rundown.airDate, i18n.locale)} · {shortTime(rundown.startTime)} ·
       {ownerName(lib.owners.find((o) => o.id === rundown!.ownerId) ?? { id: null, name: '' })}
@@ -268,7 +281,7 @@
     bind:lib
     {types}
     {startTime}
-    {canWrite}
+    canWrite={editItems}
     ownerId={rundown.ownerId}
     locked={autosave.status === 'conflict'}
     onchange={changed}

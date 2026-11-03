@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import type { SetupStatus } from '@onair-desk/shared';
+  import { canDirect, type SetupStatus } from '@onair-desk/shared';
   import { api } from '$lib/api.js';
   import OnAirButton from '$lib/OnAirButton.svelte';
   import { t } from '$lib/i18n/index.svelte.js';
@@ -43,6 +43,7 @@
     { href: '/scripts', label: t('nav.scripts') },
     { href: '/rundowns', label: t('nav.rundowns') },
     { href: '/trash', label: t('nav.trash') },
+    ...(canDirect(session.user) ? [{ href: '/regie', label: t('nav.regie') }] : []),
     ...(isAdmin
       ? [
           { href: '/admin/users', label: t('nav.users') },

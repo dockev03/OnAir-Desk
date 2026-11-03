@@ -100,4 +100,22 @@ describe('WebSocket', () => {
     });
     c.ws.close();
   });
+
+  it('reste en lecture : un message d’écriture (régie) est ignoré', async () => {
+    const admin = await setupAdmin(built);
+    const c = connect(admin);
+    await c.next('hello');
+    for (const msg of [
+      { type: 'regie.message', text: 'Conclus', urgent: true },
+      { type: 'duplex.update', id: 'x', state: 'onair' },
+      { type: 'prompter', scriptId: 1 },
+    ]) {
+      c.ws.send(JSON.stringify(msg));
+    }
+    // La connexion reste ouverte et répond toujours ; rien n'a changé.
+    c.ws.send(JSON.stringify({ type: 'ping', t0: 7 }));
+    expect(await c.next('pong')).toMatchObject({ t0: 7 });
+    expect(built.ctx.air.get(1).state.regie).toEqual({ message: null, duplex: [] });
+    c.ws.close();
+  });
 });

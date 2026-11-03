@@ -1,14 +1,20 @@
-import type {
-  CreateRundownInput,
-  Rundown,
-  RundownItem,
-  RundownItemInput,
-  RundownList,
-  UpdateRundownInput,
+import {
+  addDays,
+  canDirect,
+  diffRundownItems,
+  showInProgress,
+  type LiveChange,
+  type CreateRundownInput,
+  type Rundown,
+  type RundownItem,
+  type RundownItemInput,
+  type RundownList,
+  type UpdateRundownInput,
 } from '@onair-desk/shared';
+import type { AirStateStore } from './air/state.js';
 import type { Identity } from './auth/identity.js';
-import type { Repos, RundownRecord, User } from './db/index.js';
-import { badRequest, conflict, notFound } from './lib/errors.js';
+import { DEFAULT_STUDIO_ID, type Repos, type RundownRecord, type User } from './db/index.js';
+import { badRequest, conflict, forbidden, notFound } from './lib/errors.js';
 import { canWrite, type Library } from './library.js';
 
 /** Élément tel qu'enregistré (sans les infos du script attaché). */
@@ -33,6 +39,8 @@ export class Rundowns {
   constructor(
     private readonly repos: Repos,
     private readonly library: Library,
+    private readonly air: AirStateStore,
+    private readonly now: () => number = Date.now,
   ) {}
 
   list(): RundownList {
@@ -53,9 +61,11 @@ export class Rundowns {
     const { updatedBy: _u, deletedAt: _d, ...rest } = record;
     const template =
       record.templateId === null ? undefined : this.repos.templates.findById(record.templateId);
+    const user = identity.kind === 'user' ? identity.user : null;
     return {
       ...rest,
-      canWrite: identity.kind === 'user' && canWrite(identity.user, record.ownerId),
+      canWrite: !!user && canWrite(user, record.ownerId),
+      liveEdit: !!user && !canWrite(user, record.ownerId) && this.liveEditable(user, record.id),
       template: template
         ? { id: template.id, title: template.title, deleted: template.deletedAt !== null }
         : null,
@@ -107,17 +117,91 @@ export class Rundowns {
     );
   }
 
+  /**
+   * Conducteur modifié en direct (voir docs/plan-etape-10.md, décision 14) : un réalisateur
+   * peut modifier les éléments du conducteur suivi sur un écran studio, quel qu'en soit le
+   * propriétaire.
+   */
+  liveEditable(user: User, id: number): boolean {
+    return canDirect(user) && this.onAirStudios(id).length > 0;
+  }
+
+  /**
+   * Studios où ce conducteur est « à l'antenne » : suivi sur l'écran studio, ou émission en
+   * cours d'après ses heures (l'animateur peut être revenu à la liste des éléments).
+   */
+  onAirStudios(id: number): number[] {
+    const following = this.library.studiosFollowing(id);
+    if (following.length > 0) return following;
+    const tz = this.repos.settings.get().timezone;
+    const today = todayIn(tz, new Date(this.now()));
+    const nearby = this.repos.rundowns
+      .listSummaries()
+      .filter((r) => r.airDate >= addDays(today, -1) && r.airDate <= today);
+    return showInProgress(nearby, this.now(), tz)?.id === id ? [DEFAULT_STUDIO_ID] : [];
+  }
+
   save(user: User, id: number, input: UpdateRundownInput): RundownRecord {
+    let before: RundownRecord | undefined;
     const updated = this.repos.db.transaction(() => {
       const current = this.getLive(id);
-      this.library.assertWrite(user, current.ownerId);
+      before = current;
+      if (!canWrite(user, current.ownerId)) {
+        if (!this.liveEditable(user, id)) this.library.assertWrite(user, current.ownerId);
+        // En direct, le réalisateur ne touche qu'aux éléments (ni titre, ni date, ni heure…).
+        if (Object.keys(input).some((k) => k !== 'version' && k !== 'items')) {
+          throw forbidden('live_edit_items_only');
+        }
+      }
       if (input.version !== current.version) throw conflict('version_conflict');
       if (input.items) this.checkItems(input.items, current);
       const { version: _v, ...patch } = input;
       return this.repos.rundowns.update(id, user.id, patch);
     })();
     this.library.rundownRefresh(id);
+    const change = this.signalLiveChange(user, before!, updated);
+    // Modification d'un conducteur à l'antenne par la régie : tracée (décision 17).
+    if (change && canDirect(user) && user.id !== updated.ownerId) {
+      const titles = (uids: string[]) =>
+        uids.map((uid) => updated.items.find((i) => i.uid === uid)?.title ?? uid);
+      this.repos.audit.write(
+        { type: 'user', id: user.id },
+        'rundown.live_edited',
+        {
+          rundownId: id,
+          title: updated.title,
+          added: titles(change.added),
+          changed: titles(change.changed),
+          moved: titles(change.moved),
+          removed: change.removed,
+        },
+        this.onAirStudios(id)[0] ?? null,
+      );
+    }
     return updated;
+  }
+
+  /**
+   * Conducteur à l'antenne modifié (par la régie ou son propriétaire) : les éléments ajoutés,
+   * modifiés ou déplacés sont soulignés quelques secondes sur l'écran studio (décision 16).
+   */
+  private signalLiveChange(
+    user: User,
+    before: RundownRecord,
+    after: RundownRecord,
+  ): LiveChange | null {
+    const studios = this.onAirStudios(after.id);
+    if (studios.length === 0) return null;
+    const diff = diffRundownItems(before.items, after.items);
+    if (!diff) return null;
+    const change: LiveChange = {
+      rundownId: after.id,
+      at: this.now(),
+      byName: user.displayName,
+      ...diff,
+    };
+    for (const studioId of studios) this.air.update(studioId, { liveChange: change });
+    return change;
   }
 
   /** Copie à une autre date (émission récurrente), avec les mêmes scripts attachés. */

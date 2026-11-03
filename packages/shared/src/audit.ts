@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { airDateSchema } from './rundown.js';
 
 /**
- * Journal d'audit commun : chaque action a une catégorie fixe, qui sert aux filtres (et,
- * à l'étape 10, à la main courante de l'émission).
+ * Journal d'audit commun : chaque action a une catégorie fixe, qui sert aux filtres et à la
+ * main courante de l'émission (catégories « régie » et « antenne »).
  */
 export const AUDIT_CATEGORIES = ['securite', 'contenu', 'antenne', 'regie', 'systeme'] as const;
 export type AuditCategory = (typeof AUDIT_CATEGORIES)[number];
@@ -52,6 +52,13 @@ export const AUDIT_ACTIONS = {
   'weather.error': 'systeme',
   'weather.recovered': 'systeme',
   'connector.token_generated': 'securite',
+  'regie.message_sent': 'regie',
+  'regie.message_cleared': 'regie',
+  'regie.order_sent': 'regie',
+  'regie.message_seen': 'regie',
+  'duplex.changed': 'regie',
+  'rundown.live_edited': 'regie',
+  'logbook.note': 'regie',
 } as const satisfies Record<string, AuditCategory>;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 
