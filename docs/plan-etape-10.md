@@ -1,6 +1,6 @@
 # Étape 10 — Régie : plan
 
-> **Statut : proposition, à valider.** Aucun développement avant validation explicite.
+> **Statut : plan validé, à réaliser.** Développement sur feu vert explicite de l'utilisateur.
 > Référence : `CLAUDE.md` §4 (Accès, rôle « Réalisateur »), §5 (principes d'affichage : zone fixe, code couleur d'alerte), §7 idées 4, 9, 11, 12 et 14, §8 étape 10. Branche prévue : `feature/etape-10-regie`.
 > 6 fonctionnalités. S'appuie sur l'état antenne et le journal d'audit (étape 6), les dispositions et la zone régie réservée (étape 8), le rafraîchissement du conducteur suivi (étape 4).
 
@@ -24,7 +24,7 @@
 
 ## Décisions
 
-Les décisions sont **à valider** ; la colonne « Alternative » garde trace des options écartées. ⚠️ = changement à risque (droits, écriture depuis le kiosk).
+Les décisions sont **validées** (y compris les deux questions ouvertes et les points ⚠️ des décisions 8, 9 et 11) ; la colonne « Alternative » garde trace des options écartées. ⚠️ = changement à risque (droits, écriture depuis le kiosk).
 
 ### Rôle et droits
 
@@ -123,5 +123,5 @@ Les décisions sont **à valider** ; la colonne « Alternative » garde trace de
 
 ## Vérifications préalables
 
-- À voir avec la station (non bloquant) : qui tient la régie, sur quel poste, et si l'accusé « Vu » est souhaité.
+- À voir avec la station (non bloquant) : qui tient la régie et sur quel poste. L'accusé « Vu » est retenu, désactivable dans Paramètres.
 - Lisibilité de la zone régie et des pastilles de duplex à 1,5–2 m : à vérifier sur l'afficheur réel après réalisation (`docs/a-faire.md`).
