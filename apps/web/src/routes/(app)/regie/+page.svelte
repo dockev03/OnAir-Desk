@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import {
     DUPLEX_NAME_MAX,
     DUPLEX_STATES,
@@ -152,18 +153,22 @@
     }
   }
 
+  // Démarrage unique : rien de réactif n'est lu dans la mise en route (untrack), sinon chaque
+  // seconde (heure, décalage d'horloge) relancerait la liaison temps réel.
   $effect(() => {
     if (!allowed) return;
-    link.start();
     let timer: ReturnType<typeof setTimeout>;
     const tick = () => {
       now = link.now();
       timer = setTimeout(tick, 1000 - (now % 1000) + 5);
     };
-    tick();
-    api<RundownList>('GET', '/api/rundowns')
-      .then((r) => (rundowns = r))
-      .catch(() => {});
+    untrack(() => {
+      link.start();
+      tick();
+      api<RundownList>('GET', '/api/rundowns')
+        .then((r) => (rundowns = r))
+        .catch(() => {});
+    });
     return () => {
       clearTimeout(timer);
       link.stop();

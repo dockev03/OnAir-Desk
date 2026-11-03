@@ -13,6 +13,8 @@ let regie: Page;
 let deviceToken: string;
 let rundownId: number;
 let version: number;
+/** Connexions temps réel ouvertes par la page Régie (une seule attendue, sans coupure). */
+let regieSockets = 0;
 
 test.describe.configure({ mode: 'serial' });
 // Deux pages (écran studio et console de régie) : chacune est mise au premier plan avant d'y
@@ -128,6 +130,7 @@ test('message régie : zone fixe au-dessus du texte, qui ne le recouvre jamais',
   await expect(studio.getByTestId('regie-zone')).toHaveCount(0);
 
   regie = await signedIn(browser, 'paul', 'paul-mot-de-passe');
+  regie.on('websocket', () => (regieSockets += 1));
   await regie.goto('/regie');
   // Première ouverture : chargement de l'interface et liaison temps réel.
   await expect(regie.getByTestId('layout-warning')).toBeVisible({ timeout: 15_000 });
@@ -149,6 +152,9 @@ test('accusé « Vu » : un clic sur l’écran studio, visible dans la console'
   await studio.getByTestId('regie-message').click();
   await expect(studio.getByTestId('regie-seen')).toBeVisible();
   await expect(regie.getByTestId('regie-seen-at')).toBeVisible({ timeout: 10_000 });
+  // La page garde sa liaison : elle ne se reconnecte pas à chaque seconde ni à chaque mesure
+  // de l'heure serveur.
+  expect(regieSockets).toBe(1);
 });
 
 test('ordre urgent : agrandi quelques secondes en rouge, puis réduit', async () => {
