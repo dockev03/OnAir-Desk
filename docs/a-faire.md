@@ -49,7 +49,7 @@
 
 Questions déjà rattachées à une étape, à trancher dans son plan :
 
-- Étape 10 : rattachement d'un réalisateur à un studio ou à une émission ; modification en direct limitée au conducteur à l'antenne ou étendue à tous.
+- Étape 10 : rattachement d'un réalisateur à un studio ou à une émission ; modification en direct limitée au conducteur à l'antenne ou étendue à tous. Tranché dans `docs/plan-etape-10.md` : rattachement au studio (décision 2), modification limitée au conducteur à l'antenne (décision 14).
 
 ## 3. Limites acceptées, améliorations possibles
 
