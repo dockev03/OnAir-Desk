@@ -317,4 +317,32 @@ export const migrations: string[] = [
   ALTER TABLE rundown_templates ADD COLUMN layout TEXT
     CHECK (layout IS NULL OR layout IN ('solo', 'regie', 'interview'));
   `,
+  /* 10 — On Air (état par studio), dernière météo, jeton On Air */ `
+  CREATE TABLE onair_state (
+    studio_id        INTEGER PRIMARY KEY REFERENCES studios (id) ON DELETE CASCADE,
+    on_air           INTEGER NOT NULL DEFAULT 0 CHECK (on_air IN (0, 1)),
+    since            INTEGER,
+    source           TEXT CHECK (source IS NULL OR source IN ('http', 'manual')),
+    last_duration_ms INTEGER
+  );
+
+  -- Dernière météo obtenue : affichée pendant une panne, et au redémarrage.
+  CREATE TABLE weather_cache (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    location   TEXT    NOT NULL,
+    data       TEXT    NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  -- Jetons des connecteurs entrants : la contrainte accepte désormais « onair » (données reprises).
+  CREATE TABLE connector_tokens_new (
+    connector  TEXT PRIMARY KEY CHECK (connector IN ('radiodj', 'onair')),
+    token_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT ${NOW}
+  );
+  INSERT INTO connector_tokens_new (connector, token_hash, created_at)
+    SELECT connector, token_hash, created_at FROM connector_tokens;
+  DROP TABLE connector_tokens;
+  ALTER TABLE connector_tokens_new RENAME TO connector_tokens;
+  `,
 ];

@@ -58,6 +58,7 @@ export function registerSettingsRoutes(app: FastifyInstance, ctx: RouteContext) 
     // Ne redémarre un connecteur que si sa configuration a changé (accès RadioDJ, fuseau…) ;
     // un forçage direct / hors direct bascule aussitôt, au nom de l'admin.
     ctx.automation.apply(settings, { type: 'user', id: admin.id });
+    ctx.weather.apply(settings);
     return settings;
   });
 

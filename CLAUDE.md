@@ -15,11 +15,12 @@ Documents liés :
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
 - `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
+- `docs/plan-etape-9.md` : plan et **bilan** de l'étape 9 (On Air, météo et liners), réalisée.
 - `docs/plan-acces-distant.md` : **proposition non validée** d'accès depuis l'extérieur (option 1 : tunnel vers un VPS ; option 2 : central sur VPS + agent studio), à reprendre dans une future version.
 - `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 9 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille) et 9 (On Air, météo et liners) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 10 et 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -52,7 +53,7 @@ Outil web, hébergé en interne, destiné aux animateurs et journalistes d'une r
 | Dépôt | `dockev03/OnAir-Desk`, **privé** tant que la licence n'est pas décidée |
 
 Questions **encore ouvertes** :
-1. Déclenchement du **On Air** : **à définir plus tard** (voir §6). La route HTTP et le bouton manuel sont prévus d'office.
+1. ~~Déclenchement du On Air~~ : tranché à l'étape 9 : bouton du **Stream Deck** et / ou de la **console** appelant l'API d'OnAir-Desk ; boutons de secours dans l'interface et sur l'écran studio. Câblage matériel (GPO / GPIO) possible plus tard, avec la même API.
 2. **Licence** (MIT / AGPL) : voir §11.
 3. ~~Bascule RadioDJ / AzuraCast~~ : tranchée à l'étape 8 (indicateur « live » d'AzuraCast, le direct RadioDJ y arrivant en DJ / streamer, et forçage manuel). À confirmer par une capture pendant un direct (`docs/plan-etape-8.md`).
 
@@ -168,10 +169,11 @@ Constats vérifiés sur RadioDJ 3.0.0.5 / MariaDB 11.4 : voir `docs/cadrage-radi
 - Sert à afficher le titre en cours **sur l'écran de veille** et hors des émissions en direct.
 - Constats (étape 8) : AzuraCast Rolling sur un VPS distant, station publique, certificat auto-signé ; le direct RadioDJ passe par AzuraCast en DJ / streamer. Connexions **sortantes** seulement (flux SSE + relecture toutes les 30 s), certificat toujours vérifié (`AZURACAST_CA_FILE` ou Let's Encrypt), clé API facultative (`AZURACAST_API_KEY`, compte sans droit d'administration). Voir `docs/plan-etape-8.md`.
 
-### On Air — déclenchement à définir plus tard
-- Route prévue : `POST /api/onair` avec `{"state":"on"}` / `{"state":"off"}`.
-- Sécurité : **jeton dédié** (variable d'environnement), **réseau interne uniquement**, validation stricte (`on`/`off` seulement).
-- **Bouton manuel** dans l'interface, en secours.
+### On Air — réalisé à l'étape 9 (`docs/plan-etape-9.md`)
+- API sur l'**écoute dédiée aux connecteurs** : `POST /api/onair` avec `{"state":"on"}`, `{"state":"off"}` ou `{"state":"toggle"}`, `GET /api/onair` pour l'état ; appel simple (`GET /api/onair/toggle?token=…`) désactivé par défaut.
+- Sécurité : **jeton dédié** généré dans les Paramètres (stocké haché, régénérable ; écart assumé avec la variable d'environnement prévue d'abord), **réseau interne uniquement**, validation stricte.
+- **Boutons de secours** : barre de l'interface (confirmation) et écran studio (appui long, désactivable).
+- Déclencheur de la station de départ : bouton du **Stream Deck** et / ou de la **console**.
 - Déclencheurs possibles plus tard : **GPO de la console** (contact à l'ouverture du fader micro) → entrée **GPIO** ou boîtier USB I/O ; RadioDJ.
 - ⚠️ Les GPIO acceptent souvent **3,3 V max** : passer par **optocoupleur ou relais**, jamais en direct. Intervention à confier à un technicien.
 
@@ -248,7 +250,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. protection contre l'usure de l'écran ;
    5. dispositions toutes prêtes ;
    6. indicateur de connexion discret.
-9. **On Air, météo et liners** (6 fonctionnalités) :
+9. ✅ **On Air, météo et liners** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-9.md` :
    1. route `POST /api/onair` protégée par jeton ;
    2. bouton manuel et voyant ON AIR ;
    3. chronomètre micro ouvert ;
@@ -300,6 +302,8 @@ Pas d'étape ni de guide pour le matériel d'affichage : il est **hors spécific
   - **Session automatique de l'afficheur** : le kiosk ouvre une session sans intervention ; l'afficheur doit rester physiquement dans le studio, sur un réseau maîtrisé.
   - **Port HTTP des connecteurs** (étape 7) : fermé par défaut ; ouvert, il n'expose que la route du signal RadioDJ (jeton en clair sur le réseau local, la base faisant foi).
   - **Base RadioDJ** : ouverte au réseau par la station, pour la seule adresse du serveur, avec un compte `SELECT` seul.
+  - **API On Air** (étape 9) : sur l'écoute des connecteurs (fermée par défaut), jeton haché ; l'appel simple met le jeton dans l'adresse (désactivé par défaut). Le kiosk peut allumer / éteindre le On Air (appui long, tracé, désactivable).
+  - **Météo** (étape 9) : connexion **sortante** du serveur vers Open-Meteo.
   - **AzuraCast** (étape 8) : connexion **sortante** du serveur vers le VPS AzuraCast (HTTPS, certificat toujours vérifié) ; clé API éventuelle liée à un compte AzuraCast **sans droit d'administration**.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).
 - Aucun identifiant de modèle d'IA dans les commits, PR ou fichiers du dépôt.

@@ -54,12 +54,53 @@ export interface LiveState {
   offAirSource: SourceStatus;
 }
 
+/** Origine d'un passage On Air : requête d'un équipement / logiciel, ou bouton manuel. */
+export const ON_AIR_SOURCES = ['http', 'manual'] as const;
+export type OnAirSource = (typeof ON_AIR_SOURCES)[number];
+
+/** Voyant ON AIR (voir docs/plan-etape-9.md, décisions 1 à 7). */
+export interface OnAirState {
+  on: boolean;
+  /** Heure serveur (ms) du dernier passage (allumage ou extinction) ; null : jamais. */
+  since: number | null;
+  source: OnAirSource | null;
+  /** Durée de la dernière ouverture du micro, connue à l'extinction (chronomètre). */
+  lastDurationMs: number | null;
+}
+
+/** Météo actuelle, telle que le serveur l'a obtenue (voir docs/plan-etape-9.md, décisions 8 à 11). */
+export interface WeatherNow {
+  /** Ville affichée (paramètres). */
+  city: string;
+  /** Température actuelle (°C). */
+  temperature: number;
+  /** Code météo WMO (0 = ciel clair…). */
+  code: number;
+  isDay: boolean;
+  /** Minimale et maximale du jour (°C), si connues. */
+  min: number | null;
+  max: number | null;
+}
+
+export interface WeatherState {
+  /** Dernière valeur obtenue (gardée pendant une panne). */
+  now: WeatherNow | null;
+  /** Heure serveur (ms) de la dernière valeur obtenue. */
+  updatedAt: number | null;
+  /** État de la source : erreur pendant une panne (la dernière valeur reste). */
+  state: SourceState;
+  error: string | null;
+}
+
 export interface AirState {
   nowPlaying: Track | null;
   next: Track | null;
   /** Source dont les titres sont affichés. */
   source: SourceStatus;
   live: LiveState | null;
+  onAir: OnAirState;
+  /** Météo ; null : aucun fournisseur choisi. */
+  weather: WeatherState | null;
 }
 
 export interface Studio {
@@ -86,6 +127,8 @@ export const emptyAirState = (source: AutomationSource = 'none'): AirState => ({
   next: null,
   source: { id: source, state: 'stopped', updatedAt: null, error: null },
   live: null,
+  onAir: { on: false, since: null, source: null, lastDurationMs: null },
+  weather: null,
 });
 
 /**

@@ -103,6 +103,8 @@ describe('écoute dédiée aux connecteurs', () => {
     ingest = await buildIngestServer({
       tokens: built.ctx.repos.connectorTokens,
       automation: built.ctx.automation,
+      onAir: built.ctx.onAir,
+      settings: built.ctx.repos.settings,
     });
     return { ...s, token };
   }
@@ -131,7 +133,7 @@ describe('écoute dédiée aux connecteurs', () => {
     expect(db.reads).toBe(before);
   });
 
-  it('n’expose que la route du signal (ni interface, ni API, ni GET)', async () => {
+  it('n’expose que les routes des connecteurs (ni interface, ni API, ni GET du signal)', async () => {
     await withIngest();
     for (const url of [
       '/',

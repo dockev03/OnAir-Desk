@@ -140,6 +140,52 @@ export const airSwitchSchema = z
   .strict()
   .refine((s) => s.liveSource !== s.offAirSource, 'air_switch_same');
 
+// ---- On Air, météo, liners (étape 9) ---------------------------------------------
+
+/** Demande de passage On Air : allumer, éteindre, ou inverser (bouton unique). */
+export const ON_AIR_REQUESTS = ['on', 'off', 'toggle'] as const;
+export type OnAirRequest = (typeof ON_AIR_REQUESTS)[number];
+export const onAirRequestSchema = z.object({ state: z.enum(ON_AIR_REQUESTS) }).strict();
+
+export const WEATHER_PROVIDERS = ['none', 'openmeteo'] as const;
+export type WeatherProvider = (typeof WEATHER_PROVIDERS)[number];
+
+/** Météo : fournisseur, ville affichée et coordonnées (rien de propre à une station). */
+export const weatherSettingsSchema = z
+  .object({
+    provider: z.enum(WEATHER_PROVIDERS),
+    city: z.string().trim().max(80),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+  })
+  .strict()
+  .refine((w) => w.provider === 'none' || w.city.length > 0, 'weather_city');
+
+export const MAX_LINERS = 30;
+export const LINER_MAX_LENGTH = 200;
+export const LINER_ROTATION_MIN = 10;
+export const LINER_ROTATION_MAX = 120;
+
+/** Carte de liner : phrase d'identification à dire (nom, fréquence, standard, slogan…). */
+export const linerSchema = z
+  .object({
+    id: z.string().regex(/^[a-z0-9-]{1,36}$/),
+    text: z.string().trim().min(1).max(LINER_MAX_LENGTH),
+    active: z.boolean(),
+  })
+  .strict();
+
+export const linersSettingsSchema = z
+  .object({
+    items: z
+      .array(linerSchema)
+      .max(MAX_LINERS)
+      .refine((l) => new Set(l.map((x) => x.id)).size === l.length, 'duplicate_liner'),
+    /** Durée d'affichage de chaque carte sur l'écran studio (secondes). */
+    rotationSeconds: z.number().int().min(LINER_ROTATION_MIN).max(LINER_ROTATION_MAX),
+  })
+  .strict();
+
 export const settingsSchema = z.object({
   stationName: z.string().trim().min(1).max(80),
   locale: localeSchema,
@@ -171,6 +217,14 @@ export const settingsSchema = z.object({
   defaultLayout: layoutSchema,
   /** Protection contre l'usure de l'écran (léger décalage périodique des éléments fixes). */
   burnInProtection: z.boolean(),
+  /** Bouton On Air (appui long) sur l'écran studio. */
+  onAirKiosk: z.boolean(),
+  /** Appel simple de l'API On Air (jeton dans l'adresse), pour les déclencheurs limités. */
+  onAirSimpleCall: z.boolean(),
+  /** Météo affichée sur l'écran studio. */
+  weather: weatherSettingsSchema,
+  /** Cartes de liners. */
+  liners: linersSettingsSchema,
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
@@ -363,6 +417,9 @@ export type RadiodjSettings = z.infer<typeof radiodjSettingsSchema>;
 export type TrackAlertSettings = z.infer<typeof trackAlertSchema>;
 export type AzuracastSettings = z.infer<typeof azuracastSettingsSchema>;
 export type AirSwitchSettings = z.infer<typeof airSwitchSchema>;
+export type WeatherSettings = z.infer<typeof weatherSettingsSchema>;
+export type Liner = z.infer<typeof linerSchema>;
+export type LinersSettings = z.infer<typeof linersSettingsSchema>;
 export type SetupInput = z.infer<typeof setupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

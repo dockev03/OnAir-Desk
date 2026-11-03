@@ -2,7 +2,7 @@
 
 > Vérifications, tests et décisions en attente qui **ne bloquent pas** les étapes suivantes.
 > Cocher au fur et à mesure ; un écart constaté donne une branche `fix/…`.
-> Dernière mise à jour : après l'étape 8.
+> Dernière mise à jour : après l'étape 9.
 
 ## 1. Vérifications sur l'installation réelle
 
@@ -24,10 +24,18 @@
 - [ ] Comportement avec un **voicetrack** (et sens exact de `swPlay` / `vtPlay`).
 - [ ] Horloge du PC RadioDJ réglée par **NTP**.
 
+### On Air et météo (étape 9, `docs/plan-etape-9.md`)
+
+- [ ] Régler le bouton On Air du **Stream Deck** : plugin de requêtes HTTP (voie normale, avec affichage de l'état) ou action « Site web » (appel simple, à activer dans Paramètres).
+- [ ] Vérifier ce que sait envoyer la **console** (requête `POST` avec en-tête, ou adresse seule).
+- [ ] Ouvrir l'écoute des connecteurs (`CONNECTOR_HTTP_PORT`, `CONNECTOR_BIND`) si ce n'est pas déjà fait pour RadioDJ, puis générer le jeton On Air.
+- [ ] Renseigner la **météo** (Open-Meteo, ville et coordonnées de la station) et les **cartes de liners** (les exemples fournis sont inactifs, à adapter).
+
 ### Écran studio
 
 - [ ] **Tailles minimales** (heure, temps restant, alertes) vérifiées sur l'afficheur réel, à 1,5–2 m (`CLAUDE.md` §5).
 - [ ] Veille, dispositions et décalage anti-usure regardés sur l'afficheur réel (lisibilité, aucun saut gênant pendant la lecture).
+- [ ] Voyant ON AIR, chronomètre, météo et bande de liners lisibles à 1,5–2 m.
 
 ## 2. Décisions à prendre
 
@@ -36,7 +44,8 @@
 - [ ] **Certificat AzuraCast dans la stack Portainer** : le volume `/certs` est commenté dans `docker-compose.yml`, et une stack « Repository » ne se modifie pas sans changer le dépôt. Soit Let's Encrypt sur AzuraCast (rien à changer), soit rendre ce volume paramétrable par variable.
 - [ ] **Idées non encore validées** (`CLAUDE.md` §7, n° 18 à 24) : fiches pratiques, contenus locaux, pointage « fait », quotas de chanson francophone, vigilance Météo-France, voyants micros invités, plugin RadioDJ maison.
 - [ ] **Plugin RadioDJ maison** (projet à part) : préalable, vérifier qu'un kit de développement de plugins existe pour RadioDJ 3.0.0.5 et donne la position du lecteur.
-- [ ] **Déclenchement matériel du On Air** (GPO de la console, GPIO, boîtier USB) : la route et le bouton manuel arrivent à l'étape 9 ; le câblage, avec optocoupleur ou relais, est à confier à un technicien.
+- [ ] **Déclenchement matériel du On Air** (GPO de la console, GPIO, boîtier USB), si le bouton du Stream Deck ou de la console ne suffit pas : même API ; câblage avec optocoupleur ou relais, à confier à un technicien.
+- [ ] **Alerte de micro ouvert trop longtemps** (seuil orange / rouge sur le chronomètre) : écartée à l'étape 9, à reprendre si le besoin apparaît.
 
 Questions déjà rattachées à une étape, à trancher dans son plan :
 

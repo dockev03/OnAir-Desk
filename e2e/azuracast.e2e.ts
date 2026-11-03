@@ -58,6 +58,8 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  // Page fermée : elle ne se reconnecterait pas au serveur du fichier de tests suivant.
+  await page?.close();
   await api?.dispose();
   await server?.dispose();
   await fake?.close();

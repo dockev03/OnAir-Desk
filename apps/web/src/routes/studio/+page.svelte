@@ -25,7 +25,9 @@
   import { groupByDate, type StudioView } from '$lib/rundowns.js';
   import { logoUrl } from '$lib/settings.svelte.js';
   import ItemCard from '$lib/studio/ItemCard.svelte';
+  import LinersBand from '$lib/studio/LinersBand.svelte';
   import NowPlaying from '$lib/studio/NowPlaying.svelte';
+  import OnAirLamp from '$lib/studio/OnAirLamp.svelte';
   import Reader from '$lib/studio/Reader.svelte';
   import RundownPicker from '$lib/studio/RundownPicker.svelte';
   import RundownView from '$lib/studio/RundownView.svelte';
@@ -33,6 +35,7 @@
   import { FIXED_SHIFT, burnInShift, translate } from '$lib/studio/burnin.js';
   import StudioBrowser from '$lib/studio/StudioBrowser.svelte';
   import StudioSidebar from '$lib/studio/StudioSidebar.svelte';
+  import WeatherLine from '$lib/studio/WeatherLine.svelte';
 
   const FONT_KEY = 'onair-desk.studio.fontSize';
   const LIBRARY_REFRESH_MS = 60_000;
@@ -107,6 +110,11 @@
   /** Émission en cours d'après les heures des conducteurs du jour. */
   const onShow = $derived(showInProgress(nearby, now, timezone));
   const isLive = $derived(link.air?.state.live?.active ?? false);
+  /** Voyant ON AIR (micro ouvert). */
+  const onAir = $derived(
+    link.air?.state.onAir ?? { on: false, since: null, source: null, lastDurationMs: null },
+  );
+  const timeFormat = $derived(link.settings?.timeFormat ?? '24h');
   /** Disposition : celle du conducteur suivi, sinon de l'émission en cours, sinon par défaut. */
   const layout = $derived(
     effectiveLayout(
@@ -123,7 +131,7 @@
       link.state !== 'revoked' &&
       !reading &&
       now >= standbyDismissedUntil &&
-      standbyActive(nearby, now, timezone, isLive),
+      standbyActive(nearby, now, timezone, isLive, onAir.on),
   );
   const upcoming = $derived(standby ? (nextShow(nearby, now, timezone)?.show ?? null) : null);
   /** Protection contre l'usure : décalage des éléments fixes. */
@@ -191,6 +199,11 @@
     } catch {
       // Hors ligne : la dernière copie connue reste affichée.
     }
+  }
+
+  /** Bouton de secours : appui long sur le voyant (si les paramètres l'autorisent). */
+  async function toggleOnAir() {
+    await api('POST', '/api/studio/onair', { state: 'toggle' }).catch(() => {});
   }
 
   async function openItem(uid: string) {
@@ -314,8 +327,17 @@
 <div class="studio" data-layout={layout}>
   <header class="top" style:transform={shift}>
     <div class="card clock-card">
-      <div class="station">{link.settings?.stationName ?? ''}</div>
+      <div class="clock-top">
+        <OnAirLamp
+          {onAir}
+          {now}
+          interactive={link.settings?.onAirKiosk ?? false}
+          ontoggle={() => void toggleOnAir()}
+        />
+        <span class="station">{link.settings?.stationName ?? ''}</span>
+      </div>
       <div class="clock mono" aria-live="off">{clock}</div>
+      <WeatherLine weather={link.air?.state.weather ?? null} {now} {timezone} {timeFormat} />
     </div>
     {#if showAir && link.air}
       <NowPlaying
@@ -454,6 +476,12 @@
     {/if}
   </div>
 
+  {#if blocks.liners && link.settings && !standby}
+    <div class="liners-wrap" style:transform={shift}>
+      <LinersBand liners={link.settings.liners} {now} />
+    </div>
+  {/if}
+
   {#if standby && rundownList}
     <Standby
       stationName={link.settings?.stationName ?? ''}
@@ -464,6 +492,10 @@
       today={rundownList.today}
       next={upcoming}
       drift={link.settings?.burnInProtection ?? false}
+      {onAir}
+      weather={link.air?.state.weather ?? null}
+      {timezone}
+      {timeFormat}
       ondismiss={() => (standbyDismissedUntil = now + STANDBY_DISMISS_MS)}
     />
   {/if}
@@ -503,9 +535,18 @@
     padding: 6px 14px;
     min-width: 13rem;
   }
+  .clock-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
   .station {
     font-size: 0.9rem;
     color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .clock {
     font-size: 2.4rem;
@@ -524,7 +565,8 @@
   }
   .top,
   .regie-zone,
-  .side-wrap {
+  .side-wrap,
+  .liners-wrap {
     transition: transform 1s ease-in-out;
   }
   .side-wrap {
@@ -561,7 +603,8 @@
   @media (prefers-reduced-motion: reduce) {
     .top,
     .regie-zone,
-    .side-wrap {
+    .side-wrap,
+    .liners-wrap {
       transition: none;
     }
   }

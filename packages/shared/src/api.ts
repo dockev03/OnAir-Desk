@@ -1,4 +1,4 @@
-import type { AirMessage, AirSnapshot, Studio } from './air.js';
+import type { AirMessage, AirSnapshot, Studio, WeatherNow } from './air.js';
 import type { ScriptDoc } from './content.js';
 import type { ItemScriptInfo } from './rundown.js';
 import type { Layout } from './layout.js';
@@ -97,6 +97,21 @@ export interface AzuracastTestResult {
   /** Titre en cours (« Artiste - Titre »), pour confirmer la bonne station. */
   nowPlaying: string | null;
   live: boolean | null;
+}
+
+/** État On Air renvoyé par l'API (équipements, logiciels, bouton manuel). */
+export interface OnAirResponse {
+  on: boolean;
+  /** Heure serveur (ms) du dernier passage ; null : jamais. */
+  since: number | null;
+}
+
+/** Résultat du bouton « Tester » de la météo. */
+export interface WeatherTestResult {
+  ok: boolean;
+  /** Code d'erreur stable (traduit côté interface) quand ok est faux. */
+  error: string | null;
+  weather: WeatherNow | null;
 }
 
 // ---- Bibliothèque ------------------------------------------------------------

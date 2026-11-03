@@ -9,3 +9,4 @@ export * from './air.js';
 export * from './audit.js';
 export * from './layout.js';
 export * from './standby.js';
+export * from './weather.js';
