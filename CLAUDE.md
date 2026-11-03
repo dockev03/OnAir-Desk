@@ -16,6 +16,7 @@ Documents liés :
 - `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/plan-etape-9.md` : plan et **bilan** de l'étape 9 (On Air, météo et liners), réalisée.
+- `docs/plan-etape-10.md` : plan de l'étape 10 (régie), **proposition à valider**.
 - `docs/plan-acces-distant.md` : **proposition non validée** d'accès depuis l'extérieur (option 1 : tunnel vers un VPS ; option 2 : central sur VPS + agent studio), à reprendre dans une future version.
 - `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
@@ -257,7 +258,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. connecteur météo Open-Meteo interrogé par le serveur, avec repli en cas de panne ;
    5. attribution « Météo : Open-Meteo.com » ;
    6. cartes de liners.
-10. **Régie** (6 fonctionnalités) :
+10. **Régie** (6 fonctionnalités) → plan proposé dans `docs/plan-etape-10.md` (à valider) :
     1. rôle « Réalisateur » (§4) ;
     2. messages régie envoyés depuis un autre PC, dans une zone fixe de l'écran ;
     3. ordres rapides ;
