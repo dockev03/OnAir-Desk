@@ -1,5 +1,16 @@
 import { readingSeconds } from './content.js';
 import type { ItemTiming } from './rundown.js';
+import { addDays, localDateIn, zonedToEpoch } from './time.js';
+import {
+  FIXED_NOW_SHOWN_MS,
+  type FixedTime,
+  type Passage,
+  type ReportLine,
+  type RunItem,
+  type RunReport,
+  type RunState,
+  type TimeTrackingSettings,
+} from './tracking.js';
 
 /**
  * Calculs de temps, en fonctions pures : utilisés par le serveur, l'interface et l'écran
@@ -174,4 +185,278 @@ export function formatElapsed(ms: number): string {
   const m = Math.floor((total % 3600) / 60);
   const s = String(total % 60).padStart(2, '0');
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}
+
+// ---- Suivi du temps (étape 11) -----------------------------------------------------
+
+/** Compte à rebours vers le prochain horaire fixe. */
+export interface FixedCountdown {
+  id: string;
+  label: string;
+  /** Heure de l'horaire (horloge serveur, ms). */
+  at: number;
+  /** Temps restant (négatif pendant les 10 s « maintenant »). */
+  remainingMs: number;
+}
+
+/**
+ * Prochain horaire fixe actif dont la prévenance a commencé (ou passé depuis moins de 10 s,
+ * « maintenant ») ; le plus proche l'emporte. Heures dans le fuseau de la station.
+ */
+export function nextFixedTime(
+  fixedTimes: readonly FixedTime[],
+  now: number,
+  timezone: string,
+): FixedCountdown | null {
+  const today = localDateIn(now, timezone);
+  let best: FixedCountdown | null = null;
+  for (const f of fixedTimes) {
+    if (!f.active) continue;
+    for (const offset of [-1, 0, 1]) {
+      const date = addDays(today, offset);
+      const day = new Date(`${date}T00:00:00Z`).getUTCDay() || 7;
+      if (!f.days.includes(day)) continue;
+      for (const hour of f.hours) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const at = zonedToEpoch(`${date} ${pad(hour)}:${pad(f.minute)}:00`, timezone);
+        if (at === null) continue;
+        const remainingMs = at - now;
+        if (remainingMs < -FIXED_NOW_SHOWN_MS || remainingMs > f.warnMinutes * 60_000) continue;
+        if (!best || at < best.at) best = { id: f.id, label: f.label, at, remainingMs };
+      }
+    }
+  }
+  return best;
+}
+
+/** Niveau d'un horaire fixe : orange à 1 min, rouge à 10 s (puis « maintenant »). */
+export function fixedTimeLevel(remainingMs: number): AlertLevel {
+  return alertLevel(remainingMs, { soonSeconds: 60, nowSeconds: 10 });
+}
+
+/** Heure prévue de chaque élément d'un déroulé (horloge serveur, ms). */
+export function runPlannedStarts(run: Pick<RunState, 'baseAt' | 'items'>): number[] {
+  let t = run.baseAt;
+  return run.items.map((item) => {
+    const start = t;
+    t += item.plannedSeconds * 1000;
+    return start;
+  });
+}
+
+/** Élément en cours : le dernier pointé (heure réelle la plus récente). */
+export function currentPassage(run: Pick<RunState, 'passages'>): Passage | null {
+  let last: Passage | null = null;
+  for (const p of run.passages) if (!last || p.at >= last.at) last = p;
+  return last;
+}
+
+/** Minuteur de séquence de l'élément en cours. */
+export interface SequenceTimer {
+  uid: string;
+  elapsedMs: number;
+  /** Reste (négatif en dépassement) ; null : élément sans durée prévue (chronomètre seul). */
+  remainingMs: number | null;
+  /** Élément pointé par l'automation (le bloc « Titre en cours » fait déjà ce travail). */
+  automation: boolean;
+}
+
+export function sequenceTimer(
+  run: Pick<RunState, 'items' | 'passages'>,
+  now: number,
+): SequenceTimer | null {
+  const p = currentPassage(run);
+  const item = p && run.items.find((i) => i.uid === p.uid);
+  if (!p || !item) return null;
+  const elapsedMs = Math.max(0, now - p.at);
+  return {
+    uid: p.uid,
+    elapsedMs,
+    remainingMs: item.plannedSeconds > 0 ? item.plannedSeconds * 1000 - elapsedMs : null,
+    automation: p.source === 'automation',
+  };
+}
+
+/**
+ * Avance / retard (ms ; positif = retard) : heure réelle de début de l'élément en cours moins
+ * son heure prévue, plus son dépassement s'il dure déjà plus que prévu. Null : rien de pointé
+ * (ou élément retiré du conducteur).
+ */
+export function rundownDrift(
+  run: Pick<RunState, 'baseAt' | 'items' | 'passages'>,
+  now: number,
+): number | null {
+  const p = currentPassage(run);
+  if (!p) return null;
+  const index = run.items.findIndex((i) => i.uid === p.uid);
+  if (index === -1) return null;
+  const planned = runPlannedStarts(run)[index]!;
+  const overrun = Math.max(0, now - p.at - run.items[index]!.plannedSeconds * 1000);
+  return p.at - planned + overrun;
+}
+
+/** Backtiming : temps restant avant la fin imposée et projection de la fin. */
+export interface Backtime {
+  endAt: number;
+  /** Temps restant avant la fin imposée (négatif une fois dépassée). */
+  remainingMs: number;
+  /** Fin prévue : maintenant + reste de l'élément en cours + éléments suivants. */
+  projectedEnd: number;
+  /** Positif : temps à caser ; négatif : temps à couper. */
+  balanceMs: number;
+  /** Durée des éléments « à couper » pas encore passés. */
+  cuttableMs: number;
+  /** Couper les éléments marqués suffit à tenir la fin. */
+  cutSuffices: boolean;
+}
+
+export function backtime(
+  run: Pick<RunState, 'baseAt' | 'endAt' | 'items' | 'passages'>,
+  now: number,
+): Backtime | null {
+  if (run.endAt === null) return null;
+  const p = currentPassage(run);
+  const index = p ? run.items.findIndex((i) => i.uid === p.uid) : -1;
+  const passed = new Set(run.passages.map((x) => x.uid));
+  let projectedEnd: number;
+  let cuttableMs: number;
+  if (!p || index === -1) {
+    // Rien en cours (ou élément retiré) : tout ce qui n'est pas passé reste à faire.
+    const rest = run.items.filter((i) => !passed.has(i.uid));
+    projectedEnd =
+      Math.max(now, p ? now : run.baseAt) +
+      rest.reduce((sum, i) => sum + i.plannedSeconds * 1000, 0);
+    cuttableMs = rest.filter((i) => i.cuttable).reduce((s, i) => s + i.plannedSeconds * 1000, 0);
+  } else {
+    const current = run.items[index]!;
+    const left = Math.max(0, current.plannedSeconds * 1000 - (now - p.at));
+    const after = run.items.slice(index + 1).filter((i) => !passed.has(i.uid));
+    projectedEnd = now + left + after.reduce((sum, i) => sum + i.plannedSeconds * 1000, 0);
+    cuttableMs = after.filter((i) => i.cuttable).reduce((s, i) => s + i.plannedSeconds * 1000, 0);
+  }
+  const balanceMs = run.endAt - projectedEnd;
+  return {
+    endAt: run.endAt,
+    remainingMs: run.endAt - now,
+    projectedEnd,
+    balanceMs,
+    cuttableMs,
+    cutSuffices: balanceMs < 0 && cuttableMs > 0 && cuttableMs >= -balanceMs,
+  };
+}
+
+/** Niveau du retard (l'avance n'est jamais une alerte). */
+export function driftLevel(driftMs: number, s: TimeTrackingSettings): AlertLevel {
+  if (driftMs >= s.driftNowSeconds * 1000) return 'now';
+  if (driftMs >= s.driftSoonSeconds * 1000) return 'soon';
+  return 'none';
+}
+
+/** Niveau du minuteur de séquence : orange en fin de séquence, rouge en dépassement. */
+export function sequenceLevel(remainingMs: number | null, s: TimeTrackingSettings): AlertLevel {
+  if (remainingMs === null) return 'none';
+  if (remainingMs < 0) return 'now';
+  return remainingMs <= s.sequenceSoonSeconds * 1000 ? 'soon' : 'none';
+}
+
+/** Niveau du temps restant avant la fin imposée. */
+export function endLevel(remainingMs: number, s: TimeTrackingSettings): AlertLevel {
+  if (remainingMs <= s.endNowMinutes * 60_000) return 'now';
+  if (remainingMs <= s.endSoonMinutes * 60_000) return 'soon';
+  return 'none';
+}
+
+/** Niveau de « à couper » : orange, rouge à l'approche de la fin ; « à caser » : neutre. */
+export function balanceLevel(bt: Backtime, s: TimeTrackingSettings): AlertLevel {
+  if (bt.balanceMs >= 0) return 'none';
+  return bt.remainingMs <= s.endSoonMinutes * 60_000 ? 'now' : 'soon';
+}
+
+/** Durée signée : « +1:20 », « −0:45 » (signe moins typographique). */
+export function formatSigned(ms: number): string {
+  const sign = ms < 0 ? '−' : '+';
+  return `${sign}${formatElapsed(Math.abs(Math.round(ms / 1000) * 1000))}`;
+}
+
+/** Ce qu'il faut d'un déroulé (enregistré) pour en faire le bilan. */
+export interface RunForReport {
+  id: number;
+  rehearsal: boolean;
+  startedAt: number;
+  baseAt: number;
+  endAt: number | null;
+  endedAt: number | null;
+  /** Le dernier élément s'arrête ici : sortie de l'écran du conducteur, ou fin du déroulé. */
+  lastEnd: number | null;
+  items: RunItem[];
+  /** Éléments retirés du conducteur après leur passage. */
+  removed: RunItem[];
+  /** Éléments présents au début du déroulé (les autres ont été ajoutés en direct). */
+  initialUids: string[];
+  passages: Passage[];
+}
+
+/**
+ * Bilan d'émission : heure prévue / réelle et durée prévue / réelle de chaque élément. La
+ * durée réelle d'un élément va jusqu'au passage suivant (le dernier, jusqu'à `lastEnd`).
+ */
+export function runReport(run: RunForReport): RunReport {
+  const starts = runPlannedStarts(run);
+  const sorted = [...run.passages].sort((a, b) => a.at - b.at);
+  const byUid = new Map(sorted.map((p, i) => [p.uid, i]));
+  const initial = new Set(run.initialUids);
+  const actual = (uid: string) => {
+    const i = byUid.get(uid);
+    if (i === undefined) return { at: null, seconds: null, source: null };
+    const p = sorted[i]!;
+    const end = sorted[i + 1]?.at ?? run.lastEnd;
+    return {
+      at: p.at,
+      seconds: end === null ? null : Math.max(0, Math.round((end - p.at) / 1000)),
+      source: p.source,
+    };
+  };
+  const line = (item: RunItem, plannedAt: number | null, removed: boolean): ReportLine => {
+    const a = actual(item.uid);
+    return {
+      uid: item.uid,
+      title: item.title,
+      typeId: item.typeId,
+      artist: item.artist,
+      plannedAt,
+      actualAt: a.at,
+      plannedSeconds: item.plannedSeconds,
+      actualSeconds: a.seconds,
+      source: a.source,
+      added: !initial.has(item.uid),
+      removed,
+      cuttable: item.cuttable,
+    };
+  };
+  const total = run.items.reduce((s, i) => s + i.plannedSeconds * 1000, 0);
+  return {
+    runId: run.id,
+    rehearsal: run.rehearsal,
+    startedAt: run.startedAt,
+    endedAt: run.endedAt,
+    plannedStart: run.baseAt,
+    plannedEnd: run.baseAt + total,
+    actualEnd: run.lastEnd,
+    imposedEnd: run.endAt,
+    lines: [
+      ...run.items.map((item, i) => line(item, starts[i]!, false)),
+      ...run.removed.filter((r) => byUid.has(r.uid)).map((item) => line(item, null, true)),
+    ],
+  };
+}
+
+/** Écart de durée d'un conducteur avec sa fin imposée (secondes ; positif : à caser). */
+export function plannedBalance(startTime: string, endTime: string | null, total: number) {
+  if (endTime === null) return null;
+  return timeToSeconds(endTime) - timeToSeconds(startTime) - total;
+}
+
+/** Durée totale de la partie « à couper » d'un conducteur (secondes). */
+export function cuttableSeconds(items: (ItemTiming & { cuttable?: boolean })[]): number {
+  return items.filter((i) => i.cuttable).reduce((s, i) => s + itemSeconds(i), 0);
 }

@@ -1,6 +1,6 @@
 # Étape 11 — Suivi du temps : plan
 
-> **Statut : plan validé, à réaliser.**
+> **Statut : réalisée (bilan en fin de document).**
 > Référence : `CLAUDE.md` §5 (principes d'affichage : code couleur d'alerte unique, distance de lecture), §7 idées 2, 3, 6, 8, 10 et 13, §8 étape 11, §10 (horaires fixes paramétrables). Branche prévue : `feature/etape-11-suivi-du-temps`.
 > 6 fonctionnalités. S'appuie sur les calculs de temps (`timing.ts`, étape 6), le conducteur suivi et ses heures de passage (étape 4), l'« émission en cours » (veille, étape 8), le conducteur modifié en direct et la main courante (étape 10), l'impression (étape 5).
 
@@ -138,3 +138,45 @@ Les décisions sont **validées** (y compris les questions ouvertes 3 et 16) ; l
 - Décisions 3 (pointage des titres par l'automation) et 16 (répétition lancée depuis l'écran studio, désactivable) : validées.
 - À voir avec la station (non bloquant) : liste réelle des horaires fixes (top horaire, flashs, relais réseau), émissions à heure de fin imposée.
 - Lisibilité de la bande de temps à 1,5–2 m : à vérifier sur l'afficheur réel après réalisation (`docs/a-faire.md`).
+
+## Bilan de l'étape 11
+
+### Réalisé
+
+- **Commun** (`packages/shared`) :
+  - `tracking.ts` : horaires fixes (20 au plus : libellé, minute, heures, jours, prévenance, actif ; deux exemples inactifs), seuils du suivi du temps, heure de fin imposée (`endTime`, après le début, même jour), types du déroulé (`RunState`, passages, lignes du bilan, répétitions) ;
+  - `timing.ts`, fonctions pures testées : `nextFixedTime` (fuseau de la station, passage de minuit, changement d'heure), `runPlannedStarts`, `currentPassage`, `sequenceTimer`, `rundownDrift`, `backtime` (à caser / à couper, « couper les éléments marqués suffit »), niveaux d'alerte (`driftLevel`, `sequenceLevel`, `endLevel`, `balanceLevel`, `fixedTimeLevel`), `runReport`, `plannedBalance`, `cuttableSeconds`, `formatSigned` ;
+  - état antenne complété par `run` (déroulé en cours) ; paramètres `fixedTimes` et `timeTracking` ; 4 actions au catalogue du journal (`run.started`, `run.closed`, `rehearsal.started`, `rehearsal.stopped`, catégorie `antenne`, répétitions exclues de la main courante).
+- **Serveur** :
+  - **migration 12** : `end_time` sur les conducteurs et les modèles, tables `rundown_runs` (déroulé, conducteur figé) et `rundown_run_items` (heure réelle de chaque élément, origine écran / automation) ;
+  - fin imposée reprise par la duplication, « Enregistrer comme modèle », la création depuis un modèle et « Réappliquer le modèle » ; refus `end_before_start` ;
+  - `RunService` : démarrage du déroulé à l'affichage d'un élément pendant l'émission (début − 10 min → fin + 10 min), pointage du premier passage seulement, préparation avant l'heure de début comptée à l'heure de début, sortie de l'écran (fin du dernier élément), pointage des titres par l'automation (artiste + titre sans casse ni accents, source du direct seulement), conducteur modifié en direct (éléments retirés après passage gardés pour le bilan), clôture automatique (autre conducteur, fin + 30 min) et manuelle ; répétition (refusée pendant une émission ou On Air allumé, arrêtée à l'allumage du On Air ou au début d'une émission, 4 h au plus, 5 dernières conservées) ;
+  - routes `POST` / `DELETE /api/rehearsal` (comptes, et écran studio si autorisé), `POST /api/runs/:id/close` (propriétaire, réalisateur, admin), `GET /api/rundowns/:id/report` (bilan et main courante), `GET /api/rundowns/:id/rehearsals`.
+- **Interface** :
+  - écran studio : **bande de temps** (`TimingBand`) sous le bandeau, dans les trois dispositions : minuteur de séquence (orange en fin, rouge « +0:12 » en dépassement, chronomètre si durée nulle, masqué pour un titre pointé par l'automation), avance / retard (« À l'heure » sous le seuil, l'avance jamais en alerte), fin imposée (reste, « à caser » / « à couper », rouge à moins de 5 min), horaire fixe ; mention « RÉPÉTITION » et arrêt par appui long ; heure réelle / recalculée sous l'heure prévue dans la vue conducteur ; bouton « Répéter » (appui long) sur un conducteur ; horaire fixe sur l'écran de veille ;
+  - éditeur de conducteur et de modèle : fin imposée, ligne « fin calculée · fin imposée · à caser / à couper » et durée des éléments à couper (aussi à l'impression), « Répéter sur l'écran studio », durées mesurées en répétition à reprendre (cases à cocher), lien « Bilan » ;
+  - page **Bilan** (`/rundowns/:id/report`), imprimable : début / fins prévue, réelle, imposée, une ligne par élément (prévu, réel, écart, durées, non pointé, ajouté / retiré en direct, pointé par l'automation), main courante ; « Clore l'émission » (aussi sur la page Régie) ;
+  - paramètres : sections **Horaires fixes** et **Suivi du temps** ; journal : nouvelles actions traduites ;
+  - textes FR et EN ; README (statut, fonctionnalités, section 11, sécurité, captures `studio-suivi-temps.png` et `bilan.png`, fin imposée visible sur `conducteur.png`).
+
+### Tests
+
+- 334 tests unitaires (+43), dont :
+  - commun (26) : horaires fixes (schéma, prévenance, « maintenant » 10 s, heures, minute, jours, minuit, changement d'heure, niveaux), seuils, fin imposée (conducteur, modèle, écart, à couper), déroulé (heures prévues, élément en cours, minuteur, retard avec dépassement, élément sauté, modification en direct, niveaux, format signé), backtiming (avant le début, à caser, à couper, éléments marqués, éléments passés), bilan (prévu / réel, ajouté, retiré, non pointé, déroulé en cours) ;
+  - serveur (17) : fin imposée (conducteur, duplication, modèle, création), démarrage et préparation, premier passage, sortie et retour, pointage par l'automation et bascule active, modification en direct, conducteur suivant et non-réouverture, clôture automatique et manuelle (droits), bilan figé et main courante jointe, kiosk refusé sur le bilan, répétition (lancement depuis l'écran, durées mesurées, 5 conservées, absente du bilan et de la main courante, refus On Air / émission, arrêt à l'allumage et au début d'une émission, désactivable), migration 12.
+- **Bout en bout (Chromium)**, 5 nouveaux scénarios : horaire fixe (veille puis bande), répétition lancée et arrêtée par appui long sur l'écran, émission en retard (minuteur dépassé, retard rouge, fin imposée, « à couper »), heures réelles dans la vue conducteur, bilan (non pointé, clôture, fin imposée dans l'éditeur). Les 28 scénarios passent.
+- **Poids de `/studio`** : +6,1 Ko gzip (113,6 → 119,7 Ko, même méthode avant / après : entrée, mise en page racine et page, imports statiques), dont une partie de textes (dictionnaire FR + EN commun à toutes les pages) ; toujours sans l'éditeur.
+
+### Écarts et limites connues
+
+- **Calculs dans `timing.ts`, schémas et types dans `tracking.ts`** (nouveau module, comme `regie.ts`), pour ne pas mêler validation et calculs purs.
+- **Pointage par l'écran** : seul le premier passage d'un élément compte (revenir relire un élément ne change rien) ; l'élément en cours est le dernier pointé. Un élément jamais affiché reste « non pointé ».
+- **Fin du dernier élément** : à la sortie de l'écran du conducteur (retour à la liste ou autre affichage), sinon à la clôture.
+- **Pas de déroulé sans affichage** : une émission dont l'écran studio n'affiche aucun élément n'a pas de bilan (le On Air seul ne démarre rien).
+- **Élément retiré pendant qu'il est en cours** : minuteur et retard disparaissent jusqu'au passage suivant ; dans le bilan, les éléments retirés après passage sont listés à la fin.
+- **Pointage par l'automation** : premier élément non encore pointé qui a le même artiste et le même titre ; les titres doivent être saisis comme dans RadioDJ (le choix dans la bibliothèque RadioDJ, étape 7, le garantit). Limite du §6 inchangée (pause / avance dans RadioDJ non répercutées).
+- **Script modifié pendant l'émission** : la durée prévue d'un élément calculée depuis son script suit au prochain enregistrement du conducteur.
+- **Répétition** : un affichage d'un autre conducteur pendant une répétition est ignoré ; horaires fixes masqués pendant une répétition ; arrêt automatique au bout de 4 h.
+- **Main courante du bilan** : fenêtre de l'étape 10 étendue au déroulé réel ; visible de tous les comptes qui lisent le conducteur (décision 19), pas de l'écran studio. Les entrées « Envoi au prompteur » restent affichées avec leurs détails bruts (comme à l'étape 10).
+- À vérifier à la mise en service : lisibilité de la bande de temps à 1,5–2 m, seuils, liste des horaires fixes (`docs/a-faire.md`).
+

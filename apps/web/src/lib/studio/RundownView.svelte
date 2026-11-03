@@ -1,6 +1,9 @@
 <script lang="ts">
   import {
+    formatClock,
     formatDuration,
+    rundownDrift,
+    runPlannedStarts,
     itemColors,
     itemSeconds,
     rundownSchedule,
@@ -9,9 +12,12 @@
     type ItemType,
     type LiveChange,
     type PrompterRundown,
+    type RunState,
+    type TimeFormat,
   } from '@onair-desk/shared';
   import { i18n, t } from '$lib/i18n/index.svelte.js';
   import { formatAirDate } from '$lib/rundowns.js';
+  import HoldButton from './HoldButton.svelte';
 
   /** Conducteur : une ligne colorée par élément, heure de passage, durée ; clic = lecture. */
   let {
@@ -20,6 +26,12 @@
     tags,
     currentUid,
     change = null,
+    run = null,
+    now = 0,
+    timezone = 'UTC',
+    timeFormat = '24h',
+    onTimeSeconds = 5,
+    onrehearse,
     onitem,
   }: {
     rundown: PrompterRundown;
@@ -29,11 +41,33 @@
     currentUid: string | null;
     /** Modification en direct récente : éléments soulignés quelques secondes. */
     change?: LiveChange | null;
+    /** Déroulé de ce conducteur : heures réelles (passés) et recalculées (à venir). */
+    run?: RunState | null;
+    now?: number;
+    timezone?: string;
+    timeFormat?: TimeFormat;
+    onTimeSeconds?: number;
+    /** « Répéter » (appui long), si l'écran y est autorisé. */
+    onrehearse?: () => void;
     onitem: (uid: string) => void;
   } = $props();
 
   const schedule = $derived(rundownSchedule(rundown.startTime, rundown.items));
   const numbers = $derived(songNumbers(rundown.items));
+  /** Heure réelle des éléments passés ; heure recalculée (prévue + retard) des suivants. */
+  const actual = $derived(new Map(run?.passages.map((p) => [p.uid, p.at]) ?? []));
+  const drift = $derived(run ? rundownDrift(run, now) : null);
+  const planned = $derived(run ? runPlannedStarts(run) : []);
+  const plannedOf = $derived(new Map(run?.items.map((it, i) => [it.uid, planned[i]!]) ?? []));
+  const clock = (ms: number) => formatClock(new Date(ms), timezone, timeFormat);
+  function subTime(uid: string): string | null {
+    if (!run) return null;
+    const at = actual.get(uid);
+    if (at !== undefined) return t('timing.actual', { time: clock(at) });
+    const p = plannedOf.get(uid);
+    if (p === undefined || drift === null || Math.abs(drift) < onTimeSeconds * 1000) return null;
+    return t('timing.expected', { time: clock(p + drift) });
+  }
   const touched = $derived(
     new Set(change ? [...change.added, ...change.changed, ...change.moved] : []),
   );
@@ -46,6 +80,15 @@
       {formatAirDate(rundown.airDate, i18n.locale)} · {secondsToTime(schedule.starts[0] ?? 0)} →
       {secondsToTime(schedule.end)}
     </span>
+    {#if onrehearse}
+      <span class="rehearse">
+        <HoldButton
+          label={t('timing.rehearse')}
+          hint={t('studio.holdToExit')}
+          onhold={onrehearse}
+        />
+      </span>
+    {/if}
     {#if change}
       <span class="changed-note" data-testid="live-change-note">
         {t('studio.changedBy', { name: change.byName ?? '' })}{#if change.removed > 0}{` · ${t(
@@ -58,6 +101,7 @@
   <div class="rows">
     {#each rundown.items as item, i (item.uid)}
       {@const c = itemColors(types, item.typeId)}
+      {@const sub = subTime(item.uid)}
       <button
         class="row"
         class:current={item.uid === currentUid}
@@ -68,7 +112,12 @@
         onclick={() => onitem(item.uid)}
       >
         <span class="num">{numbers[i] ?? ''}</span>
-        <span class="time mono">{secondsToTime(schedule.starts[i] ?? 0)}</span>
+        <span class="time mono"
+          >{secondsToTime(schedule.starts[i] ?? 0)}{#if sub}<span
+              class="sub-time"
+              data-testid="row-subtime">{sub}</span
+            >{/if}</span
+        >
         <span class="name">
           {item.title}{#if item.artist}<span class="artist">{` · ${item.artist}`}</span>{/if}
           {#if item.scriptId !== null && item.script && !item.script.deleted}<span
@@ -141,6 +190,19 @@
   .time {
     width: 5.4rem;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sub-time {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    white-space: nowrap;
+  }
+  .rehearse {
+    margin-left: auto;
+  }
+  .rehearse :global(.hold) {
+    padding: 0.4rem 1rem;
   }
   .name {
     flex: 1;

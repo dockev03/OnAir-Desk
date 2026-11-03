@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CUES } from './content.js';
 import { DEFAULT_ITEM_TAGS, DEFAULT_ITEM_TYPES } from './rundown.js';
+import { DEFAULT_TIME_TRACKING } from './tracking.js';
 import { setupSchema, updateUserSchema, usernameSchema, settingsSchema } from './schemas.js';
 
 describe('usernameSchema', () => {
@@ -38,6 +39,8 @@ describe('settingsSchema', () => {
     weather: { provider: 'none', city: '', latitude: 0, longitude: 0 },
     liners: { items: [], rotationSeconds: 20 },
     regie: { messageTtlMinutes: 5, kioskSeen: true, orders: [] },
+    fixedTimes: [],
+    timeTracking: DEFAULT_TIME_TRACKING,
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {

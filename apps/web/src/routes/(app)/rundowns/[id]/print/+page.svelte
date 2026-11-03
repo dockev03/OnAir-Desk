@@ -13,6 +13,7 @@
   import { api, errorCode } from '$lib/api.js';
   import Blocks from '$lib/content/Blocks.svelte';
   import { errorMessage, i18n, t } from '$lib/i18n/index.svelte.js';
+  import PlannedBalance from '$lib/rundown-editor/PlannedBalance.svelte';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
   import { logoUrl, stationSettings } from '$lib/settings.svelte.js';
 
@@ -133,6 +134,11 @@
           })}
           · {t('print.duration', { duration: formatDuration(schedule.total) })}
         </div>
+        <PlannedBalance
+          startTime={rundown.startTime}
+          endTime={rundown.endTime}
+          items={rundown.items}
+        />
       </div>
     </header>
 

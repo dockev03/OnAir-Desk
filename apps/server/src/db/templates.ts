@@ -21,6 +21,7 @@ interface TemplateRow {
   owner_id: number | null;
   title: string;
   start_time: string;
+  end_time: string | null;
   days: number;
   valid_from: string | null;
   valid_until: string | null;
@@ -46,6 +47,8 @@ export interface TemplateRecord extends TemplateSummary {
 export interface TemplateHeader {
   title: string;
   startTime: string;
+  /** Heure de fin imposée, copiée dans les conducteurs créés ; null : aucune. */
+  endTime: string | null;
   days: number[];
   validFrom: string | null;
   validUntil: string | null;
@@ -78,6 +81,7 @@ export class TemplateRepo {
       ownerId: r.owner_id,
       title: r.title,
       startTime: r.start_time,
+      endTime: r.end_time,
       days: maskToDays(r.days),
       validFrom: r.valid_from,
       validUntil: r.valid_until,
@@ -134,16 +138,17 @@ export class TemplateRepo {
     return this.db.transaction(() => {
       const info = this.db
         .prepare(
-          `INSERT INTO rundown_templates (owner_id, title, start_time, days, valid_from,
-                                          valid_until, active, notes, layout, created_by,
-                                          updated_by)
-           VALUES (@ownerId, @title, @startTime, @days, @validFrom, @validUntil, @active,
-                   @notes, @layout, @userId, @userId)`,
+          `INSERT INTO rundown_templates (owner_id, title, start_time, end_time, days,
+                                          valid_from, valid_until, active, notes, layout,
+                                          created_by, updated_by)
+           VALUES (@ownerId, @title, @startTime, @endTime, @days, @validFrom, @validUntil,
+                   @active, @notes, @layout, @userId, @userId)`,
         )
         .run({
           ownerId: header.ownerId,
           title: header.title,
           startTime: header.startTime,
+          endTime: header.endTime,
           days: daysToMask(header.days),
           validFrom: header.validFrom,
           validUntil: header.validUntil,
@@ -171,7 +176,7 @@ export class TemplateRepo {
       this.db
         .prepare(
           `UPDATE rundown_templates
-              SET title = @title, start_time = @startTime, days = @days,
+              SET title = @title, start_time = @startTime, end_time = @endTime, days = @days,
                   valid_from = @validFrom, valid_until = @validUntil, active = @active,
                   notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
                   updated_at = @now
@@ -182,6 +187,7 @@ export class TemplateRepo {
           userId,
           title: next.title,
           startTime: next.startTime,
+          endTime: next.endTime,
           days: daysToMask(next.days),
           validFrom: next.validFrom,
           validUntil: next.validUntil,

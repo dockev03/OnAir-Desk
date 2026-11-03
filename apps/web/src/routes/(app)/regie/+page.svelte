@@ -107,6 +107,13 @@
       },
     );
   };
+  /** Déroulé d'antenne en cours (étape 11) : « Clore l'émission » fige le bilan. */
+  const airRun = $derived(link.air?.state.run ?? null);
+  const closeRun = () => {
+    if (airRun && !airRun.rehearsal && confirm(t('report.closeConfirm'))) {
+      void run(() => api('POST', `/api/runs/${airRun.id}/close`), loadLogbook);
+    }
+  };
   const clearMessage = () => run(() => api('DELETE', '/api/regie/message'), loadLogbook);
   const sendOrder = (id: string) => run(() => api('POST', `/api/regie/order/${id}`), loadLogbook);
   const sendLiner = (id: string) => run(() => api('POST', `/api/regie/liner/${id}`), loadLogbook);
@@ -211,6 +218,10 @@
         <a class="button primary" href="/rundowns/{onAirRundown.id}" data-testid="live-edit-link"
           >{t('regie.editOnAir')}</a
         >
+        <a class="button" href="/rundowns/{onAirRundown.id}/report">{t('rundowns.report')}</a>
+        {#if airRun && !airRun.rehearsal && airRun.rundownId === onAirRundown.id}
+          <button onclick={closeRun} data-testid="regie-close-run">{t('report.close')}</button>
+        {/if}
       </div>
       {#if layout !== 'regie'}
         <p class="notice small" data-testid="layout-warning">{t('regie.layoutWarning')}</p>

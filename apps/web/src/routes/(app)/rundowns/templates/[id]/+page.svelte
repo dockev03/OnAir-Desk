@@ -22,6 +22,7 @@
   import { ownerKey, ownerName } from '$lib/library.js';
   import { Autosave, type SaveStatus } from '$lib/rundown-editor/autosave.svelte.js';
   import ItemsEditor from '$lib/rundown-editor/ItemsEditor.svelte';
+  import PlannedBalance from '$lib/rundown-editor/PlannedBalance.svelte';
   import RundownNotes from '$lib/rundown-editor/RundownNotes.svelte';
   import { toEdit, toInput, type EditItem } from '$lib/rundown-editor/items.js';
   import { formatAirDate, shortTime } from '$lib/rundowns.js';
@@ -39,6 +40,8 @@
 
   let title = $state('');
   let startTime = $state('07:00:00');
+  /** Fin imposée (backtiming), copiée dans les conducteurs créés ; vide : aucune. */
+  let endTime = $state('');
   let days = $state<number[]>([]);
   let validFrom = $state('');
   let validUntil = $state('');
@@ -58,6 +61,7 @@
     template = x;
     title = x.title;
     startTime = x.startTime;
+    endTime = x.endTime ?? '';
     days = [...x.days];
     validFrom = x.validFrom ?? '';
     validUntil = x.validUntil ?? '';
@@ -95,6 +99,7 @@
         version,
         title: title.trim() || template!.title,
         startTime,
+        endTime: endTime || null,
         days,
         validFrom: validFrom || null,
         validUntil: validUntil || null,
@@ -282,6 +287,10 @@
         {t('rundowns.field.startTime')}
         <input type="time" step="1" bind:value={startTime} required onchange={changed} />
       </label>
+      <label title={t('rundowns.endTimeHint')}>
+        {t('rundowns.endTime')}
+        <input type="time" step="1" bind:value={endTime} onchange={changed} />
+      </label>
       <label>
         {t('field.layout')}
         <select bind:value={layout} onchange={changed}>
@@ -379,6 +388,11 @@
       end: secondsToTime(schedule.end),
     })}
   </p>
+  <PlannedBalance
+    {startTime}
+    endTime={endTime === '' ? null : endTime.length === 5 ? `${endTime}:00` : endTime}
+    {items}
+  />
   {#if items.length === 0}
     <p class="muted">{t('rundowns.emptyRundown')}</p>
   {/if}

@@ -8,6 +8,7 @@ import type { Library } from '../library.js';
 import type { OnAirService } from '../onair.js';
 import type { RegieService } from '../regie.js';
 import type { Rundowns } from '../rundowns.js';
+import type { RunService } from '../runs.js';
 import type { SetupState } from '../setup.js';
 import type { Templates } from '../templates.js';
 import type { Hub } from '../ws/hub.js';
@@ -27,6 +28,8 @@ export interface RouteContext {
   onAir: OnAirService;
   /** Régie : messages, duplex, main courante. */
   regie: RegieService;
+  /** Déroulés : heures réelles de passage, répétitions, bilans (étape 11). */
+  runs: RunService;
   /** Météo du studio par défaut. */
   weather: WeatherManager;
   throttle: LoginThrottle;

@@ -1,5 +1,6 @@
 import {
   addDays,
+  endAfterStart,
   canDirect,
   diffRundownItems,
   showInProgress,
@@ -109,6 +110,7 @@ export class Rundowns {
         title: input.title,
         airDate: input.airDate,
         startTime: input.startTime,
+        endTime: input.endTime,
         notes: input.notes,
         layout: input.layout ?? null,
         userId: user.id,
@@ -155,6 +157,9 @@ export class Rundowns {
       }
       if (input.version !== current.version) throw conflict('version_conflict');
       if (input.items) this.checkItems(input.items, current);
+      const startTime = input.startTime ?? current.startTime;
+      const endTime = input.endTime !== undefined ? input.endTime : current.endTime;
+      if (!endAfterStart(startTime, endTime)) throw badRequest('end_before_start');
       const { version: _v, ...patch } = input;
       return this.repos.rundowns.update(id, user.id, patch);
     })();
@@ -218,6 +223,7 @@ export class Rundowns {
         title: input.title ?? source.title,
         airDate: input.airDate,
         startTime: source.startTime,
+        endTime: source.endTime,
         notes: source.notes,
         layout: source.layout,
         userId: user.id,
@@ -241,6 +247,7 @@ export class Rundowns {
       return this.repos.rundowns.update(id, user.id, {
         title: template.title,
         startTime: template.startTime,
+        endTime: template.endTime,
         notes: template.notes,
         layout: template.layout,
         items: template.items.map(toItemInput),

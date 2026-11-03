@@ -40,6 +40,11 @@ export function entrySummary(e: AuditEntry): string {
           : []),
       ].join(' · ');
     }
+    case 'run.started':
+    case 'run.closed':
+    case 'rehearsal.started':
+    case 'rehearsal.stopped':
+      return str(d.title);
     case 'onair.changed':
       return d.state === 'on' ? t('onair.stateOn') : t('onair.stateOff');
     default:

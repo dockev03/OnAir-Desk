@@ -8,6 +8,7 @@ import { OnAirRepo } from './onair.js';
 import { PrompterRepo } from './prompter.js';
 import { RegieRepo } from './regie.js';
 import { RundownRepo } from './rundowns.js';
+import { RunRepo } from './runs.js';
 import { ScriptRepo } from './scripts.js';
 import { SessionRepo } from './sessions.js';
 import { SettingsRepo } from './settings.js';
@@ -34,6 +35,7 @@ export interface Repos {
   onAir: OnAirRepo;
   weatherCache: WeatherCacheRepo;
   regie: RegieRepo;
+  runs: RunRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -55,6 +57,7 @@ export function createRepos(db: Db): Repos {
     onAir: new OnAirRepo(db),
     weatherCache: new WeatherCacheRepo(db),
     regie: new RegieRepo(db),
+    runs: new RunRepo(db),
   };
 }
 
@@ -63,4 +66,5 @@ export { toPublicUser, type User } from './users.js';
 export type { ScriptRecord } from './scripts.js';
 export type { RundownRecord } from './rundowns.js';
 export type { TemplateRecord } from './templates.js';
+export type { RunRecord, RunSnapshot } from './runs.js';
 export { DEFAULT_STUDIO_ID } from './studios.js';

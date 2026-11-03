@@ -68,3 +68,14 @@ export function zonedToEpoch(local: string, timezone: string): number | null {
   epoch = wall - timezoneOffset(epoch, timezone);
   return epoch;
 }
+
+/** Date locale AAAA-MM-JJ d'un instant dans le fuseau de la station. */
+export function localDateIn(epoch: number, timezone: string): string {
+  // en-CA formate les dates en AAAA-MM-JJ.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(epoch));
+}

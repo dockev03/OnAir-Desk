@@ -356,4 +356,33 @@ export const migrations: string[] = [
     updated_at INTEGER NOT NULL DEFAULT 0
   );
   `,
+  /* 12 — suivi du temps : heure de fin imposée, déroulés et heures réelles de passage */ `
+  ALTER TABLE rundowns ADD COLUMN end_time TEXT;
+  ALTER TABLE rundown_templates ADD COLUMN end_time TEXT;
+
+  -- Un passage d'un conducteur à l'antenne (ou en répétition). Heures en ms (horloge serveur).
+  CREATE TABLE rundown_runs (
+    id         INTEGER PRIMARY KEY,
+    rundown_id INTEGER NOT NULL REFERENCES rundowns (id) ON DELETE CASCADE,
+    studio_id  INTEGER NOT NULL REFERENCES studios (id) ON DELETE CASCADE,
+    rehearsal  INTEGER NOT NULL DEFAULT 0 CHECK (rehearsal IN (0, 1)),
+    started_at INTEGER NOT NULL,
+    base_at    INTEGER NOT NULL,
+    end_at     INTEGER,
+    ended_at   INTEGER,
+    left_at    INTEGER,
+    -- Conducteur figé : titre, éléments actuels, éléments retirés après passage, éléments du début.
+    snapshot   TEXT    NOT NULL
+  );
+  CREATE INDEX rundown_runs_rundown ON rundown_runs (rundown_id, rehearsal);
+  CREATE INDEX rundown_runs_active ON rundown_runs (studio_id) WHERE ended_at IS NULL;
+
+  CREATE TABLE rundown_run_items (
+    run_id     INTEGER NOT NULL REFERENCES rundown_runs (id) ON DELETE CASCADE,
+    uid        TEXT    NOT NULL,
+    started_at INTEGER NOT NULL,
+    source     TEXT    NOT NULL CHECK (source IN ('screen', 'automation')),
+    PRIMARY KEY (run_id, uid)
+  );
+  `,
 ];

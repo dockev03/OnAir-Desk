@@ -59,6 +59,10 @@ export const AUDIT_ACTIONS = {
   'duplex.changed': 'regie',
   'rundown.live_edited': 'regie',
   'logbook.note': 'regie',
+  'run.started': 'antenne',
+  'run.closed': 'antenne',
+  'rehearsal.started': 'antenne',
+  'rehearsal.stopped': 'antenne',
 } as const satisfies Record<string, AuditCategory>;
 export type AuditAction = keyof typeof AUDIT_ACTIONS;
 

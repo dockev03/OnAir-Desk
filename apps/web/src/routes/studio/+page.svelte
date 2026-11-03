@@ -3,6 +3,7 @@
   import {
     LAYOUT_BLOCKS,
     PROMPTER_FONT_MAX,
+    DEFAULT_TIME_TRACKING,
     PROMPTER_FONT_MIN,
     STANDBY_DISMISS_MS,
     activeMessage,
@@ -13,6 +14,7 @@
     effectiveLayout,
     formatClock,
     formatCountdown,
+    nextFixedTime,
     nextShow,
     rundownSchedule,
     secondsToTime,
@@ -40,6 +42,7 @@
   import { FIXED_SHIFT, burnInShift, translate } from '$lib/studio/burnin.js';
   import StudioBrowser from '$lib/studio/StudioBrowser.svelte';
   import StudioSidebar from '$lib/studio/StudioSidebar.svelte';
+  import TimingBand from '$lib/studio/TimingBand.svelte';
   import WeatherLine from '$lib/studio/WeatherLine.svelte';
 
   const FONT_KEY = 'onair-desk.studio.fontSize';
@@ -139,6 +142,13 @@
   const itemRemoved = $derived(
     !!link.prompter?.rundown && !!link.prompter.itemUid && itemIndex === -1,
   );
+  /** Suivi du temps : déroulé en cours, prochain horaire fixe (étape 11). */
+  const run = $derived(link.air?.state.run ?? null);
+  const tracking = $derived(link.settings?.timeTracking ?? DEFAULT_TIME_TRACKING);
+  const fixed = $derived(nextFixedTime(link.settings?.fixedTimes ?? [], now, timezone));
+  const showBand = $derived(run !== null || fixed !== null);
+  /** Répétition possible depuis l'écran : autorisée, et aucun déroulé d'antenne en cours. */
+  const canRehearse = $derived(tracking.kioskRehearsal && !(run && !run.rehearsal) && !onAir.on);
   /** Veille quittée d'un clic jusqu'à cette heure (serveur). */
   let standbyDismissedUntil = $state(0);
   const standby = $derived(
@@ -221,6 +231,16 @@
   /** Accusé « Vu » d'un message de la régie (si les paramètres l'autorisent). */
   async function markSeen(id: string) {
     await api('POST', '/api/studio/regie/seen', { id }).catch(() => {});
+  }
+
+  /** Répétition (appui long) : le premier élément s'affiche, les heures partent de maintenant. */
+  async function rehearse(id: number) {
+    leftReading = false;
+    await api('POST', '/api/rehearsal', { rundownId: id }).catch(() => {});
+  }
+
+  async function stopRehearsal() {
+    await api('DELETE', '/api/rehearsal').catch(() => {});
   }
 
   /** Bouton de secours : appui long sur le voyant (si les paramètres l'autorisent). */
@@ -412,6 +432,22 @@
     </div>
   </header>
 
+  {#if showBand && !standby}
+    <!-- Bande de temps : zone fixe sous le bandeau, jamais par-dessus le texte (étape 11). -->
+    <div class="band-wrap" style:transform={shift}>
+      <TimingBand
+        {run}
+        {fixed}
+        {now}
+        settings={tracking}
+        {timezone}
+        {timeFormat}
+        canStop={tracking.kioskRehearsal}
+        onstop={() => void stopRehearsal()}
+      />
+    </div>
+  {/if}
+
   {#if showRegie && !standby}
     <!-- Zone fixe des messages de la régie : jamais par-dessus le texte. Toujours réservée dans
          la disposition « régie » ; ailleurs, elle apparaît quand il y a quelque chose à montrer. -->
@@ -516,6 +552,14 @@
         tags={link.settings?.itemTags ?? []}
         currentUid={link.prompter?.rundown?.id === shownRundown.id ? link.prompter.itemUid : null}
         change={liveChange?.rundownId === shownRundown.id ? liveChange : null}
+        run={run?.rundownId === shownRundown.id ? run : null}
+        {now}
+        {timezone}
+        {timeFormat}
+        onTimeSeconds={tracking.onTimeSeconds}
+        onrehearse={canRehearse && run?.rundownId !== shownRundown.id
+          ? () => void rehearse(shownRundown!.id)
+          : undefined}
         onitem={(uid) => void openItem(uid)}
       />
     {:else if lib}
@@ -551,6 +595,7 @@
       weather={link.air?.state.weather ?? null}
       {timezone}
       {timeFormat}
+      {fixed}
       ondismiss={() => (standbyDismissedUntil = now + STANDBY_DISMISS_MS)}
     />
   {/if}
@@ -619,6 +664,7 @@
     flex: 0 1 auto;
   }
   .top,
+  .band-wrap,
   .regie-wrap,
   .side-wrap,
   .liners-wrap {
@@ -642,6 +688,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .top,
+    .band-wrap,
     .regie-wrap,
     .side-wrap,
     .liners-wrap {

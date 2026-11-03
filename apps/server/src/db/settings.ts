@@ -1,8 +1,10 @@
 import {
   DEFAULT_CUES,
+  DEFAULT_FIXED_TIMES,
   DEFAULT_ITEM_TAGS,
   DEFAULT_ITEM_TYPES,
   DEFAULT_SPEED_WPM,
+  DEFAULT_TIME_TRACKING,
   settingsSchema,
   type Settings,
 } from '@onair-desk/shared';
@@ -55,6 +57,9 @@ export function defaultSettings(): Settings {
         { id: 'rends', label: "Rends l'antenne", urgent: true, active: false },
       ],
     },
+    // Horaires proposés à l'installation : inactifs tant que la station ne les a pas relus.
+    fixedTimes: DEFAULT_FIXED_TIMES,
+    timeTracking: DEFAULT_TIME_TRACKING,
     logoHash: null,
   };
 }

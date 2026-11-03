@@ -18,6 +18,7 @@ interface RundownRow {
   title: string;
   air_date: string;
   start_time: string;
+  end_time: string | null;
   version: number;
   updated_by: number | null;
   updated_at: string;
@@ -60,6 +61,8 @@ export interface RundownHeader {
   title: string;
   airDate: string;
   startTime: string;
+  /** Heure de fin imposée ; null : aucune. */
+  endTime: string | null;
   notes: string;
   /** Disposition de l'écran studio ; null : celle des paramètres. */
   layout: Layout | null;
@@ -174,6 +177,7 @@ function toRecord(r: RundownRow, items: RundownItem[]): RundownRecord {
     title: r.title,
     airDate: r.air_date,
     startTime: r.start_time,
+    endTime: r.end_time,
     notes: r.notes,
     itemCount: items.length,
     totalSeconds: rundownSchedule(r.start_time, items).total,
@@ -252,10 +256,10 @@ export class RundownRepo {
     return this.db.transaction(() => {
       const info = this.db
         .prepare(
-          `INSERT INTO rundowns (owner_id, title, air_date, start_time, notes, layout,
+          `INSERT INTO rundowns (owner_id, title, air_date, start_time, end_time, notes, layout,
                                  created_by, updated_by, template_id, template_date)
-           VALUES (@ownerId, @title, @airDate, @startTime, @notes, @layout, @userId, @userId,
-                   @templateId, @templateDate)`,
+           VALUES (@ownerId, @title, @airDate, @startTime, @endTime, @notes, @layout, @userId,
+                   @userId, @templateId, @templateDate)`,
         )
         .run({
           ...header,
@@ -279,7 +283,7 @@ export class RundownRepo {
       this.db
         .prepare(
           `UPDATE rundowns SET title = @title, air_date = @airDate, start_time = @startTime,
-                  notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
+                  end_time = @endTime, notes = @notes, layout = @layout, version = version + 1, updated_by = @userId,
                   updated_at = @now
             WHERE id = @id`,
         )
@@ -289,6 +293,7 @@ export class RundownRepo {
           title: patch.title ?? current.title,
           airDate: patch.airDate ?? current.airDate,
           startTime: patch.startTime ?? current.startTime,
+          endTime: patch.endTime !== undefined ? patch.endTime : current.endTime,
           notes: patch.notes ?? current.notes,
           layout: patch.layout !== undefined ? patch.layout : current.layout,
           now: nowIso(),
