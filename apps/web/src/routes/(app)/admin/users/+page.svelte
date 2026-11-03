@@ -11,6 +11,7 @@
   let username = $state('');
   let displayName = $state('');
   let role = $state<Role>('animateur');
+  let isDirector = $state(false);
   let password = $state('');
 
   async function refresh() {
@@ -38,9 +39,10 @@
   async function create(e: SubmitEvent) {
     e.preventDefault();
     await run(async () => {
-      await api('POST', '/api/users', { username, displayName, role, password });
+      await api('POST', '/api/users', { username, displayName, role, isDirector, password });
       username = displayName = password = '';
       role = 'animateur';
+      isDirector = false;
       showForm = false;
     });
   }
@@ -84,6 +86,11 @@
         {#each ROLES as r (r)}<option value={r}>{t(`role.${r}`)}</option>{/each}
       </select>
     </label>
+    <label class="check">
+      <input type="checkbox" bind:checked={isDirector} />
+      {t('users.director')}
+    </label>
+    <small class="muted">{t('users.directorHint')}</small>
     <label>
       {t('field.password')}
       <input
@@ -122,7 +129,11 @@
             {#if !u.isActive}<span class="badge">{t('users.inactive')}</span>{/if}
           </td>
           <td class="mono">{u.username}</td>
-          <td>{t(`role.${u.role}`)}</td>
+          <td>
+            {t(
+              `role.${u.role}`,
+            )}{#if u.isDirector && u.role !== 'admin'}{` · ${t('role.director')}`}{/if}
+          </td>
           <td>
             <div class="row" style="justify-content: flex-end">
               <button onclick={() => resetPassword(u)}>{t('users.resetPassword')}</button>
@@ -132,6 +143,16 @@
                 >
                   {u.role === 'admin' ? t('users.makeAnimateur') : t('users.makeAdmin')}
                 </button>
+                {#if u.role !== 'admin'}
+                  <label class="check">
+                    <input
+                      type="checkbox"
+                      checked={u.isDirector}
+                      onchange={(e) => update(u, { isDirector: e.currentTarget.checked })}
+                    />
+                    {t('role.director')}
+                  </label>
+                {/if}
                 <button onclick={() => update(u, { isActive: !u.isActive })}>
                   {u.isActive ? t('users.deactivate') : t('users.activate')}
                 </button>
@@ -148,5 +169,11 @@
 <style>
   tr.inactive td {
     opacity: 0.6;
+  }
+  .check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
   }
 </style>

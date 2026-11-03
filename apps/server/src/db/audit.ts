@@ -125,6 +125,32 @@ export class AuditRepo {
     return { entries: rows.map(toEntry), total, page: query.page, pageSize: AUDIT_PAGE_SIZE };
   }
 
+  /**
+   * Main courante d'une émission (vue du journal) : entrées « régie » et « antenne » du studio
+   * dans la fenêtre donnée, plus les notes rattachées au conducteur, dans l'ordre chronologique
+   * (une note datée après coup se place à son heure corrigée).
+   */
+  logbook(studioId: number, rundownId: number, from: number, to: number): AuditEntry[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM audit_log
+          WHERE (category IN ('regie', 'antenne') AND studio_id = @studioId
+                 AND at >= @from AND at < @to)
+             OR (action = 'logbook.note' AND json_extract(details, '$.rundownId') = @rundownId)
+          ORDER BY at, id
+          LIMIT 2000`,
+      )
+      .all({
+        studioId,
+        rundownId,
+        from: new Date(from).toISOString(),
+        to: new Date(to).toISOString(),
+      }) as Row[];
+    const when = (e: AuditEntry) =>
+      typeof e.details?.noteAt === 'number' ? e.details.noteAt : Date.parse(e.at);
+    return rows.map(toEntry).sort((a, b) => when(a) - when(b) || a.id - b.id);
+  }
+
   /** Supprime les entrées de plus d'un an ; renvoie leur nombre. */
   purge(now = Date.now()): number {
     const limit = new Date(now - AUDIT_RETENTION_DAYS * DAY_MS).toISOString();

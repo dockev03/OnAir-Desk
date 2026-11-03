@@ -7,6 +7,7 @@
     type PublicUser,
   } from '@onair-desk/shared';
   import { api, errorCode } from '$lib/api.js';
+  import { actionLabel } from '$lib/audit.js';
   import { errorMessage, i18n, t } from '$lib/i18n/index.svelte.js';
   import { stationSettings } from '$lib/settings.svelte.js';
 
@@ -129,7 +130,7 @@
             <tr>
               <td class="nowrap small">{when(e.at)}</td>
               <td><span class="cat {e.category}">{t(`audit.category.${e.category}`)}</span></td>
-              <td class="mono small">{e.action}</td>
+              <td class="small" title={e.action}>{actionLabel(e.action)}</td>
               <td>{actor(e)}</td>
               <td class="small details">{details(e)}</td>
             </tr>

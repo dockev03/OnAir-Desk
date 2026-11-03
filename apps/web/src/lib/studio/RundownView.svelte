@@ -7,6 +7,7 @@
     secondsToTime,
     songNumbers,
     type ItemType,
+    type LiveChange,
     type PrompterRundown,
   } from '@onair-desk/shared';
   import { i18n, t } from '$lib/i18n/index.svelte.js';
@@ -18,6 +19,7 @@
     types,
     tags,
     currentUid,
+    change = null,
     onitem,
   }: {
     rundown: PrompterRundown;
@@ -25,11 +27,16 @@
     tags: ItemType[];
     /** Élément affiché sur le prompteur (mis en évidence). */
     currentUid: string | null;
+    /** Modification en direct récente : éléments soulignés quelques secondes. */
+    change?: LiveChange | null;
     onitem: (uid: string) => void;
   } = $props();
 
   const schedule = $derived(rundownSchedule(rundown.startTime, rundown.items));
   const numbers = $derived(songNumbers(rundown.items));
+  const touched = $derived(
+    new Set(change ? [...change.added, ...change.changed, ...change.moved] : []),
+  );
 </script>
 
 <div class="view">
@@ -39,6 +46,14 @@
       {formatAirDate(rundown.airDate, i18n.locale)} · {secondsToTime(schedule.starts[0] ?? 0)} →
       {secondsToTime(schedule.end)}
     </span>
+    {#if change}
+      <span class="changed-note" data-testid="live-change-note">
+        {t('studio.changedBy', { name: change.byName ?? '' })}{#if change.removed > 0}{` · ${t(
+            'studio.removedCount',
+            { n: change.removed },
+          )}`}{/if}
+      </span>
+    {/if}
   </div>
   <div class="rows">
     {#each rundown.items as item, i (item.uid)}
@@ -46,6 +61,8 @@
       <button
         class="row"
         class:current={item.uid === currentUid}
+        class:touched={touched.has(item.uid)}
+        data-touched={touched.has(item.uid) || undefined}
         style:background-color={c.bg}
         style:color={c.fg}
         onclick={() => onitem(item.uid)}
@@ -162,6 +179,16 @@
     opacity: 0.8;
   }
   .dur {
+    font-size: 1rem;
+  }
+  /* Modifié en direct : liseré neutre (ni orange ni rouge, réservés aux alertes). */
+  .row.touched {
+    outline: 3px solid #e6f1fb;
+    outline-offset: -3px;
+  }
+  .changed-note {
+    margin-left: auto;
+    color: #e6f1fb;
     font-size: 1rem;
   }
 </style>

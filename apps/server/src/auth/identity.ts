@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { PublicDevice } from '@onair-desk/shared';
+import { canDirect, type PublicDevice } from '@onair-desk/shared';
 import { DEFAULT_STUDIO_ID, type Repos, type User } from '../db/index.js';
 import { forbidden, unauthorized } from '../lib/errors.js';
 import { hashToken } from './tokens.js';
@@ -93,6 +93,17 @@ export function requireUser(req: FastifyRequest): User {
 export function requireAdmin(req: FastifyRequest): User {
   const user = requireUser(req);
   if (user.role !== 'admin') throw forbidden();
+  return user;
+}
+
+/**
+ * Régie (voir docs/plan-etape-10.md, décisions 1 à 3) : admin, ou compte avec le droit
+ * « Réalisateur ». Le kiosk et un animateur sans ce droit sont refusés.
+ */
+export function requireDirector(req: FastifyRequest): User {
+  if (req.identity?.kind === 'device') throw forbidden();
+  const user = requireUser(req);
+  if (!canDirect(user)) throw forbidden();
   return user;
 }
 

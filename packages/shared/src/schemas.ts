@@ -7,6 +7,7 @@ import {
 } from './air.js';
 import { cuesSchema, scriptDocSchema } from './content.js';
 import { layoutSchema } from './layout.js';
+import { regieSettingsSchema } from './regie.js';
 import {
   airDateSchema,
   itemTagsSchema,
@@ -225,6 +226,8 @@ export const settingsSchema = z.object({
   weather: weatherSettingsSchema,
   /** Cartes de liners. */
   liners: linersSettingsSchema,
+  /** Régie : durée de vie des messages, accusé « Vu », ordres rapides. */
+  regie: regieSettingsSchema,
   /**
    * Empreinte du logo de la station (null : aucun logo). Lecture seule : calculée par le
    * serveur, modifiée par l'envoi du logo, sert à recharger l'image quand elle change.
@@ -287,6 +290,8 @@ export const createUserSchema = z.object({
   username: usernameSchema,
   displayName: displayNameSchema,
   role: roleSchema,
+  /** Droit « Réalisateur » (régie), cumulable avec le rôle. */
+  isDirector: z.boolean().optional(),
   locale: localeSchema.optional(),
   password: passwordSchema,
 });
@@ -295,6 +300,7 @@ export const updateUserSchema = z
   .object({
     displayName: displayNameSchema,
     role: roleSchema,
+    isDirector: z.boolean(),
     locale: localeSchema,
     isActive: z.boolean(),
     password: passwordSchema,

@@ -345,4 +345,15 @@ export const migrations: string[] = [
   DROP TABLE connector_tokens;
   ALTER TABLE connector_tokens_new RENAME TO connector_tokens;
   `,
+  /* 11 — régie : droit « Réalisateur », message affiché et lignes de duplex par studio */ `
+  ALTER TABLE users ADD COLUMN is_director INTEGER NOT NULL DEFAULT 0
+    CHECK (is_director IN (0, 1));
+
+  CREATE TABLE studio_regie (
+    studio_id  INTEGER PRIMARY KEY REFERENCES studios (id) ON DELETE CASCADE,
+    message    TEXT,
+    duplex     TEXT    NOT NULL DEFAULT '[]',
+    updated_at INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];

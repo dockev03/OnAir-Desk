@@ -16,12 +16,12 @@ Documents liés :
 - `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/plan-etape-9.md` : plan et **bilan** de l'étape 9 (On Air, météo et liners), réalisée.
-- `docs/plan-etape-10.md` : plan de l'étape 10 (régie), **validé**, à réaliser.
+- `docs/plan-etape-10.md` : plan et **bilan** de l'étape 10 (régie), réalisée.
 - `docs/plan-acces-distant.md` : **proposition non validée** d'accès depuis l'extérieur (option 1 : tunnel vers un VPS ; option 2 : central sur VPS + agent studio), à reprendre dans une future version.
 - `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
-**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille) et 9 (On Air, météo et liners) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 10 et 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
+**Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ), 8 (AzuraCast et écran de veille), 9 (On Air, météo et liners) et 10 (régie) réalisées, ainsi que le conducteur enrichi (hors étape) ; l'étape 11 reste à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
 
 **Objectif produit : l'outil doit être utilisable par n'importe quelle radio.** Tout ce qui est propre à une station passe par du paramétrage ; seuls les connecteurs (RadioDJ, etc.) contiennent du code spécifique. Voir §10.
 
@@ -102,13 +102,14 @@ Les choix de détail (bibliothèques, structure du dépôt) sont dans `docs/plan
 
 ### Accès
 - Rôles : **admin** (gère les comptes) et **animateur** (gère ses scripts/conducteurs).
-- **Rôle « Réalisateur »** (prévu à l'étape 10, à détailler dans son plan) : **seuls** le réalisateur et l'admin peuvent envoyer des messages régie et des ordres rapides, changer l'état des duplex, modifier un conducteur en direct et tenir la main courante. Pas n'importe qui :
+- **Rôle « Réalisateur »** (réalisé à l'étape 10, `docs/plan-etape-10.md`) : droit à part, case sur le compte (`is_director`), cumulable avec animateur ; **seuls** le réalisateur et l'admin peuvent envoyer des messages régie et des ordres rapides, changer l'état des duplex, modifier un conducteur en direct et tenir la main courante. Pas n'importe qui :
   - le kiosk ne peut rien envoyer, et un animateur sans ce rôle non plus ;
   - le rôle est attribué par l'admin, compte par compte ; une même personne peut cumuler animateur et réalisateur ;
   - contrôle **côté serveur** sur chaque route et chaque message WebSocket (masquer un bouton ne suffit pas) ;
   - chaque envoi est **tracé** (auteur, heure) dans la main courante ;
   - limitation du débit d'envoi, contre les erreurs et les abus ;
-  - questions à trancher dans le plan de l'étape 10 : rattachement d'un réalisateur à un studio ou à une émission ; modification en direct limitée au conducteur à l'antenne ou étendue à tous.
+  - tranché à l'étape 10 : rattachement **au studio** ; modification en direct limitée **au conducteur à l'antenne** (suivi sur l'écran studio, ou émission en cours d'après ses heures), éléments seulement.
+  - seule écriture du kiosk pour la régie : l'accusé « Vu » d'un message (désactivable).
 - **Kiosk** : pas d'écran de login ; identifié par un **jeton d'appareil**, **lecture seule** sur tous les dossiers, **révocable / régénérable** par l'admin. **Seule écriture permise** (décidé à l'étape 3) : choisir le script affiché (`POST /api/prompter`), étendu à l'étape 4 au choix d'un élément de conducteur. Taille du texte réglée sur l'écran : mémorisée sur l'afficheur.
 - **Bibliothèque** (décidé à l'étape 2) : un animateur modifie **son dossier et Commun** ; il voit les dossiers des collègues **en lecture seule** (pour dupliquer chez lui) ; l'admin modifie tout. Suppression = **corbeille 30 jours** ; **historique** des 20 dernières versions.
 
@@ -258,7 +259,7 @@ Contexte marché : horloges studio / écrans On Air existent (produits dédiés,
    4. connecteur météo Open-Meteo interrogé par le serveur, avec repli en cas de panne ;
    5. attribution « Météo : Open-Meteo.com » ;
    6. cartes de liners.
-10. **Régie** (6 fonctionnalités) → plan validé dans `docs/plan-etape-10.md` :
+10. ✅ **Régie** (6 fonctionnalités) → détail et bilan dans `docs/plan-etape-10.md` :
     1. rôle « Réalisateur » (§4) ;
     2. messages régie envoyés depuis un autre PC, dans une zone fixe de l'écran ;
     3. ordres rapides ;
@@ -305,6 +306,7 @@ Pas d'étape ni de guide pour le matériel d'affichage : il est **hors spécific
   - **Base RadioDJ** : ouverte au réseau par la station, pour la seule adresse du serveur, avec un compte `SELECT` seul.
   - **API On Air** (étape 9) : sur l'écoute des connecteurs (fermée par défaut), jeton haché ; l'appel simple met le jeton dans l'adresse (désactivé par défaut). Le kiosk peut allumer / éteindre le On Air (appui long, tracé, désactivable).
   - **Météo** (étape 9) : connexion **sortante** du serveur vers Open-Meteo.
+  - **Régie** (étape 10) : nouveaux droits d'écriture (envoi à l'écran studio, modification du conducteur à l'antenne d'un collègue) réservés à l'admin et aux réalisateurs, vérifiés côté serveur et tracés ; accusé « Vu » depuis le kiosk (désactivable).
   - **AzuraCast** (étape 8) : connexion **sortante** du serveur vers le VPS AzuraCast (HTTPS, certificat toujours vérifié) ; clé API éventuelle liée à un compte AzuraCast **sans droit d'administration**.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).
 - Aucun identifiant de modèle d'IA dans les commits, PR ou fichiers du dépôt.

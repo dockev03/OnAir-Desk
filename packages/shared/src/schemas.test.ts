@@ -37,6 +37,7 @@ describe('settingsSchema', () => {
     onAirSimpleCall: false,
     weather: { provider: 'none', city: '', latitude: 0, longitude: 0 },
     liners: { items: [], rotationSeconds: 20 },
+    regie: { messageTtlMinutes: 5, kioskSeen: true, orders: [] },
     logoHash: null,
   };
   it('accepte un paramétrage valide', () => {

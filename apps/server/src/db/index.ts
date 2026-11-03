@@ -6,6 +6,7 @@ import { FolderRepo } from './folders.js';
 import { LogoRepo } from './logo.js';
 import { OnAirRepo } from './onair.js';
 import { PrompterRepo } from './prompter.js';
+import { RegieRepo } from './regie.js';
 import { RundownRepo } from './rundowns.js';
 import { ScriptRepo } from './scripts.js';
 import { SessionRepo } from './sessions.js';
@@ -32,6 +33,7 @@ export interface Repos {
   connectorTokens: ConnectorTokenRepo;
   onAir: OnAirRepo;
   weatherCache: WeatherCacheRepo;
+  regie: RegieRepo;
 }
 
 export function createRepos(db: Db): Repos {
@@ -52,6 +54,7 @@ export function createRepos(db: Db): Repos {
     connectorTokens: new ConnectorTokenRepo(db),
     onAir: new OnAirRepo(db),
     weatherCache: new WeatherCacheRepo(db),
+    regie: new RegieRepo(db),
   };
 }
 
