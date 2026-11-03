@@ -17,6 +17,7 @@ Documents liés :
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
 - `docs/plan-etape-9.md` : plan et **bilan** de l'étape 9 (On Air, météo et liners), réalisée.
 - `docs/plan-etape-10.md` : plan et **bilan** de l'étape 10 (régie), réalisée.
+- `docs/plan-etape-11.md` : plan **validé** de l'étape 11 (suivi du temps), à réaliser.
 - `docs/plan-acces-distant.md` : **proposition non validée** d'accès depuis l'extérieur (option 1 : tunnel vers un VPS ; option 2 : central sur VPS + agent studio), à reprendre dans une future version.
 - `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
