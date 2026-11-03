@@ -15,6 +15,7 @@ Documents liés :
 - `docs/plan-etape-7.md` : plan et **bilan** de l'étape 7 (RadioDJ), réalisée.
 - `docs/plan-conducteur-enrichi.md` : plan et **bilan** du conducteur enrichi (évolution hors étape, avant l'étape 8), réalisée.
 - `docs/plan-etape-8.md` : plan et **bilan** de l'étape 8 (AzuraCast et écran de veille), réalisée.
+- `docs/a-faire.md` : vérifications sur l'installation réelle, décisions et limites en attente, **non bloquantes** ; à tenir à jour à chaque étape.
 - `docs/transcription-cadrage.md` : conversation de cadrage d'origine, pour archive.
 
 **Statut : étapes 1 (socle), 2 (scripts), 3 (écran studio), 4 (conducteurs), 5 (compléments conducteurs), 6 (socle antenne), 7 (RadioDJ) et 8 (AzuraCast et écran de veille) réalisées, ainsi que le conducteur enrichi (hors étape) ; étapes 9 à 11 restent à faire. Ne rien développer d'une nouvelle étape sans validation explicite.**
