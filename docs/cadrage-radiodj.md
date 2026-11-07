@@ -1,7 +1,7 @@
 # Cadrage technique RadioDJ (préalable à l'étape 7)
 
 > **Statut : constats vérifiés sur une installation de test, aucun développement.**
-> Référence : `CLAUDE.md` §6 (intégrations RadioDJ), §8 étape 7. Sert de base au futur `docs/plan-etape-7.md`.
+> Référence : `docs/cahier-des-charges.md` §6 (intégrations RadioDJ), §8 étape 7. Sert de base au futur `docs/plan-etape-7.md`.
 > Version testée : **RadioDJ 3.0.0.5**, base **MariaDB 11.4** (`radiodj3`). Tests faits en octobre 2026.
 
 ## En bref
@@ -69,7 +69,7 @@ RadioDJ refuse donc le certificat lui-même. Causes non tranchées (abandonnées
 - **réseau interne uniquement** ;
 - jeton dans `xpwd`. Il circule en clair sur le réseau local, et le titre affiché en mode dégradé pourrait être falsifié depuis ce réseau : limites acceptées.
 
-C'est un **changement à risque d'exposition réseau** (`CLAUDE.md` §9).
+C'est un **changement à risque d'exposition réseau** (`docs/cahier-des-charges.md` §9).
 
 ### Filtres (types de piste)
 
@@ -147,7 +147,7 @@ Heure de démarrage du titre suivant : la calculer dans `packages/shared` (heure
   - La base ne contient pas la position de lecture, et `queuelist.ETA` n'est pas recalculée après un déplacement dans le titre (requête relancée avant et après une avance de 30 s : même valeur).
   - Aucun plugin installé ne l'expose (liste en 5.0.0.0 : Aux Players, Folder Sync, History, Instant Players, Metadata Export, Playlist, Playlist Builder, Search, Song Details, Audio Processing, Tracks Manager, Utilities) : pas de serveur REST.
   - Conséquence : temps restant, alerte de fin, talk-over et heure de démarrage du titre suivant sont faux **jusqu'au titre suivant**, où le signal et `history` recalent tout.
-  - Recalage manuel depuis la régie écarté (manipulation de plus en plein direct). Piste pour plus tard : un **plugin RadioDJ maison** (C#), dans un **projet à part**, qui enverrait position et état lecture / pause sur le port des connecteurs (idée non validée, `CLAUDE.md` §7).
+  - Recalage manuel depuis la régie écarté (manipulation de plus en plein direct). Piste pour plus tard : un **plugin RadioDJ maison** (C#), dans un **projet à part**, qui enverrait position et état lecture / pause sur le port des connecteurs (idée non validée, `docs/cahier-des-charges.md` §7).
 
 ## 5. Reste à vérifier
 

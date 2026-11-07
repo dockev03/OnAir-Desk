@@ -1,8 +1,8 @@
 # Accès distant — plan des deux options
 
 > **Statut : proposition, non validée, à reprendre dans une future version.** Rien n'est développé.
-> Référence : `CLAUDE.md` §3 (déploiement, HTTPS), §4 (architecture, accès, état antenne, studio), §9 (règles de travail, risques), §10 (produit générique). Évolution **hors étape**.
-> ⚠️ **Changement à risque (§9)** : dans les deux options, l'outil devient **joignable depuis Internet**. Il faudra l'inscrire dans les risques identifiés du `CLAUDE.md` avant de commencer.
+> Référence : `docs/cahier-des-charges.md` §3 (déploiement, HTTPS), §4 (architecture, accès, état antenne, studio), §9 (règles de travail, risques), §10 (produit générique). Évolution **hors étape**.
+> ⚠️ **Changement à risque (§9)** : dans les deux options, l'outil devient **joignable depuis Internet**. Il faudra l'inscrire dans les risques identifiés du cahier des charges (§9) avant de commencer.
 
 ## Besoin
 

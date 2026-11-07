@@ -1,7 +1,7 @@
 # Étape 1 — Socle : plan détaillé
 
 > **Statut : réalisée** (voir le bilan en fin de document). Aucun code n'est écrit avant l'accord explicite.
-> Référence : `CLAUDE.md` §8, étape 1.
+> Référence : `docs/cahier-des-charges.md` §8, étape 1.
 
 ## Objectif de l'étape
 

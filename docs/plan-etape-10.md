@@ -1,7 +1,7 @@
 # Étape 10 — Régie : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §4 (Accès, rôle « Réalisateur »), §5 (principes d'affichage : zone fixe, code couleur d'alerte), §7 idées 4, 9, 11, 12 et 14, §8 étape 10. Branche : `feature/etape-10-regie`.
+> Référence : `docs/cahier-des-charges.md` §4 (Accès, rôle « Réalisateur »), §5 (principes d'affichage : zone fixe, code couleur d'alerte), §7 idées 4, 9, 11, 12 et 14, §8 étape 10. Branche : `feature/etape-10-regie`.
 > 6 fonctionnalités. S'appuie sur l'état antenne et le journal d'audit (étape 6), les dispositions et la zone régie réservée (étape 8), le rafraîchissement du conducteur suivi (étape 4).
 
 ## Objectif

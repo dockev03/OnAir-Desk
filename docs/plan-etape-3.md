@@ -1,7 +1,7 @@
 # Étape 3 — Écran studio : plan
 
 > **Statut : réalisée** (voir le bilan en fin de document).
-> Référence : `CLAUDE.md` §5 (écran studio, maquette v3), §8 étape 3. Branche : `feature/etape-3-studio`.
+> Référence : `docs/cahier-des-charges.md` §5 (écran studio, maquette v3), §8 étape 3. Branche : `feature/etape-3-studio`.
 
 ## Objectif
 

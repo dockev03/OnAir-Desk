@@ -1,7 +1,7 @@
 # Étape 6 — Socle antenne : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §4 (décisions d'architecture), §5 (bandeau supérieur), §8 étape 6, §10 (connecteurs interchangeables). Branche prévue : `feature/etape-6-socle-antenne`.
+> Référence : `docs/cahier-des-charges.md` §4 (décisions d'architecture), §5 (bandeau supérieur), §8 étape 6, §10 (connecteurs interchangeables). Branche prévue : `feature/etape-6-socle-antenne`.
 > 6 fonctionnalités. Aucune intégration réelle (RadioDJ, AzuraCast, On Air, météo) : elles se brancheront sur ce socle aux étapes 7 à 9.
 
 ## Objectif
