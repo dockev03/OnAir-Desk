@@ -1,7 +1,7 @@
 # Étape 5 — Compléments conducteurs : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §7 (idées 15 et 16), §8 étape 5, §10 (identité de la station : logo). Branche prévue : `feature/etape-5-complements-conducteurs`.
+> Référence : `docs/cahier-des-charges.md` §7 (idées 15 et 16), §8 étape 5, §10 (identité de la station : logo). Branche prévue : `feature/etape-5-complements-conducteurs`.
 > Étape courte (3 fonctionnalités), sur le code des conducteurs de l'étape 4 et des paramètres.
 
 ## Objectif

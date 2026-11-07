@@ -47,7 +47,7 @@
 
 ### Écran studio
 
-- [ ] **Tailles minimales** (heure, temps restant, alertes) vérifiées sur l'afficheur réel, à 1,5–2 m (`CLAUDE.md` §5).
+- [ ] **Tailles minimales** (heure, temps restant, alertes) vérifiées sur l'afficheur réel, à 1,5–2 m (`docs/cahier-des-charges.md` §5).
 - [ ] Veille, dispositions et décalage anti-usure regardés sur l'afficheur réel (lisibilité, aucun saut gênant pendant la lecture).
 - [ ] Voyant ON AIR, chronomètre, météo et bande de liners lisibles à 1,5–2 m.
 - [ ] Zone régie (message normal et urgent) et pastilles de duplex lisibles à 1,5–2 m ; agrandissement d'un urgent non gênant pendant la lecture.
@@ -55,10 +55,10 @@
 
 ## 2. Décisions à prendre
 
-- [ ] **Licence** : MIT ou AGPL (`CLAUDE.md` §11). Le dépôt reste privé d'ici là.
+- [ ] **Licence** : MIT ou AGPL (`docs/cahier-des-charges.md` §11). Le dépôt reste privé d'ici là.
 - [ ] **Marque « OnAir-Desk »** : disponibilité à vérifier (INPI, EUIPO) avant toute diffusion publique.
 - [ ] **Certificat AzuraCast dans la stack Portainer** : le volume `/certs` est commenté dans `docker-compose.yml`, et une stack « Repository » ne se modifie pas sans changer le dépôt. Soit Let's Encrypt sur AzuraCast (rien à changer), soit rendre ce volume paramétrable par variable.
-- [ ] **Idées non encore validées** (`CLAUDE.md` §7, n° 18 à 24) : fiches pratiques, contenus locaux, pointage « fait », quotas de chanson francophone, vigilance Météo-France, voyants micros invités, plugin RadioDJ maison.
+- [ ] **Idées non encore validées** (`docs/cahier-des-charges.md` §7, n° 18 à 24) : fiches pratiques, contenus locaux, pointage « fait », quotas de chanson francophone, vigilance Météo-France, voyants micros invités, plugin RadioDJ maison.
 - [ ] **Plugin RadioDJ maison** (projet à part) : préalable, vérifier qu'un kit de développement de plugins existe pour RadioDJ 3.0.0.5 et donne la position du lecteur.
 - [ ] **Déclenchement matériel du On Air** (GPO de la console, GPIO, boîtier USB), si le bouton du Stream Deck ou de la console ne suffit pas : même API ; câblage avec optocoupleur ou relais, à confier à un technicien.
 - [ ] **Alerte de micro ouvert trop longtemps** (seuil orange / rouge sur le chronomètre) : écartée à l'étape 9, à reprendre si le besoin apparaît.

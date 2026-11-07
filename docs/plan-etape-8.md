@@ -1,7 +1,7 @@
 # Étape 8 — AzuraCast et écran de veille : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §2 (question ouverte 3), §5 (principes d'affichage), §6 (AzuraCast), §7 idée 17 (écran de veille), §8 étape 8, §10 (connecteurs, dispositions). Branche : `feature/etape-8-azuracast`.
+> Référence : `docs/cahier-des-charges.md` §2 (question ouverte 3), §5 (principes d'affichage), §6 (AzuraCast), §7 idée 17 (écran de veille), §8 étape 8, §10 (connecteurs, dispositions). Branche : `feature/etape-8-azuracast`.
 > 6 fonctionnalités. S'appuie sur le socle de l'étape 6 (état antenne, contrat des connecteurs) et sur le gestionnaire de l'étape 7.
 
 ## Objectif

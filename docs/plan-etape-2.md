@@ -1,7 +1,7 @@
 # Étape 2 — Scripts : plan détaillé
 
 > **Statut : réalisée** (voir le bilan en fin de document).
-> Référence : `CLAUDE.md` §5 (écran studio), §8 étape 2. Branche : `feature/etape-2-scripts`.
+> Référence : `docs/cahier-des-charges.md` §5 (écran studio), §8 étape 2. Branche : `feature/etape-2-scripts`.
 
 ## Objectif de l'étape
 

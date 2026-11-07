@@ -41,7 +41,7 @@
 
 Captures faites sur une base de démonstration (simulateur d'automation) ; pour les régénérer après une évolution de l'interface : `npm run build` puis `npm run captures`.
 
-- [`CLAUDE.md`](CLAUDE.md) : cahier des charges et décisions (fait foi).
+- [`docs/cahier-des-charges.md`](docs/cahier-des-charges.md) : cahier des charges et décisions (fait foi) ; [`CLAUDE.md`](CLAUDE.md) : règles de travail et conventions de code.
 - [`docs/plan-etape-1.md`](docs/plan-etape-1.md), [`docs/plan-etape-2.md`](docs/plan-etape-2.md), [`docs/plan-etape-3.md`](docs/plan-etape-3.md), [`docs/plan-etape-4.md`](docs/plan-etape-4.md), [`docs/plan-etape-5.md`](docs/plan-etape-5.md), [`docs/plan-etape-6.md`](docs/plan-etape-6.md), [`docs/plan-etape-7.md`](docs/plan-etape-7.md), [`docs/plan-etape-8.md`](docs/plan-etape-8.md), [`docs/plan-etape-9.md`](docs/plan-etape-9.md), [`docs/plan-etape-10.md`](docs/plan-etape-10.md), [`docs/plan-etape-11.md`](docs/plan-etape-11.md) : plans et bilans des étapes.
 - [`docs/maquette-ecran-studio-v3.html`](docs/maquette-ecran-studio-v3.html) : maquette de l'écran studio (à ouvrir dans un navigateur).
 

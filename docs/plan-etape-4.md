@@ -1,7 +1,7 @@
 # Étape 4 — Conducteurs : plan
 
 > **Statut : réalisée** (voir le bilan en fin de document).
-> Référence : `CLAUDE.md` §5 (zone principale, mode Conducteur), §8 étape 4, §10 (types et couleurs paramétrables). Branche : `feature/etape-4-conducteurs`.
+> Référence : `docs/cahier-des-charges.md` §5 (zone principale, mode Conducteur), §8 étape 4, §10 (types et couleurs paramétrables). Branche : `feature/etape-4-conducteurs`.
 > Étape passée avant RadioDJ (devenue étape 5) à la demande de l'utilisateur.
 
 ## Objectif

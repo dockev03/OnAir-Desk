@@ -1,6 +1,6 @@
 # Transcription de la conversation de cadrage
 
-> Conversation d'origine (octobre 2026), avant la création du dépôt. Texte des échanges uniquement : les métadonnées de session et les chemins locaux ont été retirés. Archive de référence : en cas de divergence, `CLAUDE.md` fait foi.
+> Conversation d'origine (octobre 2026), avant la création du dépôt. Texte des échanges uniquement : les métadonnées de session et les chemins locaux ont été retirés. Archive de référence : en cas de divergence, `docs/cahier-des-charges.md` fait foi.
 
 ---
 

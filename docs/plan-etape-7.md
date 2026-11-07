@@ -1,7 +1,7 @@
 # Étape 7 — RadioDJ : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §5 (bandeau supérieur, alertes), §6 (RadioDJ), §7 idée 1 (talk-over), §8 étape 7, §10 (connecteurs). Constats techniques : `docs/cadrage-radiodj.md`. Branche : `feature/etape-7-radiodj`.
+> Référence : `docs/cahier-des-charges.md` §5 (bandeau supérieur, alertes), §6 (RadioDJ), §7 idée 1 (talk-over), §8 étape 7, §10 (connecteurs). Constats techniques : `docs/cadrage-radiodj.md`. Branche : `feature/etape-7-radiodj`.
 > 6 fonctionnalités. S'appuie sur le socle de l'étape 6 (état antenne, contrat des connecteurs, calculs de temps, journal).
 
 ## Objectif

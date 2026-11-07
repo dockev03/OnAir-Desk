@@ -1,7 +1,7 @@
 # Étape 11 — Suivi du temps : plan
 
 > **Statut : réalisée (bilan en fin de document).**
-> Référence : `CLAUDE.md` §5 (principes d'affichage : code couleur d'alerte unique, distance de lecture), §7 idées 2, 3, 6, 8, 10 et 13, §8 étape 11, §10 (horaires fixes paramétrables). Branche prévue : `feature/etape-11-suivi-du-temps`.
+> Référence : `docs/cahier-des-charges.md` §5 (principes d'affichage : code couleur d'alerte unique, distance de lecture), §7 idées 2, 3, 6, 8, 10 et 13, §8 étape 11, §10 (horaires fixes paramétrables). Branche prévue : `feature/etape-11-suivi-du-temps`.
 > 6 fonctionnalités. S'appuie sur les calculs de temps (`timing.ts`, étape 6), le conducteur suivi et ses heures de passage (étape 4), l'« émission en cours » (veille, étape 8), le conducteur modifié en direct et la main courante (étape 10), l'impression (étape 5).
 
 ## Objectif
