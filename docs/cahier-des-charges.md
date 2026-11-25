@@ -265,6 +265,7 @@ Règles de travail (branches, validation, étapes courtes) : voir `CLAUDE.md`.
   - **Suivi du temps** (étape 11) : l'écran studio peut lancer / arrêter une répétition (appui long, tracé, désactivable), jamais pendant une émission ni On Air allumé.
   - **Régie** (étape 10) : nouveaux droits d'écriture (envoi à l'écran studio, modification du conducteur à l'antenne d'un collègue) réservés à l'admin et aux réalisateurs, vérifiés côté serveur et tracés ; accusé « Vu » depuis le kiosk (désactivable).
   - **AzuraCast** (étape 8) : connexion **sortante** du serveur vers le VPS AzuraCast (HTTPS, certificat toujours vérifié) ; clé API éventuelle liée à un compte AzuraCast **sans droit d'administration**.
+  - **Image sur GHCR** (CI de publication) : la CI écrit dans le registre (`packages: write`, limité au job de publication, sur tag `vX.Y.Z` de `main` seulement) ; l'image reste privée tant que le dépôt l'est. Portainer la télécharge avec un jeton **classique** `read:packages`, qui lit tous les paquets du compte : jeton dédié, avec expiration. Une version qui a migré la base ne se remonte pas toujours : retour arrière par la sauvegarde `/data/backups/`.
 - Robustesse antenne : en cas de coupure, le prompteur garde l'affichage et se reconnecte seul (jamais d'écran blanc).
 - Aucun identifiant de modèle d'IA dans les commits, PR ou fichiers du dépôt.
 

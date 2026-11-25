@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { request, type APIRequestContext } from '@playwright/test';
+import { expect, request, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const ADMIN = { username: 'admin', password: 'mot-de-passe-admin-solide' };
@@ -142,4 +142,27 @@ export async function createShowNow(
   });
   if (!res.ok()) throw new Error(`Conducteur : ${res.status()} ${await res.text()}`);
   return (await res.json()).id as number;
+}
+
+/**
+ * Appui long à la souris sur un bouton « maintenir ». On attend d'abord que sa position soit
+ * stable : une mise en page encore en mouvement (barre latérale qui se replie à l'entrée en
+ * lecture) le déplacerait sous le pointeur et annulerait l'appui.
+ */
+export async function longPress(page: Page, target: Locator, ms = 1300): Promise<void> {
+  let last = '';
+  await expect
+    .poll(async () => {
+      const b = await target.boundingBox();
+      const key = JSON.stringify(b);
+      const stable = b !== null && key === last;
+      last = key;
+      return stable;
+    })
+    .toBe(true);
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(ms);
+  await page.mouse.up();
 }

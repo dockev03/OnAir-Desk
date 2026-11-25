@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { TestServer } from './server.js';
+import { TestServer, longPress } from './server.js';
 
 /**
  * Conducteur enrichi, de bout en bout : numéro des titres, artiste, année, intro, étiquettes,
@@ -78,11 +78,7 @@ test('écran studio : détails sur la carte de l’élément, puis dans la liste
 
   // Appui long sur « Conducteur » : retour à la liste.
   const back = page.getByRole('button', { name: /Conducteur/ });
-  const box = (await back.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(1300);
-  await page.mouse.up();
+  await longPress(page, back);
 
   const row = page.locator('.row', { hasText: 'Freed from Desire' });
   await expect(row).toBeVisible();

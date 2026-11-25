@@ -4,13 +4,16 @@ on:
   push:
     branches-ignore: [main, master, staging]
   pull_request:
+  # Rejouée en entier avant chaque publication d'image (release.yml).
+  workflow_call:
 
 permissions:
   contents: read
 
+# Runners fixés en 24.04 : Playwright 1.56 ne gère pas Ubuntu 26.04 (ubuntu-latest).
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,7 +29,7 @@ jobs:
       - run: npm run build
 
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +38,7 @@ jobs:
 
   # Requêtes du connecteur RadioDJ contre un vrai MariaDB (version relevée chez la station).
   mariadb:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     services:
       mariadb:
@@ -65,7 +68,7 @@ jobs:
         run: npx vitest run apps/server/test/radiodj-mariadb.test.ts
 
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@v4
