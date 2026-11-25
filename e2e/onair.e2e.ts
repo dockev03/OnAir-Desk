@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { TestServer, createShowNow } from './server.js';
+import { TestServer, createShowNow, longPress } from './server.js';
 
 /**
  * Étape 9 : voyant ON AIR piloté par l'API (comme un bouton du Stream Deck) ou par appui long
@@ -90,11 +90,7 @@ test('appui long sur le voyant : un clic ne fait rien, 1 seconde allume', async 
   await page.waitForTimeout(1500);
   await expect(lamp).not.toHaveClass(/\bon\b/);
 
-  const box = (await lamp.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(1300);
-  await page.mouse.up();
+  await longPress(page, lamp);
   await expect(lamp).toHaveClass(/\bon\b/);
   const audit = await (await api.get('/api/audit?category=antenne')).json();
   expect(audit.entries[0]).toMatchObject({ action: 'onair.changed', actorName: 'Afficheur' });

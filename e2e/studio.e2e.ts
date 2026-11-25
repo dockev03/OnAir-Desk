@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { TestServer, createShowNow } from './server.js';
+import { TestServer, createShowNow, longPress } from './server.js';
 
 /**
  * Écran studio, de bout en bout : appairage, titre en cours (simulateur accéléré), coupure du
@@ -99,11 +99,7 @@ test('sortie de lecture : un clic ne fait rien, un appui long sort', async () =>
   await page.waitForTimeout(1500);
   await expect(page.getByText('Bonjour à tous.')).toBeVisible();
 
-  const box = (await exit.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(1300);
-  await page.mouse.up();
+  await longPress(page, exit);
   await expect(page.getByText('Bonjour à tous.')).toHaveCount(0);
   // Retour à la navigation : le script reste disponible dans son dossier.
   await expect(page.getByText('Édito')).toBeVisible();
