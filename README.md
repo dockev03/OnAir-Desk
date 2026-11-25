@@ -49,45 +49,75 @@ Captures faites sur une base de démonstration (simulateur d'automation) ; pour 
 
 ## Installation (Debian + Docker + Portainer)
 
-L'image est construite par Portainer directement depuis ce dépôt : aucun registre n'est nécessaire.
+L'image Docker est publiée par la CI sur le registre privé du dépôt, **GHCR** : `ghcr.io/dockev03/onair-desk` (linux/amd64). Une version = un tag `vX.Y.Z` sur `main` → image `X.Y.Z`, `X.Y` et `latest`. Les versions publiées sont listées dans GitHub → _Packages_ → `onair-desk`.
 
-### 1. Jeton GitHub en lecture seule
+### 1. Jetons GitHub en lecture seule
 
-Le dépôt étant privé, Portainer a besoin d'un accès en lecture :
+Le dépôt et l'image étant privés, Portainer a besoin de deux accès en lecture.
+
+**Lire le dépôt** (fichier `docker-compose.yml`) :
 
 1. GitHub → _Settings_ → _Developer settings_ → _Personal access tokens_ → **Fine-grained tokens** → _Generate new token_.
 2. _Repository access_ : **Only select repositories** → `OnAir-Desk`.
 3. _Permissions_ : **Contents : Read-only** (rien d'autre).
 4. Choisir une **date d'expiration**, générer, copier le jeton.
 
-Ce jeton n'est saisi que dans Portainer. Il ne doit jamais être écrit dans le dépôt.
+**Télécharger l'image** (GHCR n'accepte pas les jetons « fine-grained ») :
 
-### 2. Stack Portainer
+1. _Personal access tokens_ → **Tokens (classic)** → _Generate new token (classic)_.
+2. Cocher **`read:packages`** uniquement ; choisir une date d'expiration ; générer, copier.
+
+Ce jeton classique donne accès en lecture à **tous** les paquets visibles par le compte : le réserver à cet usage. Les jetons ne sont saisis que dans Portainer, jamais écrits dans le dépôt.
+
+### 2. Registre GHCR dans Portainer
+
+_Registries_ → _Add registry_ → **Custom registry** :
+
+| Champ          | Valeur                                                        |
+| -------------- | ------------------------------------------------------------- |
+| Name           | `ghcr`                                                        |
+| Registry URL   | `ghcr.io`                                                     |
+| Authentication | activée : votre nom d'utilisateur GitHub + le jeton classique |
+
+### 3. Stack Portainer
 
 _Stacks_ → _Add stack_ → **Repository** :
 
-| Champ                | Valeur                                              |
-| -------------------- | --------------------------------------------------- |
-| Name                 | `onair-desk`                                        |
-| Repository URL       | `https://github.com/dockev03/OnAir-Desk`            |
-| Repository reference | `refs/heads/main` (ou la branche à déployer)        |
-| Compose path         | `docker-compose.yml`                                |
-| Authentication       | activée : votre nom d'utilisateur GitHub + le jeton |
+| Champ                | Valeur                                                           |
+| -------------------- | ---------------------------------------------------------------- |
+| Name                 | `onair-desk`                                                     |
+| Repository URL       | `https://github.com/dockev03/OnAir-Desk`                         |
+| Repository reference | `refs/heads/main`                                                |
+| Compose path         | `docker-compose.yml`                                             |
+| Authentication       | activée : votre nom d'utilisateur GitHub + le jeton fine-grained |
 
-Puis, dans _Environment variables_, renseigner au minimum `PUBLIC_ORIGIN` (voir [`.env.example`](.env.example)) :
+Puis, dans _Environment variables_, renseigner au minimum `ONAIR_DESK_VERSION` et `PUBLIC_ORIGIN` (voir [`.env.example`](.env.example)) :
 
-| Variable        | Exemple                                       | Rôle                                                                          |
-| --------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
-| `PUBLIC_ORIGIN` | `https://onair-desk.lan,https://192.168.1.20` | **Obligatoire.** Toutes les adresses utilisées par l'afficheur et les postes. |
-| `TLS_HOSTNAMES` | _(vide)_                                      | Noms et IP du certificat ; par défaut ceux de `PUBLIC_ORIGIN`.                |
-| `HOST_PORT`     | `443`                                         | Port publié sur la Debian.                                                    |
-| `TZ`            | `Europe/Paris`                                | Fuseau du conteneur.                                                          |
+| Variable             | Exemple                                       | Rôle                                                                              |
+| -------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `ONAIR_DESK_VERSION` | `0.11.0`                                      | Version de l'image (sans le « v »). Par défaut `latest` ; la fixer est conseillé. |
+| `PUBLIC_ORIGIN`      | `https://onair-desk.lan,https://192.168.1.20` | **Obligatoire.** Toutes les adresses utilisées par l'afficheur et les postes.     |
+| `TLS_HOSTNAMES`      | _(vide)_                                      | Noms et IP du certificat ; par défaut ceux de `PUBLIC_ORIGIN`.                    |
+| `HOST_PORT`          | `443`                                         | Port publié sur la Debian.                                                        |
+| `TZ`                 | `Europe/Paris`                                | Fuseau du conteneur.                                                              |
 
-Pour RadioDJ (facultatif), trois variables de plus : voir la section [RadioDJ](#6-radiodj-facultatif).
+Pour RadioDJ (facultatif), trois variables de plus : voir la section [RadioDJ](#7-radiodj-facultatif).
 
-_Deploy the stack_. La première construction prend quelques minutes.
+_Deploy the stack_ : Portainer télécharge l'image depuis GHCR (aucune construction sur la Debian).
 
-### 3. Premier lancement
+**Sans Portainer** (même machine, Docker Compose seul) : `docker login ghcr.io` avec le jeton classique, copier `.env.example` en `.env` à côté de `docker-compose.yml`, le remplir, puis :
+
+```bash
+docker compose up -d
+```
+
+**Construire depuis les sources** (test d'une branche, registre injoignable) : ajouter [`docker-compose.build.yml`](docker-compose.build.yml) :
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+### 4. Premier lancement
 
 1. Portainer → _Containers_ → `onair-desk` → **Logs** : repérer le bloc « premier lancement » et son **code d'installation**.
 2. Ouvrir `https://<adresse>/setup` (le navigateur signale un certificat inconnu : c'est normal tant que le certificat racine n'est pas installé, voir ci-dessous).
@@ -95,7 +125,7 @@ _Deploy the stack_. La première construction prend quelques minutes.
 
 Tant que l'installation n'est pas faite, un nouveau code est généré à chaque redémarrage. Une fois l'admin créé, la page d'installation est fermée définitivement.
 
-### 4. Certificat racine (HTTPS)
+### 5. Certificat racine (HTTPS)
 
 OnAir-Desk crée sa propre autorité de certification au premier démarrage. Pour que les navigateurs lui fassent confiance, installez **une fois** son certificat racine sur chaque appareil. Il est téléchargeable à la fin de l'installation, ou dans _Paramètres_ (`https://<adresse>/api/tls/root-ca.crt`).
 
@@ -115,7 +145,7 @@ Le certificat serveur est renouvelé automatiquement ; la racine, valable 10 ans
 
 Pour utiliser un certificat existant de la station, voir les lignes `TLS_CERT_FILE` / `TLS_KEY_FILE` commentées dans [`docker-compose.yml`](docker-compose.yml).
 
-### 5. Écran studio (kiosk)
+### 6. Écran studio (kiosk)
 
 1. _Administration_ → **Écrans studio** → _Ajouter un écran_.
 2. Copier l'adresse affichée (`https://<adresse>/studio#token=…`). **Elle n'est montrée qu'une fois.**
@@ -125,7 +155,7 @@ Sur l'écran, tout se fait à la souris : choisir un dossier puis un script ouvr
 
 L'écran est en **lecture seule**, à une exception près : il peut choisir le script affiché. Il peut être **révoqué** (déconnexion immédiate) ou recevoir un **nouveau jeton** depuis la même page.
 
-### 6. RadioDJ (facultatif)
+### 7. RadioDJ (facultatif)
 
 OnAir-Desk lit le titre en cours, le titre à venir et les repères (intro, point de mix) **dans la base de RadioDJ, en lecture seule**. Le plugin « Metadata Export » de RadioDJ le prévient à chaque nouveau titre ; sans lui, la base est relue toutes les 5 secondes. Constats techniques : [`docs/cadrage-radiodj.md`](docs/cadrage-radiodj.md).
 
@@ -158,7 +188,7 @@ OnAir-Desk lit le titre en cours, le titre à venir et les repères (intro, poin
 
 Les intros non marquées dans RadioDJ n'ont pas de compte à rebours de talk-over : marquer les repères dans RadioDJ pour en profiter.
 
-### 7. AzuraCast et bascule direct / hors direct (facultatif)
+### 8. AzuraCast et bascule direct / hors direct (facultatif)
 
 OnAir-Desk lit le titre en cours et le titre à venir dans l'**API « Now Playing » d'AzuraCast**, en HTTPS : un flux temps réel (SSE) prévient à chaque changement, et l'état est relu toutes les 30 secondes. Toutes les connexions partent d'OnAir-Desk vers AzuraCast : **aucun port à ouvrir** côté OnAir-Desk. Si la Debian est filtrée en sortie, autoriser le HTTPS vers l'adresse d'AzuraCast.
 
@@ -186,13 +216,13 @@ OnAir-Desk lit le titre en cours et le titre à venir dans l'**API « Now Playin
 
 Sans repère intro / outro dans l'API d'AzuraCast, il n'y a pas de compte à rebours de talk-over pour ses titres. En direct, le titre envoyé par l'encodeur s'affiche sans temps restant.
 
-### 8. Écran de veille et dispositions
+### 9. Écran de veille et dispositions
 
 - **Écran de veille** : quand aucun conducteur du jour n'est en cours (avec 10 minutes de marge avant et après) et que l'antenne n'est pas en direct, l'écran studio affiche l'horloge, le voyant On Air, le titre en cours et la prochaine émission. Il disparaît seul quand une émission commence ; un clic le quitte pour 10 minutes.
 - **Dispositions** : _Animateur seul_, _Émission avec régie_ (zone réservée aux messages régie), _Interview_ (bandeau réduit). Elles se choisissent sur le **modèle d'émission** et sur le **conducteur** ; la disposition par défaut se règle dans les Paramètres.
 - **Usure de l'écran** : les éléments fixes se décalent de quelques pixels toutes les 2 minutes, et la veille dérive lentement (désactivable dans les Paramètres).
 
-### 9. On Air, météo et liners
+### 10. On Air, météo et liners
 
 **On Air** : le voyant s'allume par l'API d'OnAir-Desk (bouton du Stream Deck, de la console, d'un logiciel) ou par un bouton de secours : dans la barre de l'interface (avec confirmation) et sur l'écran studio (appui long d'1 seconde sur le voyant, désactivable). La dernière action l'emporte ; chaque passage est noté au journal.
 
@@ -215,7 +245,7 @@ curl http://<adresse-de-la-debian>:8780/api/onair -H "Authorization: Bearer <jet
 
 **Liners** : _Paramètres_ → Cartes de liners : jusqu'à 30 cartes (nom de la station, fréquence, standard, slogan…), actives ou non, durée d'affichage. Elles défilent en bas de l'écran studio (sauf disposition « Interview » et veille) ; un clic passe à la suivante.
 
-### 10. Régie
+### 11. Régie
 
 - **Droit « Réalisateur »** : _Administration_ → **Comptes** → case _Réalisateur_ (cumulable avec Animateur ; l'administrateur l'a d'office). Seuls ces comptes voient la page **Régie** ; le serveur refuse les envois de tout autre compte et de l'écran studio.
 - **Messages et ordres** : un message (200 caractères, normal ou urgent) remplace le précédent et s'affiche en grand dans la zone fixe sous le bandeau ; un message urgent l'agrandit 5 secondes sur fond rouge. Il disparaît quand la régie l'efface, ou au bout de la durée réglée (5 minutes par défaut). En disposition « Émission avec régie », la zone est toujours réservée ; dans les autres, elle apparaît à l'arrivée d'un message ou d'un duplex.
@@ -225,7 +255,7 @@ curl http://<adresse-de-la-debian>:8780/api/onair -H "Authorization: Bearer <jet
 - **Conducteur à l'antenne** (suivi sur l'écran studio, ou émission en cours d'après ses heures) : le réalisateur en modifie les éléments depuis la page Régie ; l'écran studio souligne 10 secondes ce qui a changé et recalcule les heures de passage.
 - **Main courante** : notes datées (heure corrigeable jusqu'à 2 heures en arrière) et vue, par émission, des messages, ordres, duplex, modifications et passages à l'antenne. Tout envoi est tracé au journal (catégorie « Régie ») ; 20 envois par minute et par compte au plus.
 
-### 11. Suivi du temps
+### 12. Suivi du temps
 
 - **Horaires fixes** : _Paramètres_ → Horaires fixes (top horaire, flash infos, relais réseau…) : libellé, minute, heures, jours et prévenance. L'écran studio affiche « Flash infos dans 4:12 » (orange à 1 min, rouge à 10 s), jusque sur l'écran de veille. Exemples proposés inactifs.
 - **Heure de fin imposée** : champ facultatif du conducteur et du modèle (journal, relais réseau). L'éditeur et l'impression affichent le temps à caser ou à couper, et la durée des éléments « à couper ».
@@ -236,7 +266,13 @@ curl http://<adresse-de-la-debian>:8780/api/onair -H "Authorization: Bearer <jet
 
 ### Mise à jour
 
-Portainer → _Stacks_ → `onair-desk` → **Pull and redeploy**. Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
+1. Vérifier qu'une nouvelle version est publiée (GitHub → _Packages_ → `onair-desk`) et lire ses notes (_Releases_).
+2. Portainer → _Stacks_ → `onair-desk` → _Environment variables_ : passer `ONAIR_DESK_VERSION` à la nouvelle version.
+3. **Pull and redeploy** (ou _Update the stack_ en cochant **Re-pull image**).
+
+Retour arrière : remettre la version précédente et redéployer. Attention : une version qui a migré la base ne se remonte pas toujours vers une version plus ancienne ; restaurer alors la copie de `/data/backups/`.
+
+Les données restent dans le volume `onair-desk-data`. Avant d'appliquer une migration de base, le serveur en fait une copie dans `/data/backups/` (5 dernières conservées).
 
 ### Sauvegarde
 
@@ -298,7 +334,24 @@ apps/web        Interface SvelteKit compilée en fichiers statiques (FR / EN)
 packages/shared Schémas de validation et types communs
 ```
 
-La CI GitHub Actions lance lint, typecheck, tests, build et construction de l'image Docker sur chaque push.
+La CI GitHub Actions lance lint, typecheck, tests, build et construction de l'image Docker sur chaque push de branche.
+
+### Versions et publication
+
+Versions **SemVer** `vX.Y.Z`, identiques dans tous les `package.json` (règles dans [`CLAUDE.md`](CLAUDE.md)) :
+
+1. Dans la branche de la livraison : `npx npm@11.21.1 version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version` (vérifier que `package-lock.json` suit), puis PR et fusion dans `main`.
+2. Sur `main` à jour :
+
+```bash
+git tag -a vX.Y.Z -m "OnAir-Desk X.Y.Z"
+```
+
+```bash
+git push origin vX.Y.Z
+```
+
+Le workflow **Release** rejoue toute la CI, vérifie que le tag est sur `main` et égal à la version des `package.json`, puis publie `ghcr.io/dockev03/onair-desk:X.Y.Z` (ainsi que `X.Y` et `latest`).
 
 ## Licence
 

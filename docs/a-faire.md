@@ -2,7 +2,7 @@
 
 > Vérifications, tests et décisions en attente qui **ne bloquent pas** les étapes suivantes.
 > Cocher au fur et à mesure ; un écart constaté donne une branche `fix/…`.
-> Dernière mise à jour : après l'étape 11.
+> Dernière mise à jour : après la CI de publication GHCR.
 
 ## 1. Vérifications sur l'installation réelle
 
@@ -52,6 +52,11 @@
 - [ ] Voyant ON AIR, chronomètre, météo et bande de liners lisibles à 1,5–2 m.
 - [ ] Zone régie (message normal et urgent) et pastilles de duplex lisibles à 1,5–2 m ; agrandissement d'un urgent non gênant pendant la lecture.
 - [ ] Bande de temps (minuteur, retard, fin imposée, horaire fixe) lisible à 1,5–2 m ; place restante pour le texte avec la zone régie et la bande de liners.
+
+### Publication de l'image (CI GHCR)
+
+- [ ] Après fusion : poser le premier tag `v0.11.0` sur `main` et vérifier la publication (_Actions_ → Release, puis _Packages_ → `onair-desk`, visibilité **privée**).
+- [ ] Créer le jeton classique `read:packages`, ajouter le registre `ghcr.io` dans Portainer, renseigner `ONAIR_DESK_VERSION` dans la stack, puis redéployer (README, Installation §1 à §3).
 
 ## 2. Décisions à prendre
 

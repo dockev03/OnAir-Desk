@@ -1,0 +1,9 @@
+# Variante : construire l'image depuis les sources au lieu de la télécharger sur GHCR
+# (développement, test d'une branche, ou registre injoignable).
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  onair-desk:
+    build:
+      context: .
+    image: onair-desk:local
+    pull_policy: build

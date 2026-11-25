@@ -1,6 +1,6 @@
 {
   "name": "onair-desk",
-  "version": "0.1.0",
+  "version": "0.11.0",
   "private": true,
   "description": "Écran studio pour radios : prompteur, conducteurs, horloge, titres, météo, On Air.",
   "type": "module",

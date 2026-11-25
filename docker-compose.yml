@@ -1,12 +1,13 @@
-# Stack Portainer (mode « Repository ») : Portainer clone le dépôt, construit l'image et la lance.
+# Stack Portainer (mode « Repository ») : Portainer lit ce fichier dans le dépôt et lance l'image
+# publiée sur GHCR par la CI (workflow Release, à chaque tag vX.Y.Z).
 # Les variables se renseignent dans Portainer (section « Environment variables ») : voir .env.example.
+# Construire l'image depuis les sources à la place : ajouter docker-compose.build.yml (voir README).
 name: onair-desk
 
 services:
   onair-desk:
-    build:
-      context: .
-    image: onair-desk:local
+    # Version à déployer (ex. 0.11.0) : la fixer plutôt que « latest » permet de revenir en arrière.
+    image: ghcr.io/dockev03/onair-desk:${ONAIR_DESK_VERSION:-latest}
     container_name: onair-desk
     restart: unless-stopped
     init: true

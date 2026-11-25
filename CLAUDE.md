@@ -13,7 +13,7 @@
 - `docs/maquette-ecran-studio-v3.html` : maquette validée. `docs/transcription-cadrage.md` : archive.
 
 ## Stack
-TypeScript partout : Node 24 + Fastify, WebSocket, SvelteKit statique (Svelte 5 runes), TipTap, SQLite (`better-sqlite3`, SQL direct), Argon2 + cookie httpOnly, HTTPS servi par Fastify (CA interne), une image Docker construite par une stack Portainer.
+TypeScript partout : Node 24 + Fastify, WebSocket, SvelteKit statique (Svelte 5 runes), TipTap, SQLite (`better-sqlite3`, SQL direct), Argon2 + cookie httpOnly, HTTPS servi par Fastify (CA interne), une image Docker publiée sur GHCR par la CI (tag de version), déployée par une stack Portainer.
 
 ## Conventions de code
 - Monorepo npm workspaces : `apps/server`, `apps/web`, `packages/shared` (schémas zod + types, importés en TS source).
@@ -31,6 +31,12 @@ TypeScript partout : Node 24 + Fastify, WebSocket, SvelteKit statique (Svelte 5 
 - Tests e2e : `e2e/*.e2e.ts` (Playwright, serveur compilé sur base temporaire) ; chaque évolution ajoute ses scénarios.
 - Avant de pousser : `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, puis `npm run test:e2e`.
 - **README à jour, captures comprises** : toute fonctionnalité ou interface modifiée met à jour `README.md` dans la même branche ; relancer `npm run captures` (après build), compléter `scripts/captures.ts` et la section « Aperçu » si un écran change. Base de démo seulement : aucune donnée réelle, jeton ou adresse interne.
+
+## Versions et tags
+- SemVer `vX.Y.Z`, tag annoté posé **sur `main`** après fusion ; il déclenche `.github/workflows/release.yml` (CI complète puis image `ghcr.io/dockev03/onair-desk:X.Y.Z`, `X.Y`, `latest`, amd64). Le tag doit égaler la version des `package.json` (racine + workspaces), sinon la publication échoue.
+- Version montée **dans la branche de la livraison**, avant la PR : `npx npm@11.21.1 version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version` (vérifier `package-lock.json`).
+- Avant 1.0.0 : `MINOR` = étape ou fonctionnalité livrée, `PATCH` = correctif (`fix/…`), rien pour une branche `docs/…` seule. `1.0.0` = mise en service validée au studio (`docs/a-faire.md` §1). Après 1.0.0 : `MAJOR` = action manuelle à l'installation (variable renommée ou obligatoire, volume, retour arrière impossible), `MINOR` = fonctionnalité, `PATCH` = correctif.
+- **Proposer de soi-même** une version et la commande de tag à la fin de toute branche `feature/…` ou `fix/…` qui change l'image (code, Dockerfile, dépendances) ; le tag n'est posé qu'après fusion et validation explicite.
 
 ## Règles de travail
 - Branche dédiée, jamais de commit/push direct sur `main`, `master`, `staging`. Nom parlant en minuscules à tirets : `feature/etape-N-sujet`, `feature/sujet`, `fix/sujet`, `docs/sujet` ; jamais de nom généré ; une branche fusionnée n'est pas réutilisée.

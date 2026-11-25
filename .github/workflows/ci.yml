@@ -4,6 +4,8 @@ on:
   push:
     branches-ignore: [main, master, staging]
   pull_request:
+  # Rejouée en entier avant chaque publication d'image (release.yml).
+  workflow_call:
 
 permissions:
   contents: read

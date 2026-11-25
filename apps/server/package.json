@@ -1,6 +1,6 @@
 {
   "name": "@onair-desk/server",
-  "version": "0.1.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "@fastify/static": "^10.1.6",
     "@fastify/websocket": "^11.3.4",
     "@node-rs/argon2": "^2.2.2",
-    "@onair-desk/shared": "0.1.0",
+    "@onair-desk/shared": "*",
     "@peculiar/x509": "^2.2.0",
     "better-sqlite3": "^12.11.1",
     "fastify": "^5.12.7",
