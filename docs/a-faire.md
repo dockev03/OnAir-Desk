@@ -58,6 +58,10 @@
 - [ ] Après fusion : poser le premier tag `v0.11.0` sur `main` et vérifier la publication (_Actions_ → Release, puis _Packages_ → `onair-desk`, visibilité **privée**).
 - [ ] Créer le jeton classique `read:packages`, ajouter le registre `ghcr.io` dans Portainer, renseigner `ONAIR_DESK_VERSION` dans la stack, puis redéployer (README, Installation §1 à §3).
 
+### Maintenance de la CI
+
+- [ ] **Mettre à jour Playwright** vers une version qui gère Ubuntu 26.04, puis remettre `runs-on: ubuntu-latest` dans `.github/workflows/ci.yml` et `release.yml` (fixés en `ubuntu-24.04` : Playwright 1.56.1 n'installe pas Chromium sur 26.04). Branche `fix/…`, e2e à repasser en entier.
+
 ## 2. Décisions à prendre
 
 - [ ] **Licence** : MIT ou AGPL (`docs/cahier-des-charges.md` §11). Le dépôt reste privé d'ici là.
